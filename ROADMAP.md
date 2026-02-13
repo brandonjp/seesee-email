@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.4.0-dev
+**Version:** 0.5.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -62,16 +62,16 @@
 
 ---
 
-## Phase 1.2 — SMTP Ingest 📋
+## Phase 1.2 — SMTP Ingest ✅
 
 **Goal:** Accept emails via SMTP for apps that already use SMTP.
 
-- [ ] aiosmtpd listener on configurable port (default 2525)
-- [ ] SMTP AUTH with per-app username/password credentials
-- [ ] MIME message parsing (extract to, from, subject, HTML body, text body)
-- [ ] Log parsed email to database (same as REST API path)
-- [ ] Optional upstream relay (forward to real SMTP server for delivery)
-- [ ] Capture-only mode (no relay) for apps that send via provider API separately
+- [x] aiosmtpd listener on configurable port (default 2525)
+- [x] SMTP AUTH with per-app username/password credentials
+- [x] MIME message parsing (extract to, from, subject, HTML body, text body)
+- [x] Log parsed email to database (same as REST API path)
+- [x] Optional upstream relay (forward to real SMTP server for delivery)
+- [x] Capture-only mode (no relay) for apps that send via provider API separately
 
 ---
 

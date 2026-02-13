@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- SMTP ingest server (Phase 1.2):
+  - `aiosmtpd` listener on configurable port (default 2525), controlled by `SEESEE_SMTP_ENABLED`
+  - SMTP AUTH (LOGIN/PLAIN) — authenticates against per-app `smtp_username` + `smtp_password` (bcrypt hashed in `apps` table)
+  - MIME message parsing via Python `email` stdlib — extracts subject, from, to, cc, reply-to, text/plain body, text/html body; handles multipart/alternative and multipart/mixed; skips attachments
+  - Parsed emails inserted into `emails` table with `ingest_method = 'smtp'`
+  - App `body_storage_mode` (full / text_only / preview) enforced on SMTP path, same as REST API
+  - Optional upstream relay via `aiosmtplib` when `SEESEE_SMTP_RELAY_HOST` is configured; relay failures logged but captured email preserved
+  - Capture-only mode (no relay) when relay host not configured
+  - Graceful start/stop wired into FastAPI lifespan in `main.py`
+  - 27 new tests covering AUTH, MIME parsing, DB insertion, body storage modes, capture-only, and relay behavior
+- `seesee/helpers.py` — shared body storage helpers (`apply_body_storage_mode`, `strip_html_tags`) used by both REST and SMTP ingest paths
+- `aiosmtplib>=3.0.0` dependency for async upstream relay
+
+### Changed
+- Refactored `_apply_body_storage_mode` out of `routes/ingest.py` into `seesee/helpers.py` for reuse
+- Version bump: 0.4.0-dev → 0.5.0-dev
+
+---
+
+## [0.4.0-dev] — 2026-02-12
+
+### Added
 - Web UI — admin dashboard (Phase 1.1):
   - Session-based authentication via `itsdangerous` signed cookies with configurable expiry
   - `GET /login`, `POST /login` — login page with form validation

@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Retention scheduler and deployment finalization (Phase 1.3):
+  - Async background cleanup scheduler using `asyncio.create_task`, runs on configurable interval (default 60 min via `SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES`)
+  - Per-app `max_count` enforcement — keep at most N emails per app, delete oldest by `logged_at`
+  - Per-app `max_age_days` enforcement — delete emails older than N days
+  - Global `max_storage_mb` enforcement — oldest-first deletion across all apps until under cap
+  - Most-restrictive-wins logic — `min(app_override, global)` when per-app override is set
+  - Batch deletion (500 at a time) to avoid long-running database locks
+  - INFO-level cleanup logging with counts and approximate storage freed
+  - Start/stop wired into FastAPI lifespan in `main.py`
+  - 23 new tests covering max_count, max_age, storage cap, per-app overrides, most-restrictive-wins, empty database, and FTS5 consistency after retention deletes
+- GitHub Actions multi-platform Docker builds (linux/amd64 + linux/arm64) with QEMU, buildx, GHA build cache, and `docker/metadata-action` for tag management
+
+### Changed
+- `docker-compose.yml`: added missing retention env vars (`SEESEE_RETENTION_MAX_STORAGE_MB`, `SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES`, `SEESEE_SMTP_ENABLED`) with variable substitution defaults
+- `.env.example`: added descriptive inline comments for retention variables
+- Version bump: 0.5.0-dev → 0.6.0-dev
+
+---
+
+## [0.5.0-dev] — 2026-02-13
+
+### Added
 - SMTP ingest server (Phase 1.2):
   - `aiosmtpd` listener on configurable port (default 2525), controlled by `SEESEE_SMTP_ENABLED`
   - SMTP AUTH (LOGIN/PLAIN) — authenticates against per-app `smtp_username` + `smtp_password` (bcrypt hashed in `apps` table)

@@ -37,6 +37,10 @@ class SeeSeeSettings(BaseSettings):
     retention_max_storage_mb: int = 500
     retention_cleanup_interval_minutes: int = 60
 
+    # Session
+    secret_key: str = ""
+    session_max_age_days: int = 7
+
     # UI
     theme: str = "system"
 

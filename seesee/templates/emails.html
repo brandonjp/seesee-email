@@ -1,5 +1,140 @@
 {% extends "base.html" %}
 {% block title %}Emails — SeeSee{% endblock %}
-{% block body %}
-<!-- TODO: Email list with search bar, filter chips, results table, pagination -->
+{% block content %}
+<div class="space-y-4">
+    <h1 class="text-2xl font-bold">Emails</h1>
+
+    <!-- Search and filters -->
+    <form method="get" action="/emails" class="space-y-3" x-data="{ filtersOpen: {% if app_id or status_filter or provider_filter %}true{% else %}false{% endif %} }">
+        <div class="flex gap-2">
+            <div class="flex-1 relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" name="q" value="{{ q }}" placeholder="Search emails..."
+                       class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-3 py-2 text-sm shadow-sm focus:border-mint focus:outline-none focus:ring-1 focus:ring-mint">
+            </div>
+            <button type="button" @click="filtersOpen = !filtersOpen"
+                    class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    :class="filtersOpen ? 'border-mint text-mint' : ''">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            </button>
+            <button type="submit"
+                    class="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+                Search
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div x-show="filtersOpen" x-transition class="flex flex-wrap gap-3">
+            {% if apps %}
+            <select name="app_id" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm">
+                <option value="">All apps</option>
+                {% for app in apps %}
+                <option value="{{ app.id }}" {{ 'selected' if app_id == app.id else '' }}>{{ app.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            {% if statuses %}
+            <select name="status" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm">
+                <option value="">All statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {{ 'selected' if status_filter == s else '' }}>{{ s }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            {% if providers %}
+            <select name="provider" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm">
+                <option value="">All providers</option>
+                {% for p in providers %}
+                <option value="{{ p }}" {{ 'selected' if provider_filter == p else '' }}>{{ p }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if emails %}
+    <!-- Results table -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Subject</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">From</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">To</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for email in emails %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition-colors"
+                        onclick="window.location='/emails/{{ email.id }}'">
+                        <td class="px-4 py-3">
+                            <div class="font-medium truncate max-w-xs">{{ email.subject }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-xs hidden md:table-cell">{{ email.from_address }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-xs hidden lg:table-cell">{{ email.to_addresses | join(', ') }}</td>
+                        <td class="px-4 py-3">
+                            {% if email.status == 'sent' %}
+                            <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">sent</span>
+                            {% elif email.status == 'failed' %}
+                            <span class="inline-flex items-center rounded-full bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">failed</span>
+                            {% elif email.status == 'bounced' %}
+                            <span class="inline-flex items-center rounded-full bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400">bounced</span>
+                            {% else %}
+                            <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">{{ email.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden sm:table-cell">{{ email.logged_at[:16] | replace('T', ' ') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pages > 1 %}
+        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ total }} email{{ 's' if total != 1 else '' }} &middot; Page {{ page }} of {{ pages }}
+            </p>
+            <div class="flex gap-1">
+                {% if page > 1 %}
+                <a href="/emails?page={{ page - 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Prev</a>
+                {% endif %}
+                {% for p in range(1, pages + 1) %}
+                    {% if p == page %}
+                    <span class="rounded-lg bg-mint px-3 py-1 text-sm font-medium text-gray-900">{{ p }}</span>
+                    {% elif p <= 3 or p > pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                    <a href="/emails?page={{ p }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                       class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">{{ p }}</a>
+                    {% elif p == 4 or p == pages - 2 %}
+                    <span class="px-1 py-1 text-sm text-gray-400">...</span>
+                    {% endif %}
+                {% endfor %}
+                {% if page < pages %}
+                <a href="/emails?page={{ page + 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <svg class="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        {% if q or app_id or status_filter or provider_filter %}
+        <h2 class="mt-4 text-lg font-semibold">No emails match your filters</h2>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Try adjusting your search or filters.</p>
+        <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">Clear all filters</a>
+        {% else %}
+        <h2 class="mt-4 text-lg font-semibold">No emails yet</h2>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Emails will appear here once your apps start logging them.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

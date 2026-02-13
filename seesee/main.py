@@ -5,13 +5,13 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from seesee import __version__
 from seesee.database import close_db, get_db, init_db
-from seesee.routes import apps, emails, ingest, stats
+from seesee.routes import apps, emails, ingest, stats, ui
 
 
 @asynccontextmanager
@@ -35,7 +35,11 @@ app = FastAPI(
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    """Return consistent error format: {"error": "...", "detail": "..."}."""
+    """Return consistent error format or redirect for session auth."""
+    # Handle session auth redirects (303 from require_session)
+    if exc.status_code == 303 and exc.headers and "Location" in exc.headers:
+        return RedirectResponse(url=exc.headers["Location"], status_code=303)
+
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.detail, "detail": exc.detail},
@@ -43,11 +47,13 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     )
 
 
-# Static files and templates (mount only if directories exist)
-_static_dir = pathlib.Path("seesee/static")
+# Static files and templates — use package-relative paths so it works
+# regardless of the working directory (e.g. pytest runs from project root).
+_pkg_dir = pathlib.Path(__file__).parent
+_static_dir = _pkg_dir / "static"
 if _static_dir.is_dir():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
-_templates_dir = pathlib.Path("seesee/templates")
+_templates_dir = _pkg_dir / "templates"
 if _templates_dir.is_dir():
     templates = Jinja2Templates(directory=str(_templates_dir))
 
@@ -56,9 +62,7 @@ app.include_router(ingest.router)
 app.include_router(apps.router)
 app.include_router(emails.router)
 app.include_router(stats.router)
-# TODO: Uncomment as routes are implemented
-# from seesee.routes import ui
-# app.include_router(ui.router)
+app.include_router(ui.router)
 
 
 @app.get("/api/v1/health")

@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.3.0-dev
+**Version:** 0.4.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -41,24 +41,24 @@
 
 ---
 
-## Phase 1.1 — Web UI 📋
+## Phase 1.1 — Web UI 🚧
 
 **Goal:** Admin dashboard for searching and viewing logged emails.
 
-- [ ] Login page with session-based auth
-- [ ] Base layout (nav, dark mode toggle, brand styling)
-- [ ] Dashboard page (stats, app cards, status breakdown)
-- [ ] Email list page (search bar, filter chips, results table, pagination)
-- [ ] Email detail page (header, addresses, tabbed content: preview/HTML/text/metadata)
-- [ ] App management page (list, add, edit settings, copy credentials)
+- [x] Login page with session-based auth (itsdangerous signed cookies)
+- [x] Base layout (sidebar nav, dark mode toggle, brand styling)
+- [x] Dashboard page (stats cards, status breakdown, per-app counts, empty state)
+- [x] Email list page (search bar, filter dropdowns, results table, pagination)
+- [x] Email detail page (header, addresses, tabbed content: preview/HTML/text/metadata)
+- [x] App management page (list, add modal, credentials display, key rotation)
+- [x] Dark/light mode with system preference + manual toggle
+- [x] Confirmation dialogs for destructive actions (key rotation)
+- [x] Empty states with onboarding copy
+- [x] Responsive design (desktop-optimized, tablet-usable)
 - [ ] App detail page (stats, integration snippets pre-filled with credentials)
 - [ ] Settings page (retention config, storage usage, manual purge)
-- [ ] Dark/light mode with system preference + manual toggle
 - [ ] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close)
 - [ ] Toast notifications for actions
-- [ ] Confirmation dialogs for destructive actions
-- [ ] Empty states with onboarding copy
-- [ ] Responsive design (desktop-optimized, tablet-usable)
 
 ---
 

@@ -1,0 +1,262 @@
+# Conservative Development .gitignore
+# Version: v2.2.0
+# Author: Generated for multi-language development
+# Usage: Place in root of any project directory
+# Philosophy: Only exclude problematic/excessive files, include everything else by default
+# Covers: JavaScript/React, Python, PHP, WordPress
+
+# =============================================================================
+# OPERATING SYSTEM FILES (Always exclude)
+# =============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# =============================================================================
+# SYNOLOGY NAS METADATA FILES
+# =============================================================================
+
+@eaDir/
+@SynoResource/
+@SynoEAStream
+.SynologyWorkingDirectory
+
+# =============================================================================
+# EDITOR AND IDE FILES (Personal preference files)
+# =============================================================================
+
+# Visual Studio Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/.ropeproject
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim swap files
+*.swp
+*.swo
+
+# =============================================================================
+# DEPENDENCY DIRECTORIES (Large, auto-generated)
+# =============================================================================
+
+# Node.js
+node_modules/
+
+# PHP Composer
+/vendor/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# =============================================================================
+# RUNTIME AND CACHE FILES (Auto-generated, temporary)
+# =============================================================================
+
+# Node.js runtime
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Python cache
+.pytest_cache/
+*.egg-info/
+
+# General cache
+.cache/
+.parcel-cache/
+
+# =============================================================================
+# ENVIRONMENT AND SECRET FILES (Security risk)
+# =============================================================================
+
+# Environment files with secrets (but allow sample files)
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# WordPress config (contains DB credentials)
+wp-config.php
+wp-config-local.php
+
+# Database connection files
+database.local.php
+config.local.php
+*-local.php
+
+# SSH keys and certificates
+*.pem
+id_rsa
+id_dsa
+*.key
+*.crt
+*.cert
+*.csr
+
+# =============================================================================
+# WORDPRESS CORE FILES (Auto-installed, not customizable)
+# =============================================================================
+
+# WordPress core directories
+/wp-admin/
+/wp-includes/
+
+# WordPress core files
+wp-*.php
+index.php
+xmlrpc.php
+license.txt
+readme.html
+
+# WordPress auto-generated
+/wp-content/uploads/
+/wp-content/cache/
+/wp-content/upgrade/
+/wp-content/languages/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php
+
+# Standard WordPress themes (usually not customized)
+/wp-content/themes/twenty*/
+
+# Common auto-installed plugins
+/wp-content/plugins/hello.php
+/wp-content/plugins/akismet/
+
+# =============================================================================
+# LARGE AUTO-GENERATED DIRECTORIES
+# =============================================================================
+
+# Build outputs (comment out specific ones if you need to commit them)
+/.next/
+/.nuxt/
+
+# Common build directories (uncomment if problematic)
+# /dist/
+# /build/
+# /out/
+# /public/
+
+# Python virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Python distribution
+/dist/
+/build/
+
+# Java / Gradle / Maven
+.gradle/
+target/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+
+# =============================================================================
+# LOG FILES IN COMMON LOCATIONS (Not sample/reference logs)
+# =============================================================================
+
+# Application logs in specific directories
+logs/*.log
+log/*.log
+storage/logs/*.log
+var/log/*.log
+
+# Runtime logs with timestamps
+*.log.*
+*-debug.log
+*-error.log
+
+# WordPress debug logs
+/wp-content/debug.log
+/wp-content/uploads/*/debug.log
+
+# =============================================================================
+# DEVELOPMENT TEMPORARY FILES
+# =============================================================================
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# =============================================================================
+# DATABASE FILES (Usually contain sensitive data)
+# =============================================================================
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Database dumps
+*.sql
+*.dump
+
+# =============================================================================
+# TESTING AND COVERAGE (Auto-generated)
+# =============================================================================
+
+# Test coverage reports
+coverage/
+.coverage
+.nyc_output/
+htmlcov/
+
+# =============================================================================
+# PACKAGE MANAGER LOCK FILES (Project decision)
+# =============================================================================
+
+# Uncomment these if you want to exclude lock files
+# Generally INCLUDE these for reproducible builds, but exclude for libraries
+# package-lock.json
+# yarn.lock
+# composer.lock
+# Pipfile.lock
+
+# =============================================================================
+# CUSTOM PROJECT IGNORES
+# =============================================================================
+
+# Add your project-specific ignores below this line
+# Examples:
+# /my-secret-folder/
+# config-local.php
+# .local-notes.txt
+# .vscode/settings.json  # Uncomment to ignore personal VSCode settings

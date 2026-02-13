@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Web UI — admin dashboard (Phase 1.1):
+  - Session-based authentication via `itsdangerous` signed cookies with configurable expiry
+  - `GET /login`, `POST /login` — login page with form validation
+  - `POST /logout` — clears session cookie and redirects
+  - `require_session` dependency for UI routes — redirects to `/login` if unauthenticated
+  - Base layout template with sidebar navigation, dark/light mode toggle (system preference + manual override via Alpine.js, stored in localStorage)
+  - Brand styling: phosphor mint `#32F5C0` primary, warm paper `#F6F1E6` background
+  - Dashboard page (`GET /`) — stats cards (total, 24h, 7d, 30d), status breakdown, per-app counts, empty state with onboarding
+  - Email list page (`GET /emails`) — full-text search, filter dropdowns (app, status, provider), results table, pagination controls
+  - Email detail page (`GET /emails/{id}`) — header with status badge, address block, tabbed content (Preview iframe, HTML Source, Plain Text, Metadata)
+  - App management page (`GET /apps`) — app list with email counts, "Add App" modal form, credential display after creation, key rotation with confirmation dialog
+  - Server-side app creation (`POST /apps`) and key rotation (`POST /apps/{id}/rotate-key`) via session-authenticated UI routes
+  - Responsive sidebar (collapsible on mobile, fixed on desktop)
+  - All interactivity via Alpine.js CDN (`x-data`, `x-show`, `x-on`, tabs, modals, toggles)
+  - All styling via Tailwind CSS CDN (no build step, no npm required)
+  - 20 new tests covering login/logout/session expiry, redirect behavior, page rendering, search, empty states, app CRUD
+- `SEESEE_SECRET_KEY` config option for signing session cookies (falls back to `SEESEE_ADMIN_PASSWORD`)
+- `SEESEE_SESSION_MAX_AGE_DAYS` config option (default: 7 days)
+
+### Changed
+- Registered UI router (`ui.router`) in main app
+- Static/template paths now use package-relative `__file__` resolution (fixes pytest working directory issues)
+- Version bump: 0.3.0-dev → 0.4.0-dev
+
+---
+
+## [0.3.0-dev] — 2026-02-12
+
+### Added
 - Core API endpoints (Phase 1.0 — Core API + Storage):
   - `POST /api/v1/apps` — register app (returns API key + SMTP credentials, shown once)
   - `GET /api/v1/apps` — list registered apps (admin auth required)

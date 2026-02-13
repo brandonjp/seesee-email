@@ -1,5 +1,165 @@
 {% extends "base.html" %}
 {% block title %}Apps — SeeSee{% endblock %}
-{% block body %}
-<!-- TODO: App list with stats, add new app form -->
+{% block content %}
+<div class="space-y-4" x-data="{ showAddForm: false, confirmRotate: null }">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold">Apps</h1>
+        <button @click="showAddForm = true"
+                class="inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add App
+        </button>
+    </div>
+
+    <!-- Credentials alert (shown after creation) -->
+    {% if created_credentials %}
+    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-3" x-data="{ show: true }" x-show="show">
+        <div class="flex items-start justify-between">
+            <div>
+                <h3 class="font-semibold text-mint">App created — save these credentials now</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">These credentials will not be shown again.</p>
+            </div>
+            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="grid gap-2 text-sm">
+            <div>
+                <span class="text-gray-500 dark:text-gray-400">API Key:</span>
+                <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ created_credentials.api_key }}</code>
+            </div>
+            <div>
+                <span class="text-gray-500 dark:text-gray-400">SMTP Username:</span>
+                <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ created_credentials.smtp_username }}</code>
+            </div>
+            <div>
+                <span class="text-gray-500 dark:text-gray-400">SMTP Password:</span>
+                <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ created_credentials.smtp_password }}</code>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Rotated key alert -->
+    {% if rotated_key %}
+    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
+        <div class="flex items-start justify-between">
+            <h3 class="font-semibold text-mint">API key rotated — save the new key</h3>
+            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="text-sm">
+            <span class="text-gray-500 dark:text-gray-400">New API Key:</span>
+            <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ rotated_key }}</code>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Add app modal -->
+    <div x-show="showAddForm" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="showAddForm = false"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold">Add App</h2>
+                <button @click="showAddForm = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form method="post" action="/apps" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">App Name</label>
+                    <input type="text" name="name" required placeholder="My Application"
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-mint focus:outline-none focus:ring-1 focus:ring-mint">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Body Storage Mode</label>
+                    <select name="body_storage_mode"
+                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                        <option value="full">Full (HTML + Text)</option>
+                        <option value="text_only">Text Only</option>
+                        <option value="preview">Preview Only</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showAddForm = false"
+                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                    <button type="submit"
+                            class="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">Create App</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rotate key confirmation -->
+    <div x-show="confirmRotate" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="confirmRotate = null"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 class="text-lg font-bold">Rotate API Key?</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">The current key will be immediately invalidated. Make sure you can update your integration before proceeding.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmRotate = null"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <form :action="'/apps/' + confirmRotate + '/rotate-key'" method="post" class="inline">
+                    <button type="submit"
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Rotate Key</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- App list -->
+    {% if apps %}
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Name</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">Slug</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">Storage</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Emails</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">Last Activity</th>
+                        <th class="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for app in apps %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                        <td class="px-4 py-3 font-medium">{{ app.name }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{{ app.slug }}</code>
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 capitalize hidden md:table-cell">{{ app.body_storage_mode | replace('_', ' ') }}</td>
+                        <td class="px-4 py-3">{{ app.email_count }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden lg:table-cell">
+                            {{ app.last_activity_at[:16] | replace('T', ' ') if app.last_activity_at else 'Never' }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button @click="confirmRotate = '{{ app.id }}'"
+                                    class="text-xs text-gray-500 dark:text-gray-400 hover:text-mint transition-colors"
+                                    title="Rotate API key">
+                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <svg class="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <h2 class="mt-4 text-lg font-semibold">No apps yet</h2>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Register your first app to get API keys and start logging emails.</p>
+        <button @click="showAddForm = true"
+                class="mt-4 inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Create your first app
+        </button>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

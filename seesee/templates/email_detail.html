@@ -1,5 +1,168 @@
 {% extends "base.html" %}
-{% block title %}Email Detail — SeeSee{% endblock %}
-{% block body %}
-<!-- TODO: Email detail with header, addresses, tabbed content (preview, HTML, text, metadata) -->
+{% block title %}{{ email.subject if email else 'Not Found' }} — SeeSee{% endblock %}
+{% block content %}
+{% if not email %}
+<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
+    <h2 class="text-lg font-semibold">Email not found</h2>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">The email you're looking for doesn't exist or has been deleted.</p>
+    <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">&larr; Back to emails</a>
+</div>
+{% else %}
+<div class="space-y-4">
+    <!-- Back link -->
+    <a href="/emails" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to emails
+    </a>
+
+    <!-- Header -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <div class="flex flex-wrap items-start gap-3 justify-between">
+            <div class="min-w-0">
+                <h1 class="text-xl font-bold break-words">{{ email.subject }}</h1>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ email.logged_at[:19] | replace('T', ' ') }}
+                    {% if email.app_name %}&middot; {{ email.app_name }}{% endif %}
+                </p>
+            </div>
+            {% if email.status == 'sent' %}
+            <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/20 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400">sent</span>
+            {% elif email.status == 'failed' %}
+            <span class="inline-flex items-center rounded-full bg-red-50 dark:bg-red-900/20 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-400">failed</span>
+            {% elif email.status == 'bounced' %}
+            <span class="inline-flex items-center rounded-full bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 text-sm font-medium text-yellow-700 dark:text-yellow-400">bounced</span>
+            {% else %}
+            <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-sm font-medium">{{ email.status }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Address block -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <div class="grid gap-2 text-sm">
+            <div class="flex gap-2">
+                <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">From</span>
+                <span class="font-medium break-all">{{ email.from_address }}</span>
+            </div>
+            <div class="flex gap-2">
+                <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">To</span>
+                <span class="break-all">{{ email.to_addresses | join(', ') }}</span>
+            </div>
+            {% if email.cc_addresses %}
+            <div class="flex gap-2">
+                <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">CC</span>
+                <span class="break-all">{{ email.cc_addresses | join(', ') }}</span>
+            </div>
+            {% endif %}
+            {% if email.bcc_addresses %}
+            <div class="flex gap-2">
+                <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">BCC</span>
+                <span class="break-all">{{ email.bcc_addresses | join(', ') }}</span>
+            </div>
+            {% endif %}
+            {% if email.reply_to %}
+            <div class="flex gap-2">
+                <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">Reply-To</span>
+                <span class="break-all">{{ email.reply_to }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabbed content -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" x-data="{ tab: 'preview' }">
+        <!-- Tab buttons -->
+        <div class="flex border-b border-gray-200 dark:border-gray-700 px-5 overflow-x-auto">
+            <button @click="tab = 'preview'" :class="tab === 'preview' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Preview</button>
+            <button @click="tab = 'html'" :class="tab === 'html' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">HTML Source</button>
+            <button @click="tab = 'text'" :class="tab === 'text' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Plain Text</button>
+            <button @click="tab = 'metadata'" :class="tab === 'metadata' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Metadata</button>
+        </div>
+
+        <!-- Tab content -->
+        <div class="p-5">
+            <!-- Preview tab -->
+            <div x-show="tab === 'preview'">
+                {% if email.body_html or email.body_text or email.body_preview %}
+                <iframe src="/api/v1/emails/{{ email.id }}/preview"
+                        sandbox="allow-same-origin"
+                        class="w-full border border-gray-200 dark:border-gray-600 rounded-lg bg-white"
+                        style="min-height: 400px;"
+                        onload="this.style.height = Math.max(400, this.contentWindow.document.body.scrollHeight + 32) + 'px'"></iframe>
+                {% else %}
+                <p class="text-sm text-gray-400">No body content available.</p>
+                {% endif %}
+            </div>
+
+            <!-- HTML Source tab -->
+            <div x-show="tab === 'html'" style="display: none;">
+                {% if email.body_html %}
+                <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-96 whitespace-pre-wrap break-words"><code>{{ email.body_html }}</code></pre>
+                {% else %}
+                <p class="text-sm text-gray-400">No HTML body stored.</p>
+                {% endif %}
+            </div>
+
+            <!-- Plain Text tab -->
+            <div x-show="tab === 'text'" style="display: none;">
+                {% if email.body_text %}
+                <pre class="text-sm bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-96 whitespace-pre-wrap break-words">{{ email.body_text }}</pre>
+                {% elif email.body_preview %}
+                <pre class="text-sm bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-96 whitespace-pre-wrap break-words">{{ email.body_preview }}</pre>
+                {% else %}
+                <p class="text-sm text-gray-400">No plain text body stored.</p>
+                {% endif %}
+            </div>
+
+            <!-- Metadata tab -->
+            <div x-show="tab === 'metadata'" style="display: none;">
+                <div class="grid gap-3 text-sm">
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Provider</span>
+                        <span>{{ email.provider or '—' }}</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Provider Message ID</span>
+                        <span class="break-all">{{ email.provider_message_id or '—' }}</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Body Size</span>
+                        <span>{{ email.body_size_bytes or 0 }} bytes</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Ingest Method</span>
+                        <span>{{ email.ingest_method }}</span>
+                    </div>
+                    {% if email.tags %}
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Tags</span>
+                        <div class="flex flex-wrap gap-1">
+                            {% for tag in email.tags %}
+                            <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if email.error_message %}
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Error</span>
+                        <span class="text-red-600 dark:text-red-400 break-words">{{ email.error_message }}</span>
+                    </div>
+                    {% endif %}
+                    {% if email.metadata %}
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Custom Metadata</span>
+                        <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded p-2 overflow-x-auto">{{ email.metadata | tojson(indent=2) }}</pre>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

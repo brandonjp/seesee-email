@@ -9,9 +9,11 @@ import secrets
 import unicodedata
 
 import bcrypt
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 API_KEY_PREFIX = "ss_"
 API_KEY_LENGTH = 32
+SESSION_COOKIE_NAME = "seesee_session"
 
 
 def generate_api_key() -> str:
@@ -32,6 +34,27 @@ def verify_secret(plaintext: str, hashed: str) -> bool:
 def generate_smtp_password() -> str:
     """Generate a random SMTP password."""
     return secrets.token_urlsafe(API_KEY_LENGTH)
+
+
+def get_session_serializer(secret_key: str) -> URLSafeTimedSerializer:
+    """Create a timed serializer for session cookies."""
+    return URLSafeTimedSerializer(secret_key, salt="seesee-session")
+
+
+def create_session_token(username: str, secret_key: str) -> str:
+    """Create a signed session token for the given username."""
+    serializer = get_session_serializer(secret_key)
+    return serializer.dumps({"user": username})
+
+
+def validate_session_token(token: str, secret_key: str, max_age_seconds: int) -> str | None:
+    """Validate a session token and return the username, or None if invalid."""
+    serializer = get_session_serializer(secret_key)
+    try:
+        data = serializer.loads(token, max_age=max_age_seconds)
+        return data.get("user")
+    except (BadSignature, SignatureExpired):
+        return None
 
 
 def generate_slug(name: str) -> str:

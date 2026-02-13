@@ -112,30 +112,32 @@ See `ROADMAP.md` for detailed phase breakdown.
 **Phase Status Legend:**
 - ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
-### Current Focus: Phase 1.0 — Core API + Storage
+### Current Focus: Phase 1.1 — Web UI (foundation complete)
 
 ### Phase Overview
 
-#### Phase 1.0 — Core API + Storage 🚧
+#### Phase 1.0 — Core API + Storage ✅
 - ✅ SQLite database with FTS5 schema + sync triggers
 - ✅ POST /api/v1/log endpoint
 - ✅ API key auth per app (O(1) prefix lookup)
-- ✅ App registration endpoints (POST + GET /api/v1/apps)
+- ✅ App registration endpoints (POST + GET + PATCH /api/v1/apps)
+- ✅ POST /api/v1/apps/{id}/rotate-key
 - ✅ Body storage modes (full / text_only / preview)
+- ✅ GET /api/v1/emails (list/search), GET /api/v1/emails/{id}, GET /api/v1/emails/{id}/preview
+- ✅ GET /api/v1/stats (dashboard statistics)
 - ✅ Health endpoint with database status
 - ✅ Error response consistency
-- 📋 PATCH /api/v1/apps/{id}, POST /api/v1/apps/{id}/rotate-key
-- 📋 GET /api/v1/emails (list/search), GET /api/v1/emails/{id}, GET /api/v1/emails/{id}/preview
-- 📋 GET /api/v1/stats (dashboard statistics)
 
-#### Phase 1.1 — Web UI 📋
-- Login page + session auth
-- Dashboard with stats
-- Email list with search + filters
-- Email detail with HTML preview
-- App management page
-- Settings page
-- Dark/light mode
+#### Phase 1.1 — Web UI 🚧
+- ✅ Login page + session auth (itsdangerous signed cookies)
+- ✅ Dashboard with stats cards, status breakdown, per-app counts
+- ✅ Email list with search + filters + pagination
+- ✅ Email detail with tabbed content (preview iframe, HTML, text, metadata)
+- ✅ App management page (list, add, rotate key)
+- ✅ Dark/light mode (system preference + manual toggle)
+- ✅ Base layout with sidebar nav, brand styling
+- 📋 Settings page
+- 📋 Keyboard shortcuts
 
 #### Phase 1.2 — SMTP Ingest 📋
 - aiosmtpd listener on port 2525

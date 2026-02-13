@@ -116,13 +116,17 @@ See `ROADMAP.md` for detailed phase breakdown.
 
 ### Phase Overview
 
-#### Phase 1.0 — Core API + Storage 📋
-- SQLite database with FTS5 schema
-- POST /api/v1/log endpoint
-- API key auth per app
-- App registration endpoints
-- Body storage modes (full / text_only / preview)
-- Health endpoint
+#### Phase 1.0 — Core API + Storage 🚧
+- ✅ SQLite database with FTS5 schema + sync triggers
+- ✅ POST /api/v1/log endpoint
+- ✅ API key auth per app (O(1) prefix lookup)
+- ✅ App registration endpoints (POST + GET /api/v1/apps)
+- ✅ Body storage modes (full / text_only / preview)
+- ✅ Health endpoint with database status
+- ✅ Error response consistency
+- 📋 PATCH /api/v1/apps/{id}, POST /api/v1/apps/{id}/rotate-key
+- 📋 GET /api/v1/emails (list/search), GET /api/v1/emails/{id}, GET /api/v1/emails/{id}/preview
+- 📋 GET /api/v1/stats (dashboard statistics)
 
 #### Phase 1.1 — Web UI 📋
 - Login page + session auth

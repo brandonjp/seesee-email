@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.1.0-dev
+**Version:** 0.2.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -23,21 +23,21 @@
 
 **Goal:** Working REST API that can log and retrieve emails.
 
-- [ ] SQLite database initialization on first run
-- [ ] `POST /api/v1/log` — log a single email
-- [ ] API key authentication middleware
-- [ ] `POST /api/v1/apps` — register app (returns API key + SMTP credentials)
-- [ ] `GET /api/v1/apps` — list registered apps
+- [x] SQLite database initialization on first run
+- [x] `POST /api/v1/log` — log a single email
+- [x] API key authentication middleware
+- [x] `POST /api/v1/apps` — register app (returns API key + SMTP credentials)
+- [x] `GET /api/v1/apps` — list registered apps
 - [ ] `PATCH /api/v1/apps/{id}` — update app settings
 - [ ] `POST /api/v1/apps/{id}/rotate-key` — regenerate API key
-- [ ] Body storage mode enforcement (full / text_only / preview)
+- [x] Body storage mode enforcement (full / text_only / preview)
 - [ ] `GET /api/v1/emails` — list/search emails with pagination
 - [ ] `GET /api/v1/emails/{id}` — get email detail
 - [ ] `GET /api/v1/emails/{id}/preview` — sandboxed HTML preview
 - [ ] `GET /api/v1/stats` — dashboard statistics
-- [ ] `GET /api/v1/health` — health check (basic version done)
-- [ ] FTS5 full-text search integration
-- [ ] Error response consistency (`{"error": "...", "detail": "..."}`)
+- [x] `GET /api/v1/health` — health check with database status
+- [x] FTS5 full-text search integration (sync triggers)
+- [x] Error response consistency (`{"error": "...", "detail": "..."}`)
 
 ---
 

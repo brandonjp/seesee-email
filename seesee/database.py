@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS apps (
     name TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
     api_key TEXT NOT NULL,
+    key_prefix TEXT,
     smtp_username TEXT,
     smtp_password TEXT,
     body_storage_mode TEXT NOT NULL DEFAULT 'full',
@@ -31,6 +32,8 @@ CREATE TABLE IF NOT EXISTS apps (
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     last_activity_at DATETIME
 );
+
+CREATE INDEX IF NOT EXISTS idx_apps_key_prefix ON apps(key_prefix);
 
 CREATE TABLE IF NOT EXISTS emails (
     id TEXT PRIMARY KEY,
@@ -71,6 +74,23 @@ CREATE VIRTUAL TABLE IF NOT EXISTS emails_fts USING fts5(
     content='emails',
     content_rowid='rowid'
 );
+
+CREATE TRIGGER IF NOT EXISTS emails_ai AFTER INSERT ON emails BEGIN
+    INSERT INTO emails_fts(rowid, subject, body_text, body_preview, to_addresses, from_address, error_message)
+    VALUES (NEW.rowid, NEW.subject, NEW.body_text, NEW.body_preview, NEW.to_addresses, NEW.from_address, NEW.error_message);
+END;
+
+CREATE TRIGGER IF NOT EXISTS emails_ad AFTER DELETE ON emails BEGIN
+    INSERT INTO emails_fts(emails_fts, rowid, subject, body_text, body_preview, to_addresses, from_address, error_message)
+    VALUES ('delete', OLD.rowid, OLD.subject, OLD.body_text, OLD.body_preview, OLD.to_addresses, OLD.from_address, OLD.error_message);
+END;
+
+CREATE TRIGGER IF NOT EXISTS emails_au AFTER UPDATE ON emails BEGIN
+    INSERT INTO emails_fts(emails_fts, rowid, subject, body_text, body_preview, to_addresses, from_address, error_message)
+    VALUES ('delete', OLD.rowid, OLD.subject, OLD.body_text, OLD.body_preview, OLD.to_addresses, OLD.from_address, OLD.error_message);
+    INSERT INTO emails_fts(rowid, subject, body_text, body_preview, to_addresses, from_address, error_message)
+    VALUES (NEW.rowid, NEW.subject, NEW.body_text, NEW.body_preview, NEW.to_addresses, NEW.from_address, NEW.error_message);
+END;
 """
 
 

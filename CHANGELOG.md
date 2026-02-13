@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Astro Starlight documentation site (Phase 2.0):
+  - Initialized Astro Starlight project in `docs/` with brand color customization (phosphor mint `#32F5C0`)
+  - Landing page with architecture diagram, feature highlights, and docker quick start
+  - Getting started guide (docker run/compose, create app, log first email, verify)
+  - Configuration reference documenting all 19 `SEESEE_*` environment variables grouped by category
+  - REST API reference with all endpoints, request/response schemas, and curl examples
+  - SMTP ingest guide with setup instructions, Python/PHP/Node.js client examples, relay configuration
+  - Docker deployment guide with compose, volumes, health checks, and reverse proxy examples (nginx, Caddy, Traefik)
+  - Coolify deployment guide with step-by-step setup, domain/SSL, and persistent storage
+  - Integration guides for PHP/WordPress (wp_mail hook), Python, Node.js, and cURL
+  - Privacy & compliance page covering body storage modes, retention, and GDPR considerations
+  - Contributing page with development setup, code style, testing, and git workflow
+  - Sidebar navigation organized into Getting Started, Guides, Reference, and About sections
+  - Pagefind-powered full-text search across all documentation pages
+  - Verified compatibility with existing `.github/workflows/docs.yml` GitHub Pages deployment
+
+### Changed
+- Version bump: 0.6.0-dev → 0.7.0-dev
+
+---
+
+## [0.6.0-dev] — 2026-02-13
+
+### Added
 - Retention scheduler and deployment finalization (Phase 1.3):
   - Async background cleanup scheduler using `asyncio.create_task`, runs on configurable interval (default 60 min via `SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES`)
   - Per-app `max_count` enforcement — keep at most N emails per app, delete oldest by `logged_at`

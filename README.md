@@ -86,9 +86,11 @@ See [examples/](examples/) for PHP/WordPress, Python, Node.js, and cURL integrat
 - **Dark/Light Mode** — System preference with manual toggle
 - **Single Container** — Docker, no external dependencies
 
-## API Documentation
+## Documentation
 
-Auto-generated OpenAPI docs available at `/docs` when running.
+Full documentation at **[seesee.email](https://seesee.email)** — getting started, API reference, deployment guides, integrations, and more.
+
+Auto-generated OpenAPI docs also available at `/docs` on your running instance.
 
 ## Tech Stack
 

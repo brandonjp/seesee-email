@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.6.0-dev
+**Version:** 0.7.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -93,22 +93,22 @@
 
 ---
 
-## Phase 2.0 — Documentation Site 📋
+## Phase 2.0 — Documentation Site ✅
 
 **Goal:** Public docs site at seesee.email via Astro Starlight.
 
-- [ ] Astro Starlight setup in `docs/`
-- [ ] Landing/marketing page
-- [ ] Getting started guide
-- [ ] Configuration reference (all SEESEE_* variables)
-- [ ] REST API reference
-- [ ] SMTP ingest guide
-- [ ] Docker deployment guide
-- [ ] Coolify deployment guide
-- [ ] Integration guides: PHP, Python, JavaScript, WordPress
-- [ ] Privacy & compliance page
-- [ ] Contributing page
-- [ ] GitHub Actions: docs build + deploy to GitHub Pages
+- [x] Astro Starlight setup in `docs/` with brand color customization
+- [x] Landing/marketing page with architecture diagram and feature highlights
+- [x] Getting started guide (Docker quick start, app creation, first email)
+- [x] Configuration reference (all SEESEE_* variables grouped by category)
+- [x] REST API reference (all endpoints with curl examples)
+- [x] SMTP ingest guide (setup, client examples, relay, troubleshooting)
+- [x] Docker deployment guide (compose, volumes, health checks, reverse proxies)
+- [x] Coolify deployment guide (step-by-step with SSL and storage)
+- [x] Integration guides: PHP/WordPress, Python, JavaScript, cURL
+- [x] Privacy & compliance page (storage modes, retention, GDPR)
+- [x] Contributing page (dev setup, code style, testing, git workflow)
+- [x] GitHub Actions: docs build + deploy to GitHub Pages (verified compatible)
 
 ---
 

@@ -11,7 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core API endpoints (Phase 1.0 — Core API + Storage):
   - `POST /api/v1/apps` — register app (returns API key + SMTP credentials, shown once)
   - `GET /api/v1/apps` — list registered apps (admin auth required)
+  - `PATCH /api/v1/apps/{id}` — update app settings (name, body_storage_mode, retention)
+  - `POST /api/v1/apps/{id}/rotate-key` — regenerate API key (old key immediately invalidated)
   - `POST /api/v1/log` — log a single email (API key auth, body storage mode enforcement)
+  - `GET /api/v1/emails` — list/search emails with FTS5 full-text search, filters (app, status, provider, date range), sorting, and pagination
+  - `GET /api/v1/emails/{id}` — full email detail with all fields
+  - `GET /api/v1/emails/{id}/preview` — sandboxed HTML preview with Content-Security-Policy headers
+  - `GET /api/v1/stats` — dashboard statistics (totals, time windows, breakdowns by status and app)
 - API key authentication dependency with O(1) prefix-based lookup
 - Admin HTTP Basic Auth for management endpoints
 - Body storage mode enforcement (full / text_only / preview) per app
@@ -20,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slug generation utility for app names (unicode-safe, collision-resistant)
 - Enhanced health check endpoint with database status probe
 - Consistent error response format (`{"error": "...", "detail": "..."}`)
-- Comprehensive test suite: 34 tests covering auth, apps, ingest, health, FTS, and storage modes
+- Pydantic models for app update (`AppUpdateRequest`) and key rotation (`KeyRotateResponse`)
+- Comprehensive test suite: 69 tests covering auth, apps, app update, key rotation, ingest, email list/search, email detail, email preview, stats, health, FTS, and storage modes
 
 ### Changed
 - Registered ingest and apps routers in main app

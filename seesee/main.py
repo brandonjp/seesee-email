@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from seesee import __version__
 from seesee.database import close_db, get_db, init_db
-from seesee.routes import apps, ingest
+from seesee.routes import apps, emails, ingest, stats
 
 
 @asynccontextmanager
@@ -54,10 +54,10 @@ if _templates_dir.is_dir():
 # Register route modules
 app.include_router(ingest.router)
 app.include_router(apps.router)
+app.include_router(emails.router)
+app.include_router(stats.router)
 # TODO: Uncomment as routes are implemented
-# from seesee.routes import emails, stats, ui
-# app.include_router(emails.router)
-# app.include_router(stats.router)
+# from seesee.routes import ui
 # app.include_router(ui.router)
 
 

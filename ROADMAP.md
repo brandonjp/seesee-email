@@ -19,7 +19,7 @@
 
 ---
 
-## Phase 1.0 — Core API + Storage 🚧
+## Phase 1.0 — Core API + Storage ✅
 
 **Goal:** Working REST API that can log and retrieve emails.
 
@@ -28,13 +28,13 @@
 - [x] API key authentication middleware
 - [x] `POST /api/v1/apps` — register app (returns API key + SMTP credentials)
 - [x] `GET /api/v1/apps` — list registered apps
-- [ ] `PATCH /api/v1/apps/{id}` — update app settings
-- [ ] `POST /api/v1/apps/{id}/rotate-key` — regenerate API key
+- [x] `PATCH /api/v1/apps/{id}` — update app settings
+- [x] `POST /api/v1/apps/{id}/rotate-key` — regenerate API key
 - [x] Body storage mode enforcement (full / text_only / preview)
-- [ ] `GET /api/v1/emails` — list/search emails with pagination
-- [ ] `GET /api/v1/emails/{id}` — get email detail
-- [ ] `GET /api/v1/emails/{id}/preview` — sandboxed HTML preview
-- [ ] `GET /api/v1/stats` — dashboard statistics
+- [x] `GET /api/v1/emails` — list/search emails with pagination
+- [x] `GET /api/v1/emails/{id}` — get email detail
+- [x] `GET /api/v1/emails/{id}/preview` — sandboxed HTML preview
+- [x] `GET /api/v1/stats` — dashboard statistics
 - [x] `GET /api/v1/health` — health check with database status
 - [x] FTS5 full-text search integration (sync triggers)
 - [x] Error response consistency (`{"error": "...", "detail": "..."}`)

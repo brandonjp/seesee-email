@@ -1,7 +1,70 @@
 """Dashboard statistics route — GET /api/v1/stats."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from seesee.database import get_db
+from seesee.dependencies import require_admin
+from seesee.models import DashboardStats
 
 router = APIRouter(prefix="/api/v1", tags=["stats"])
 
-# TODO: GET /api/v1/stats — dashboard statistics (counts by app, status, provider, time)
+
+@router.get(
+    "/stats",
+    response_model=DashboardStats,
+    dependencies=[Depends(require_admin)],
+)
+async def get_stats() -> DashboardStats:
+    """Return dashboard statistics — email counts by time window, status, and app."""
+    db = await get_db()
+
+    # Total emails
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails")
+    total_emails = (await cursor.fetchone())["cnt"]
+
+    # Emails in time windows
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-1 day')"
+    )
+    emails_24h = (await cursor.fetchone())["cnt"]
+
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-7 days')"
+    )
+    emails_7d = (await cursor.fetchone())["cnt"]
+
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-30 days')"
+    )
+    emails_30d = (await cursor.fetchone())["cnt"]
+
+    # Total apps
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM apps")
+    total_apps = (await cursor.fetchone())["cnt"]
+
+    # Breakdown by status
+    cursor = await db.execute(
+        "SELECT status, COUNT(*) as cnt FROM emails GROUP BY status ORDER BY cnt DESC"
+    )
+    by_status = {row["status"]: row["cnt"] for row in await cursor.fetchall()}
+
+    # Breakdown by app (include app name)
+    cursor = await db.execute(
+        "SELECT a.id, a.name, COUNT(e.id) as count "
+        "FROM apps a LEFT JOIN emails e ON e.app_id = a.id "
+        "GROUP BY a.id ORDER BY count DESC"
+    )
+    by_app = [
+        {"id": row["id"], "name": row["name"], "count": row["count"]}
+        for row in await cursor.fetchall()
+    ]
+
+    return DashboardStats(
+        total_emails=total_emails,
+        emails_24h=emails_24h,
+        emails_7d=emails_7d,
+        emails_30d=emails_30d,
+        total_apps=total_apps,
+        by_status=by_status,
+        by_app=by_app,
+    )

@@ -1,0 +1,143 @@
+# SeeSee Development Roadmap
+
+**Version:** 0.1.0-dev
+**Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
+
+---
+
+## Phase 0 — Project Setup ✅
+
+- [x] Project specification (`seesee-spec.md`)
+- [x] Development workflow guide (`.claude/commands/dev.md`)
+- [x] Project audit checklist (`.claude/commands/audit.md`)
+- [x] Repository scaffolding (pyproject.toml, Dockerfile, CI/CD, tests)
+- [x] Python package structure with module stubs
+- [x] Database schema with FTS5
+- [x] Pydantic models for all API types
+- [x] Auth utilities (API key generation, bcrypt hashing)
+- [x] Integration examples (PHP, Python, Node.js, cURL)
+
+---
+
+## Phase 1.0 — Core API + Storage 🚧
+
+**Goal:** Working REST API that can log and retrieve emails.
+
+- [ ] SQLite database initialization on first run
+- [ ] `POST /api/v1/log` — log a single email
+- [ ] API key authentication middleware
+- [ ] `POST /api/v1/apps` — register app (returns API key + SMTP credentials)
+- [ ] `GET /api/v1/apps` — list registered apps
+- [ ] `PATCH /api/v1/apps/{id}` — update app settings
+- [ ] `POST /api/v1/apps/{id}/rotate-key` — regenerate API key
+- [ ] Body storage mode enforcement (full / text_only / preview)
+- [ ] `GET /api/v1/emails` — list/search emails with pagination
+- [ ] `GET /api/v1/emails/{id}` — get email detail
+- [ ] `GET /api/v1/emails/{id}/preview` — sandboxed HTML preview
+- [ ] `GET /api/v1/stats` — dashboard statistics
+- [ ] `GET /api/v1/health` — health check (basic version done)
+- [ ] FTS5 full-text search integration
+- [ ] Error response consistency (`{"error": "...", "detail": "..."}`)
+
+---
+
+## Phase 1.1 — Web UI 📋
+
+**Goal:** Admin dashboard for searching and viewing logged emails.
+
+- [ ] Login page with session-based auth
+- [ ] Base layout (nav, dark mode toggle, brand styling)
+- [ ] Dashboard page (stats, app cards, status breakdown)
+- [ ] Email list page (search bar, filter chips, results table, pagination)
+- [ ] Email detail page (header, addresses, tabbed content: preview/HTML/text/metadata)
+- [ ] App management page (list, add, edit settings, copy credentials)
+- [ ] App detail page (stats, integration snippets pre-filled with credentials)
+- [ ] Settings page (retention config, storage usage, manual purge)
+- [ ] Dark/light mode with system preference + manual toggle
+- [ ] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close)
+- [ ] Toast notifications for actions
+- [ ] Confirmation dialogs for destructive actions
+- [ ] Empty states with onboarding copy
+- [ ] Responsive design (desktop-optimized, tablet-usable)
+
+---
+
+## Phase 1.2 — SMTP Ingest 📋
+
+**Goal:** Accept emails via SMTP for apps that already use SMTP.
+
+- [ ] aiosmtpd listener on configurable port (default 2525)
+- [ ] SMTP AUTH with per-app username/password credentials
+- [ ] MIME message parsing (extract to, from, subject, HTML body, text body)
+- [ ] Log parsed email to database (same as REST API path)
+- [ ] Optional upstream relay (forward to real SMTP server for delivery)
+- [ ] Capture-only mode (no relay) for apps that send via provider API separately
+
+---
+
+## Phase 1.3 — Retention + Deployment 📋
+
+**Goal:** Automated cleanup and production-ready container.
+
+- [ ] Retention scheduler (runs on configurable interval, default 60 min)
+- [ ] `max_count` enforcement — keep at most N emails per app
+- [ ] `max_age_days` enforcement — delete emails older than N days
+- [ ] `max_storage_mb` enforcement — global storage cap, oldest-first deletion
+- [ ] Per-app retention overrides (most restrictive rule wins)
+- [ ] Cleanup logging (count deleted, storage freed)
+- [ ] Manual purge via API and UI
+- [ ] Dockerfile finalized (multi-stage, non-root, health check)
+- [ ] Docker Compose verified with Coolify
+- [ ] GitHub Actions: build + push to GHCR on tag
+- [ ] `.env.example` with all variables documented
+
+---
+
+## Phase 2.0 — Documentation Site 📋
+
+**Goal:** Public docs site at seesee.email via Astro Starlight.
+
+- [ ] Astro Starlight setup in `docs/`
+- [ ] Landing/marketing page
+- [ ] Getting started guide
+- [ ] Configuration reference (all SEESEE_* variables)
+- [ ] REST API reference
+- [ ] SMTP ingest guide
+- [ ] Docker deployment guide
+- [ ] Coolify deployment guide
+- [ ] Integration guides: PHP, Python, JavaScript, WordPress
+- [ ] Privacy & compliance page
+- [ ] Contributing page
+- [ ] GitHub Actions: docs build + deploy to GitHub Pages
+
+---
+
+## Phase 2.1 — Polish 📋
+
+**Goal:** Quality-of-life improvements for daily use.
+
+- [ ] `POST /api/v1/log/batch` — batch ingest (max 100 per request)
+- [ ] `PATCH /api/v1/emails/{id}/status` — status update endpoint
+- [ ] Loading states (skeleton screens)
+- [ ] Relative timestamps ("2 minutes ago") with full timestamp on hover
+- [ ] Integration snippets in app detail (pre-filled with app's credentials)
+- [ ] Volume sparkline on dashboard (emails per day, last 30 days)
+- [ ] Empty state onboarding ("No emails logged yet. Here's how...")
+
+---
+
+## Phase 3.0 — Future 🔮
+
+**Goal:** Advanced features based on user feedback.
+
+- [ ] Graduated body degradation (full → text → preview over time)
+- [ ] Provider webhook receivers (Resend, SendGrid status callbacks)
+- [ ] Search-and-delete (GDPR right to erasure)
+- [ ] Data export per recipient (GDPR right of access)
+- [ ] CSV/JSON search export
+- [ ] Prometheus metrics endpoint
+- [ ] Multi-user auth with roles
+- [ ] WordPress plugin with settings page
+- [ ] Postgres support as alternative to SQLite
+- [ ] STARTTLS support for SMTP ingest
+- [ ] Notification alerts ("App X hasn't sent email in 24 hours")

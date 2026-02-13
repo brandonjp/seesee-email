@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seesee"
+version = "0.1.0-dev"
+description = "Lightweight, self-hosted sent email log aggregator with search UI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "SeeSee Contributors" },
+]
+keywords = ["email", "logging", "self-hosted", "fastapi", "smtp"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Email",
+    "Topic :: System :: Logging",
+]
+
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "aiosmtpd>=1.4.6",
+    "aiosqlite>=0.20.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "jinja2>=3.1.4",
+    "python-multipart>=0.0.12",
+    "bcrypt>=4.2.0",
+    "httpx>=0.27.0",
+    "itsdangerous>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.6.0",
+    "coverage>=7.6.0",
+]
+
+[project.urls]
+Homepage = "https://seesee.email"
+Documentation = "https://seesee.email"
+Repository = "https://github.com/brandonjp/seesee-email"
+Changelog = "https://github.com/brandonjp/seesee-email/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["seesee*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["seesee"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

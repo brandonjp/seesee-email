@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.5.0-dev
+**Version:** 0.6.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -75,21 +75,21 @@
 
 ---
 
-## Phase 1.3 — Retention + Deployment 📋
+## Phase 1.3 — Retention + Deployment ✅
 
 **Goal:** Automated cleanup and production-ready container.
 
-- [ ] Retention scheduler (runs on configurable interval, default 60 min)
-- [ ] `max_count` enforcement — keep at most N emails per app
-- [ ] `max_age_days` enforcement — delete emails older than N days
-- [ ] `max_storage_mb` enforcement — global storage cap, oldest-first deletion
-- [ ] Per-app retention overrides (most restrictive rule wins)
-- [ ] Cleanup logging (count deleted, storage freed)
+- [x] Retention scheduler (runs on configurable interval, default 60 min)
+- [x] `max_count` enforcement — keep at most N emails per app
+- [x] `max_age_days` enforcement — delete emails older than N days
+- [x] `max_storage_mb` enforcement — global storage cap, oldest-first deletion
+- [x] Per-app retention overrides (most restrictive rule wins)
+- [x] Cleanup logging (count deleted, storage freed)
 - [ ] Manual purge via API and UI
-- [ ] Dockerfile finalized (multi-stage, non-root, health check)
-- [ ] Docker Compose verified with Coolify
-- [ ] GitHub Actions: build + push to GHCR on tag
-- [ ] `.env.example` with all variables documented
+- [x] Dockerfile finalized (multi-stage, non-root, health check)
+- [x] Docker Compose verified with Coolify
+- [x] GitHub Actions: build + push to GHCR on tag (multi-platform: amd64 + arm64)
+- [x] `.env.example` with all variables documented
 
 ---
 

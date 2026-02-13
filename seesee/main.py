@@ -1,15 +1,17 @@
 """FastAPI application entry point for SeeSee."""
 
+import pathlib
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from seesee import __version__
-from seesee.config import settings
-from seesee.database import init_db, close_db
+from seesee.database import close_db, get_db, init_db
+from seesee.routes import apps, ingest
 
 
 @asynccontextmanager
@@ -30,16 +32,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Static files and templates
-app.mount("/static", StaticFiles(directory="seesee/static"), name="static")
-templates = Jinja2Templates(directory="seesee/templates")
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Return consistent error format: {"error": "...", "detail": "..."}."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail, "detail": exc.detail},
+        headers=getattr(exc, "headers", None),
+    )
+
+
+# Static files and templates (mount only if directories exist)
+_static_dir = pathlib.Path("seesee/static")
+if _static_dir.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+_templates_dir = pathlib.Path("seesee/templates")
+if _templates_dir.is_dir():
+    templates = Jinja2Templates(directory=str(_templates_dir))
 
 # Register route modules
+app.include_router(ingest.router)
+app.include_router(apps.router)
 # TODO: Uncomment as routes are implemented
-# from seesee.routes import ingest, emails, apps, stats, ui
-# app.include_router(ingest.router)
+# from seesee.routes import emails, stats, ui
 # app.include_router(emails.router)
-# app.include_router(apps.router)
 # app.include_router(stats.router)
 # app.include_router(ui.router)
 
@@ -47,7 +64,18 @@ templates = Jinja2Templates(directory="seesee/templates")
 @app.get("/api/v1/health")
 async def health_check() -> dict:
     """Health check endpoint for monitoring and container orchestration."""
+    db_status = "ok"
+    try:
+        db = await get_db()
+        cursor = await db.execute("SELECT 1")
+        await cursor.fetchone()
+    except Exception:
+        db_status = "error"
+
+    overall = "ok" if db_status == "ok" else "degraded"
+
     return {
-        "status": "ok",
+        "status": overall,
         "version": __version__,
+        "database": db_status,
     }

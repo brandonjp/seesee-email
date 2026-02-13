@@ -4,10 +4,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Ingest models
 # ---------------------------------------------------------------------------
+
 
 class EmailLogRequest(BaseModel):
     """Request body for POST /api/v1/log."""
@@ -49,6 +49,7 @@ class BatchLogResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Email query models
 # ---------------------------------------------------------------------------
+
 
 class EmailSummary(BaseModel):
     """Email summary for list views."""
@@ -95,6 +96,7 @@ class EmailListResponse(BaseModel):
 # App models
 # ---------------------------------------------------------------------------
 
+
 class AppCreateRequest(BaseModel):
     """Request body for POST /api/v1/apps."""
 
@@ -128,6 +130,7 @@ class AppCreateResponse(AppResponse):
 # ---------------------------------------------------------------------------
 # Stats models
 # ---------------------------------------------------------------------------
+
 
 class DashboardStats(BaseModel):
     """Response body for GET /api/v1/stats."""

@@ -13,8 +13,11 @@ services:
       - seesee-data:/data
     environment:
       SEESEE_ADMIN_PASSWORD: "${SEESEE_ADMIN_PASSWORD:-changeme}"
-      SEESEE_RETENTION_MAX_COUNT: "1000"
-      SEESEE_RETENTION_MAX_AGE_DAYS: "90"
+      SEESEE_SMTP_ENABLED: "${SEESEE_SMTP_ENABLED:-true}"
+      SEESEE_RETENTION_MAX_COUNT: "${SEESEE_RETENTION_MAX_COUNT:-1000}"
+      SEESEE_RETENTION_MAX_AGE_DAYS: "${SEESEE_RETENTION_MAX_AGE_DAYS:-90}"
+      SEESEE_RETENTION_MAX_STORAGE_MB: "${SEESEE_RETENTION_MAX_STORAGE_MB:-500}"
+      SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES: "${SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES:-60}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/health')"]
       interval: 30s

@@ -30,9 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite: 69 tests covering auth, apps, app update, key rotation, ingest, email list/search, email detail, email preview, stats, health, FTS, and storage modes
 
 ### Changed
-- Registered ingest and apps routers in main app
+- Registered all Phase 1.0 routers (ingest, apps, emails, stats) in main app
 - Static files mount now checks for directory existence before mounting
 - Removed deprecated license classifier from pyproject.toml
+- Version bump: 0.2.0-dev → 0.3.0-dev
 
 ## [0.1.0] - 2026-02-12
 

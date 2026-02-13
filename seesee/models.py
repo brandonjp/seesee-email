@@ -106,6 +106,15 @@ class AppCreateRequest(BaseModel):
     retention_max_age_days: int | None = None
 
 
+class AppUpdateRequest(BaseModel):
+    """Request body for PATCH /api/v1/apps/{id}. All fields optional."""
+
+    name: str | None = Field(None, min_length=1, description="Human-readable app name")
+    body_storage_mode: str | None = None
+    retention_max_count: int | None = None
+    retention_max_age_days: int | None = None
+
+
 class AppResponse(BaseModel):
     """App detail response."""
 
@@ -125,6 +134,13 @@ class AppCreateResponse(AppResponse):
     api_key: str
     smtp_username: str
     smtp_password: str
+
+
+class KeyRotateResponse(BaseModel):
+    """Response body for POST /api/v1/apps/{id}/rotate-key."""
+
+    api_key: str
+    message: str = "API key rotated successfully. Store the new key — it cannot be retrieved later."
 
 
 # ---------------------------------------------------------------------------

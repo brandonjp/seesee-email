@@ -14,7 +14,13 @@ from seesee.auth import (
 )
 from seesee.database import get_db
 from seesee.dependencies import require_admin
-from seesee.models import AppCreateRequest, AppCreateResponse, AppResponse
+from seesee.models import (
+    AppCreateRequest,
+    AppCreateResponse,
+    AppResponse,
+    AppUpdateRequest,
+    KeyRotateResponse,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["apps"])
 
@@ -121,3 +127,99 @@ async def list_apps() -> list[AppResponse]:
         )
         for row in rows
     ]
+
+
+@router.patch(
+    "/apps/{app_id}",
+    response_model=AppResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
+    """Update an app's settings. Requires admin auth."""
+    db = await get_db()
+
+    # Verify app exists
+    cursor = await db.execute(
+        "SELECT id, name, slug, body_storage_mode, retention_max_count, "
+        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        (app_id,),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+
+    # Build SET clause from provided (non-None) fields
+    updates: dict[str, str | int | None] = {}
+    if request.name is not None:
+        updates["name"] = request.name
+    if request.body_storage_mode is not None:
+        if request.body_storage_mode not in VALID_BODY_STORAGE_MODES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"body_storage_mode must be one of: "
+                    f"{', '.join(sorted(VALID_BODY_STORAGE_MODES))}"
+                ),
+            )
+        updates["body_storage_mode"] = request.body_storage_mode
+    # Allow explicit null to clear retention overrides
+    if "retention_max_count" in request.model_fields_set:
+        updates["retention_max_count"] = request.retention_max_count
+    if "retention_max_age_days" in request.model_fields_set:
+        updates["retention_max_age_days"] = request.retention_max_age_days
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No fields to update",
+        )
+
+    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    values = list(updates.values())
+    values.append(app_id)
+    await db.execute(f"UPDATE apps SET {set_clause} WHERE id = ?", values)  # noqa: S608
+    await db.commit()
+
+    # Return updated row
+    cursor = await db.execute(
+        "SELECT id, name, slug, body_storage_mode, retention_max_count, "
+        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        (app_id,),
+    )
+    updated = await cursor.fetchone()
+    return AppResponse(
+        id=updated["id"],
+        name=updated["name"],
+        slug=updated["slug"],
+        body_storage_mode=updated["body_storage_mode"],
+        retention_max_count=updated["retention_max_count"],
+        retention_max_age_days=updated["retention_max_age_days"],
+        created_at=updated["created_at"],
+        last_activity_at=updated["last_activity_at"],
+    )
+
+
+@router.post(
+    "/apps/{app_id}/rotate-key",
+    response_model=KeyRotateResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def rotate_key(app_id: str) -> KeyRotateResponse:
+    """Regenerate the API key for an app. Old key is immediately invalidated."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+
+    new_key = generate_api_key()
+    new_prefix = new_key[len(API_KEY_PREFIX) : len(API_KEY_PREFIX) + 8]
+    new_hash = hash_secret(new_key)
+
+    await db.execute(
+        "UPDATE apps SET api_key = ?, key_prefix = ? WHERE id = ?",
+        (new_hash, new_prefix, app_id),
+    )
+    await db.commit()
+
+    return KeyRotateResponse(api_key=new_key)

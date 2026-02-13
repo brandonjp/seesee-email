@@ -1,7 +1,6 @@
 """Email ingest routes — POST /api/v1/log and /api/v1/log/batch."""
 
 import json
-import re
 import uuid
 from datetime import UTC, datetime
 
@@ -9,42 +8,10 @@ from fastapi import APIRouter, Depends, status
 
 from seesee.database import get_db
 from seesee.dependencies import get_current_app
+from seesee.helpers import apply_body_storage_mode
 from seesee.models import EmailLogRequest, EmailLogResponse
 
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
-
-
-def _apply_body_storage_mode(
-    body_html: str | None,
-    body_text: str | None,
-    mode: str,
-) -> tuple[str | None, str | None, str | None, int]:
-    """Apply body storage mode and return (body_html, body_text, body_preview, body_size_bytes).
-
-    body_size_bytes is calculated from the original body before any stripping.
-    body_preview is always populated (first 500 chars of text content).
-    """
-    # Calculate original size before stripping
-    body_size_bytes = 0
-    if body_html:
-        body_size_bytes += len(body_html.encode("utf-8"))
-    if body_text:
-        body_size_bytes += len(body_text.encode("utf-8"))
-
-    # Generate preview: prefer body_text, fall back to stripped HTML
-    preview_source = body_text
-    if not preview_source and body_html:
-        preview_source = re.sub(r"<[^>]+>", " ", body_html)
-        preview_source = re.sub(r"\s+", " ", preview_source).strip()
-
-    body_preview = (preview_source or "")[:500] or None
-
-    if mode == "text_only":
-        return None, body_text, body_preview, body_size_bytes
-    elif mode == "preview":
-        return None, None, body_preview, body_size_bytes
-    else:  # "full" or default
-        return body_html, body_text, body_preview, body_size_bytes
 
 
 @router.post(
@@ -62,7 +29,7 @@ async def log_email(
     email_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
-    body_html, body_text, body_preview, body_size_bytes = _apply_body_storage_mode(
+    body_html, body_text, body_preview, body_size_bytes = apply_body_storage_mode(
         email.body_html,
         email.body_text,
         app["body_storage_mode"],

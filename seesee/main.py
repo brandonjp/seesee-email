@@ -1,5 +1,6 @@
 """FastAPI application entry point for SeeSee."""
 
+import logging
 import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -10,17 +11,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from seesee import __version__
+from seesee.config import settings
 from seesee.database import close_db, get_db, init_db
 from seesee.routes import apps, emails, ingest, stats, ui
+from seesee.smtp_server import start_smtp_server, stop_smtp_server
+
+logger = logging.getLogger("seesee")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
     await init_db()
-    # TODO: Start SMTP server if enabled
+    if settings.smtp_enabled:
+        await start_smtp_server()
     # TODO: Start retention scheduler
     yield
+    if settings.smtp_enabled:
+        await stop_smtp_server()
     await close_db()
 
 

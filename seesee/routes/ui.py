@@ -478,13 +478,16 @@ async def create_app_ui(
 
     # Flash credentials via signed cookie (consumed on next page load)
     response = RedirectResponse(url="/apps", status_code=303)
-    _set_flash(response, {
-        "created_credentials": {
-            "api_key": api_key,
-            "smtp_username": smtp_username,
-            "smtp_password": smtp_password,
-        }
-    })
+    _set_flash(
+        response,
+        {
+            "created_credentials": {
+                "api_key": api_key,
+                "smtp_username": smtp_username,
+                "smtp_password": smtp_password,
+            }
+        },
+    )
     return response
 
 

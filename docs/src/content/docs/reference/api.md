@@ -281,6 +281,71 @@ curl -X POST http://localhost:8080/api/v1/log/batch \
 
 ---
 
+## Email Management
+
+### Update email status
+
+#### `PATCH /api/v1/emails/{email_id}/status`
+
+Update an email's status after initial logging. Requires admin Basic Auth.
+
+Use case: provider webhooks update delivery status (e.g., `sent` → `delivered` or `bounced`).
+
+```bash
+curl -X PATCH http://localhost:8080/api/v1/emails/42/status \
+  -u admin:your-password \
+  -H "Content-Type: application/json" \
+  -d '{"status": "delivered"}'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | yes | New status value |
+
+**Response (200):** Full email detail object with updated status.
+
+### Delete a single email
+
+#### `DELETE /api/v1/emails/{email_id}`
+
+Permanently delete a single email. Requires admin Basic Auth.
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/emails/42 \
+  -u admin:your-password
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "Email deleted"
+}
+```
+
+### Purge all emails for an app
+
+#### `DELETE /api/v1/apps/{app_id}/emails`
+
+Delete all emails for a specific app. Requires admin Basic Auth.
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/apps/1/emails \
+  -u admin:your-password
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "Deleted 42 emails"
+}
+```
+
+---
+
 ## Email Queries
 
 All query endpoints require admin Basic Auth.
@@ -396,5 +461,28 @@ curl http://localhost:8080/api/v1/stats \
     { "id": 1, "name": "My Website", "count": 500 },
     { "id": 2, "name": "Newsletter", "count": 734 }
   ]
+}
+```
+
+---
+
+## Admin
+
+### Trigger retention cleanup
+
+#### `POST /api/v1/admin/cleanup`
+
+Trigger an immediate retention cleanup cycle. This runs the same cleanup that the background scheduler runs on the configured interval. Requires admin Basic Auth.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/cleanup \
+  -u admin:your-password
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "Cleanup completed"
 }
 ```

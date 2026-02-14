@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Web UI Polish (Phase 1.1 completion + Phase 2.1):
+  - App detail page (`GET /apps/{id}`) with email stats, status breakdown, integration snippets (REST, Python, Node.js, PHP, SMTP), rotate key and purge buttons
+  - Settings page (`GET /settings`) displaying retention configuration and storage usage, with manual cleanup trigger
+  - `POST /api/v1/log/batch` — batch email ingest (max 100 per request), validates each individually, returns logged count and per-item errors
+  - `PATCH /api/v1/emails/{id}/status` — update email delivery status after initial logging (admin auth)
+  - `DELETE /api/v1/emails/{id}` — delete a single email (admin auth)
+  - `DELETE /api/v1/apps/{app_id}/emails` — purge all emails for an app (admin auth)
+  - `POST /api/v1/admin/cleanup` — trigger immediate retention cleanup cycle (admin auth)
+  - Keyboard shortcuts: `/` focus search, `j`/`k` navigate email list, `Enter` open, `Esc` close/blur, `?` shortcut help modal
+  - Toast notification system (Alpine.js) — success (mint) and error (red) variants, auto-dismiss after 4s, wired to app creation, key rotation, cleanup, and delete actions
+  - Relative timestamps ("just now", "2 minutes ago", "yesterday") with full ISO on hover, auto-updating every 30s
+  - Volume sparkline on dashboard — bar chart of emails per day for last 30 days (inline HTML, no charting library)
+  - Enhanced empty state onboarding on dashboard — step-by-step guide with copy-pasteable curl commands
+  - Delete button on email detail page with confirmation dialog
+  - Purge all button on app detail page with confirmation dialog
+  - Settings nav link in sidebar
+  - App list rows now link to app detail pages
+  - 19 new tests covering batch ingest, status update, email delete, app purge, and admin cleanup
+  - Updated REST API reference docs with new endpoints (batch, status, delete, purge, admin cleanup)
+- `seesee/routes/admin.py` — new admin router for cleanup and future admin-only endpoints
+- `BatchLogRequest`, `BatchLogError`, `StatusUpdateRequest`, `CleanupResponse` Pydantic models
+
+### Changed
+- `requires-python` relaxed from `>=3.12` to `>=3.11` (no 3.12-only features used)
+- Sidebar navigation updated with Settings link and keyboard shortcut hint
+- Dashboard "Emails by App" section now links to app detail pages
+- Email list table rows include `data-href` for keyboard navigation
+- Apps list table rows are clickable links to app detail pages
+- `BatchLogResponse.errors` field now uses structured `BatchLogError` objects (index + error) instead of plain strings
+- `app.js` rewritten with toast manager, keyboard shortcuts, relative timestamp utilities, and flash-to-toast bridge
+- Version bump: 0.7.0-dev → 0.8.0-dev
+
+---
+
+## [0.7.0-dev] — 2026-02-14
+
+### Added
 - Astro Starlight documentation site (Phase 2.0):
   - Initialized Astro Starlight project in `docs/` with brand color customization (phosphor mint `#32F5C0`)
   - Landing page with architecture diagram, feature highlights, and docker quick start

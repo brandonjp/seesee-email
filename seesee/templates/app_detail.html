@@ -1,5 +1,265 @@
 {% extends "base.html" %}
-{% block title %}App Detail — SeeSee{% endblock %}
-{% block body %}
-<!-- TODO: App detail with settings, credentials, integration snippets -->
+{% block title %}{{ app.name if app else 'Not Found' }} — SeeSee{% endblock %}
+{% block content %}
+{% if not app %}
+<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
+    <h2 class="text-lg font-semibold">App not found</h2>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">The app you're looking for doesn't exist or has been deleted.</p>
+    <a href="/apps" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">&larr; Back to apps</a>
+</div>
+{% else %}
+<div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false }">
+    <!-- Back link -->
+    <a href="/apps" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to apps
+    </a>
+
+    <!-- Rotated key alert -->
+    {% if rotated_key %}
+    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
+        <div class="flex items-start justify-between">
+            <h3 class="font-semibold text-mint">API key rotated — save the new key</h3>
+            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="text-sm">
+            <span class="text-gray-500 dark:text-gray-400">New API Key:</span>
+            <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ rotated_key }}</code>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- App header -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <div class="flex flex-wrap items-start gap-3 justify-between">
+            <div class="min-w-0">
+                <h1 class="text-xl font-bold break-words">{{ app.name }}</h1>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{{ app.slug }}</code>
+                    <span class="inline-flex items-center rounded-full bg-mint/10 px-2.5 py-0.5 text-xs font-medium text-mint capitalize">{{ app.body_storage_mode | replace('_', ' ') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Total Emails</p>
+            <p class="mt-1 text-2xl font-bold">{{ app.email_count }}</p>
+        </div>
+        {% for status, count in app.by_status.items() %}
+        <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400 capitalize flex items-center gap-1.5">
+                {% if status == 'sent' %}
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                {% elif status == 'failed' %}
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                {% elif status == 'bounced' %}
+                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                {% else %}
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                {% endif %}
+                {{ status }}
+            </p>
+            <p class="mt-1 text-2xl font-bold">{{ count }}</p>
+        </div>
+        {% endfor %}
+        <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Last Email</p>
+            {% if app.last_email_at %}
+            <p class="mt-1 text-lg font-bold" data-timestamp="{{ app.last_email_at }}">{{ app.last_email_at[:16] | replace('T', ' ') }}</p>
+            {% else %}
+            <p class="mt-1 text-lg font-bold text-gray-400">Never</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Integration snippets -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <div class="px-5 pt-4 pb-0">
+            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Integration Snippets</h2>
+        </div>
+
+        <!-- Tab buttons -->
+        <div class="flex border-b border-gray-200 dark:border-gray-700 px-5 overflow-x-auto">
+            <button @click="tab = 'curl'" :class="tab === 'curl' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">REST API (curl)</button>
+            <button @click="tab = 'python'" :class="tab === 'python' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Python</button>
+            <button @click="tab = 'node'" :class="tab === 'node' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Node.js</button>
+            <button @click="tab = 'php'" :class="tab === 'php' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">PHP</button>
+            <button @click="tab = 'smtp'" :class="tab === 'smtp' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">SMTP Settings</button>
+        </div>
+
+        <!-- Tab content -->
+        <div class="p-5">
+            <!-- curl tab -->
+            <div x-show="tab === 'curl'">
+                <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>curl -X POST {{ base_url }}/api/v1/emails \
+  -H "Authorization: Bearer ss_YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "from_address": "sender@example.com",
+  "to_addresses": ["recipient@example.com"],
+  "subject": "Test Email",
+  "body_text": "Hello from {{ app.slug }}!",
+  "status": "sent"
+}'</code></pre>
+            </div>
+
+            <!-- Python tab -->
+            <div x-show="tab === 'python'" style="display: none;">
+                <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>import requests
+
+response = requests.post(
+    "{{ base_url }}/api/v1/emails",
+    headers={
+        "Authorization": "Bearer ss_YOUR_API_KEY",
+        "Content-Type": "application/json",
+    },
+    json={
+        "from_address": "sender@example.com",
+        "to_addresses": ["recipient@example.com"],
+        "subject": "Test Email",
+        "body_text": "Hello from {{ app.slug }}!",
+        "status": "sent",
+    },
+)
+
+print(response.json())</code></pre>
+            </div>
+
+            <!-- Node.js tab -->
+            <div x-show="tab === 'node'" style="display: none;">
+                <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>const response = await fetch("{{ base_url }}/api/v1/emails", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer ss_YOUR_API_KEY",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    from_address: "sender@example.com",
+    to_addresses: ["recipient@example.com"],
+    subject: "Test Email",
+    body_text: "Hello from {{ app.slug }}!",
+    status: "sent",
+  }),
+});
+
+const data = await response.json();
+console.log(data);</code></pre>
+            </div>
+
+            <!-- PHP tab -->
+            <div x-show="tab === 'php'" style="display: none;">
+                <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>$ch = curl_init("{{ base_url }}/api/v1/emails");
+
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        "Authorization: Bearer ss_YOUR_API_KEY",
+        "Content-Type: application/json",
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        "from_address" => "sender@example.com",
+        "to_addresses" => ["recipient@example.com"],
+        "subject" => "Test Email",
+        "body_text" => "Hello from {{ app.slug }}!",
+        "status" => "sent",
+    ]),
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;</code></pre>
+            </div>
+
+            <!-- SMTP Settings tab -->
+            <div x-show="tab === 'smtp'" style="display: none;">
+                <div class="grid gap-3 text-sm">
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Host</span>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ base_url | replace('http://', '') | replace('https://', '') | replace(':' ~ smtp_port|string, '') }}</code>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Port</span>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ smtp_port }}</code>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Username</span>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ app.slug }}</code>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Password</span>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">ss_YOUR_API_KEY</code>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Encryption</span>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">STARTTLS</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Actions</h2>
+        <div class="flex flex-wrap gap-3">
+            <button @click="confirmRotate = true"
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Rotate Key
+            </button>
+            <button @click="confirmPurge = true"
+                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Purge All Emails
+            </button>
+        </div>
+    </div>
+
+    <!-- Rotate key confirmation modal -->
+    <div x-show="confirmRotate" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="confirmRotate = false"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 class="text-lg font-bold">Rotate API Key?</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">The current key will be immediately invalidated. Make sure you can update your integration before proceeding.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmRotate = false"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <form action="/apps/{{ app.id }}/rotate-key" method="post" class="inline">
+                    <button type="submit"
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Rotate Key</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purge confirmation modal -->
+    <div x-show="confirmPurge" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="confirmPurge = false"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 class="text-lg font-bold">Purge All Emails?</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete <strong>all {{ app.email_count }} emails</strong> for this app. This action cannot be undone.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmPurge = false"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <form action="/apps/{{ app.id }}/purge" method="post" class="inline">
+                    <button type="submit"
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Purge All</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

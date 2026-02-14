@@ -69,6 +69,7 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     {% for email in emails %}
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition-colors"
+                        data-href="/emails/{{ email.id }}"
                         onclick="window.location='/emails/{{ email.id }}'">
                         <td class="px-4 py-3">
                             <div class="font-medium truncate max-w-xs">{{ email.subject }}</div>
@@ -86,7 +87,9 @@
                             <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">{{ email.status }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden sm:table-cell">{{ email.logged_at[:16] | replace('T', ' ') }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden sm:table-cell">
+                            <span data-timestamp="{{ email.logged_at }}">{{ email.logged_at[:16] | replace('T', ' ') }}</span>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

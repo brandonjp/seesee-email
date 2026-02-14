@@ -125,17 +125,25 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     {% for app in apps %}
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                        <td class="px-4 py-3 font-medium">{{ app.name }}</td>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
+                        data-href="/apps/{{ app.id }}"
+                        onclick="window.location='/apps/{{ app.id }}'">
+                        <td class="px-4 py-3 font-medium">
+                            <a href="/apps/{{ app.id }}" class="hover:text-mint transition-colors">{{ app.name }}</a>
+                        </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
                             <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{{ app.slug }}</code>
                         </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 capitalize hidden md:table-cell">{{ app.body_storage_mode | replace('_', ' ') }}</td>
                         <td class="px-4 py-3">{{ app.email_count }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden lg:table-cell">
-                            {{ app.last_activity_at[:16] | replace('T', ' ') if app.last_activity_at else 'Never' }}
+                            {% if app.last_activity_at %}
+                            <span data-timestamp="{{ app.last_activity_at }}">{{ app.last_activity_at[:16] | replace('T', ' ') }}</span>
+                            {% else %}
+                            <span class="text-gray-400">Never</span>
+                            {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-right">
+                        <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
                             <button @click="confirmRotate = '{{ app.id }}'"
                                     class="text-xs text-gray-500 dark:text-gray-400 hover:text-mint transition-colors"
                                     title="Rotate API key">

@@ -5,18 +5,77 @@
     <h1 class="text-2xl font-bold">Dashboard</h1>
 
     {% if total_apps == 0 %}
-    <!-- Empty state: no apps yet -->
-    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
-        <svg class="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        <h2 class="mt-4 text-lg font-semibold">No apps registered yet</h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Create your first app to start logging emails. Each app gets its own API key and SMTP credentials for easy integration.
-        </p>
-        <a href="/apps" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Create your first app
-        </a>
+    <!-- Empty state: no apps yet — onboarding guide -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8">
+        <div class="text-center">
+            <svg class="mx-auto w-12 h-12 text-mint/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <h2 class="mt-4 text-lg font-semibold">No apps registered yet</h2>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                Get started in 3 steps: create an app, get your API key, and log your first email.
+            </p>
+        </div>
+
+        <div class="mt-6 max-w-2xl mx-auto space-y-4">
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Step 1 — Create an app</p>
+                <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words"><code>curl -X POST {{ base_url }}/api/v1/apps \
+  -u admin:YOUR_PASSWORD \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My App"}'</code></pre>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Step 2 — Log your first email</p>
+                <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words"><code>curl -X POST {{ base_url }}/api/v1/log \
+  -H "Authorization: Bearer ss_YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": ["user@example.com"],
+    "from": "app@example.com",
+    "subject": "Hello from SeeSee!",
+    "body_text": "This is a test email.",
+    "status": "sent"
+  }'</code></pre>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Step 3 — View your emails</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Refresh this dashboard or visit <a href="/emails" class="text-mint hover:underline">Emails</a> to see your logged email.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="/apps" class="inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Create your first app
+            </a>
+        </div>
     </div>
+
+    {% elif total_emails == 0 %}
+    <!-- Apps exist but no emails yet -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8">
+        <div class="text-center">
+            <svg class="mx-auto w-12 h-12 text-mint/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <h2 class="mt-4 text-lg font-semibold">No emails logged yet</h2>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                You have {{ total_apps }} app{{ 's' if total_apps != 1 else '' }} registered. Use the API key from any app to log your first email:
+            </p>
+        </div>
+        <div class="mt-4 max-w-2xl mx-auto">
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-900 p-4">
+                <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words"><code>curl -X POST {{ base_url }}/api/v1/log \
+  -H "Authorization: Bearer ss_YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": ["user@example.com"],
+    "from": "app@example.com",
+    "subject": "Hello from SeeSee!",
+    "body_text": "This is a test email.",
+    "status": "sent"
+  }'</code></pre>
+            </div>
+        </div>
+    </div>
+
     {% else %}
 
     <!-- Stats cards -->
@@ -39,6 +98,27 @@
         </div>
     </div>
 
+    {% if daily_volume %}
+    <!-- Volume sparkline (last 30 days) -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Email Volume (Last 30 Days)</h2>
+        {% set max_count = daily_volume | map(attribute='count') | max %}
+        <div class="flex items-end gap-[2px] h-16">
+            {% for day in daily_volume %}
+            {% set height = ((day.count / max_count) * 100) if max_count > 0 else 0 %}
+            <div class="flex-1 rounded-t bg-mint/70 hover:bg-mint transition-colors cursor-default"
+                 style="height: {{ [height, 4] | max }}%;"
+                 title="{{ day.day }}: {{ day.count }} email{{ 's' if day.count != 1 else '' }}">
+            </div>
+            {% endfor %}
+        </div>
+        <div class="flex justify-between mt-1">
+            <span class="text-[10px] text-gray-400">{{ daily_volume[0].day }}</span>
+            <span class="text-[10px] text-gray-400">{{ daily_volume[-1].day }}</span>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="grid lg:grid-cols-2 gap-6">
         <!-- Status breakdown -->
         <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
@@ -54,6 +134,8 @@
                         <span class="w-2 h-2 rounded-full bg-red-500"></span>
                         {% elif status == 'bounced' %}
                         <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                        {% elif status == 'delivered' %}
+                        <span class="w-2 h-2 rounded-full bg-mint"></span>
                         {% else %}
                         <span class="w-2 h-2 rounded-full bg-gray-400"></span>
                         {% endif %}
@@ -73,10 +155,10 @@
             <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Emails by App</h2>
             <div class="space-y-3">
                 {% for app in by_app %}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium truncate">{{ app.name }}</span>
+                <a href="/apps/{{ app.id }}" class="flex items-center justify-between group">
+                    <span class="text-sm font-medium truncate group-hover:text-mint transition-colors">{{ app.name }}</span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ app.count }}</span>
-                </div>
+                </a>
                 {% endfor %}
             </div>
         </div>

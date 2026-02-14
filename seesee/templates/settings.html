@@ -1,5 +1,84 @@
 {% extends "base.html" %}
 {% block title %}Settings — SeeSee{% endblock %}
-{% block body %}
-<!-- TODO: Global settings, storage usage, retention config, manual purge -->
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-2xl font-bold">Settings</h1>
+
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+        Settings are configured via environment variables and are <span class="font-medium text-gray-700 dark:text-gray-300">read-only</span> in this UI.
+        Restart the server after changing any <code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">SEESEE_*</code> variable.
+    </p>
+
+    <!-- Retention Configuration -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Retention Configuration</h2>
+        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            <div class="flex items-center justify-between py-3">
+                <div>
+                    <p class="text-sm font-medium">Max email count</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_COUNT</p>
+                </div>
+                <span class="text-sm font-semibold">{{ settings.retention_max_count | default(1000) }}</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+                <div>
+                    <p class="text-sm font-medium">Max age (days)</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_AGE_DAYS</p>
+                </div>
+                <span class="text-sm font-semibold">{{ settings.retention_max_age_days | default(90) }}</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+                <div>
+                    <p class="text-sm font-medium">Max storage (MB)</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_STORAGE_MB</p>
+                </div>
+                <span class="text-sm font-semibold">{{ settings.retention_max_storage_mb | default(500) }}</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+                <div>
+                    <p class="text-sm font-medium">Cleanup interval (minutes)</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES</p>
+                </div>
+                <span class="text-sm font-semibold">{{ settings.retention_cleanup_interval_minutes | default(60) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage Usage -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Storage Usage</h2>
+        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            <div class="flex items-center justify-between py-3">
+                <p class="text-sm font-medium">Total emails</p>
+                <span class="text-sm font-semibold">{{ email_count }}</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+                <p class="text-sm font-medium">Email body storage</p>
+                <span class="text-sm font-semibold">{{ (storage_bytes / 1048576) | round(1) }} MB</span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+                <p class="text-sm font-medium">Database size</p>
+                <span class="text-sm font-semibold">{{ (db_size_bytes / 1048576) | round(1) }} MB</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Run Cleanup Now -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Manual Cleanup</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Trigger an immediate retention cleanup cycle. This will delete emails that exceed the configured retention limits.
+        </p>
+        <div x-data="{ running: false }">
+            <button @click="running = true; fetch('/settings/cleanup', { method: 'POST' }).then(r => { running = false; if (r.redirected) window.location = r.url; else window.location = '/settings?cleanup=1'; }).catch(() => { running = false; showToast('Cleanup failed', 'error'); })"
+                    :disabled="running"
+                    class="inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg x-show="!running" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <svg x-show="running" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <span x-show="!running">Run Cleanup Now</span>
+                <span x-show="running">Running...</span>
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}

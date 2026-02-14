@@ -23,6 +23,7 @@ from seesee.auth import (
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.dependencies import require_session
+from seesee.retention import run_cleanup
 
 router = APIRouter(tags=["ui"])
 
@@ -161,6 +162,14 @@ async def dashboard(request: Request, user: str = Depends(require_session)) -> H
         for row in await cursor.fetchall()
     ]
 
+    # Daily volume for last 30 days (for sparkline)
+    cursor = await db.execute(
+        "SELECT DATE(logged_at) as day, COUNT(*) as cnt "
+        "FROM emails WHERE logged_at >= datetime('now', '-30 days') "
+        "GROUP BY DATE(logged_at) ORDER BY day"
+    )
+    daily_volume = [{"day": row["day"], "count": row["cnt"]} for row in await cursor.fetchall()]
+
     return tmpl.TemplateResponse(
         "dashboard.html",
         {
@@ -174,6 +183,8 @@ async def dashboard(request: Request, user: str = Depends(require_session)) -> H
             "total_apps": total_apps,
             "by_status": by_status,
             "by_app": by_app,
+            "daily_volume": daily_volume,
+            "base_url": settings.base_url,
         },
     )
 
@@ -470,3 +481,155 @@ async def rotate_key_ui(
     await db.commit()
 
     return RedirectResponse(url=f"/apps?rotated_key={new_key}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# App detail
+# ---------------------------------------------------------------------------
+
+
+@router.get("/apps/{app_id}", response_class=HTMLResponse)
+async def app_detail(
+    request: Request,
+    app_id: str,
+    user: str = Depends(require_session),
+) -> HTMLResponse:
+    """App detail page — stats, integration snippets, management."""
+    db = await get_db()
+    tmpl = _get_templates()
+
+    cursor = await db.execute(
+        "SELECT id, name, slug, body_storage_mode, retention_max_count, "
+        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        (app_id,),
+    )
+    app = await cursor.fetchone()
+    if app is None:
+        return tmpl.TemplateResponse(
+            "app_detail.html",
+            {"request": request, "user": user, "current_page": "apps", "app": None},
+            status_code=404,
+        )
+    app = dict(app)
+
+    # Email stats
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails WHERE app_id = ?", (app_id,))
+    app["email_count"] = (await cursor.fetchone())["cnt"]
+
+    # Emails by status
+    cursor = await db.execute(
+        "SELECT status, COUNT(*) as cnt FROM emails WHERE app_id = ? GROUP BY status ORDER BY cnt DESC",
+        (app_id,),
+    )
+    app["by_status"] = {row["status"]: row["cnt"] for row in await cursor.fetchall()}
+
+    # Last activity
+    cursor = await db.execute(
+        "SELECT logged_at FROM emails WHERE app_id = ? ORDER BY logged_at DESC LIMIT 1",
+        (app_id,),
+    )
+    row = await cursor.fetchone()
+    app["last_email_at"] = row["logged_at"] if row else None
+
+    # Check for flash data
+    rotated_key = request.query_params.get("rotated_key")
+
+    return tmpl.TemplateResponse(
+        "app_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "current_page": "apps",
+            "app": app,
+            "base_url": settings.base_url,
+            "smtp_port": settings.smtp_port,
+            "rotated_key": rotated_key,
+        },
+    )
+
+
+@router.post("/apps/{app_id}/purge")
+async def purge_app_emails_ui(
+    app_id: str,
+    user: str = Depends(require_session),
+) -> RedirectResponse:
+    """Purge all emails for an app via the web UI."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        return RedirectResponse(url="/apps", status_code=303)
+
+    await db.execute("DELETE FROM emails WHERE app_id = ?", (app_id,))
+    await db.commit()
+
+    return RedirectResponse(url=f"/apps/{app_id}?purged=1", status_code=303)
+
+
+@router.post("/emails/{email_id}/delete")
+async def delete_email_ui(
+    email_id: str,
+    user: str = Depends(require_session),
+) -> RedirectResponse:
+    """Delete a single email via the web UI."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM emails WHERE id = ?", (email_id,))
+    if await cursor.fetchone() is None:
+        return RedirectResponse(url="/emails", status_code=303)
+
+    await db.execute("DELETE FROM emails WHERE id = ?", (email_id,))
+    await db.commit()
+
+    return RedirectResponse(url="/emails?deleted=1", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    user: str = Depends(require_session),
+) -> HTMLResponse:
+    """Settings page — display retention config, storage usage."""
+    db = await get_db()
+    tmpl = _get_templates()
+
+    # Storage stats
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails")
+    email_count = (await cursor.fetchone())["cnt"]
+
+    cursor = await db.execute("SELECT COALESCE(SUM(body_size_bytes), 0) as total FROM emails")
+    storage_bytes = (await cursor.fetchone())["total"]
+
+    # Database file size
+    cursor = await db.execute(
+        "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+    )
+    row = await cursor.fetchone()
+    db_size_bytes = row["size"] if row else 0
+
+    return tmpl.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "user": user,
+            "current_page": "settings",
+            "settings": settings,
+            "email_count": email_count,
+            "storage_bytes": storage_bytes,
+            "db_size_bytes": db_size_bytes,
+        },
+    )
+
+
+@router.post("/settings/cleanup")
+async def run_cleanup_ui(
+    user: str = Depends(require_session),
+) -> RedirectResponse:
+    """Trigger an immediate retention cleanup via the web UI."""
+    await run_cleanup()
+    return RedirectResponse(url="/settings?cleanup=1", status_code=303)

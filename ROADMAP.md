@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.7.0-dev
+**Version:** 0.8.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -41,7 +41,7 @@
 
 ---
 
-## Phase 1.1 — Web UI 🚧
+## Phase 1.1 — Web UI ✅
 
 **Goal:** Admin dashboard for searching and viewing logged emails.
 
@@ -55,10 +55,10 @@
 - [x] Confirmation dialogs for destructive actions (key rotation)
 - [x] Empty states with onboarding copy
 - [x] Responsive design (desktop-optimized, tablet-usable)
-- [ ] App detail page (stats, integration snippets pre-filled with credentials)
-- [ ] Settings page (retention config, storage usage, manual purge)
-- [ ] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close)
-- [ ] Toast notifications for actions
+- [x] App detail page (stats, integration snippets pre-filled with credentials)
+- [x] Settings page (retention config, storage usage, manual cleanup)
+- [x] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close, `?` help)
+- [x] Toast notifications for actions (app created, key rotated, cleanup, delete)
 
 ---
 
@@ -85,7 +85,7 @@
 - [x] `max_storage_mb` enforcement — global storage cap, oldest-first deletion
 - [x] Per-app retention overrides (most restrictive rule wins)
 - [x] Cleanup logging (count deleted, storage freed)
-- [ ] Manual purge via API and UI
+- [x] Manual purge via API and UI
 - [x] Dockerfile finalized (multi-stage, non-root, health check)
 - [x] Docker Compose verified with Coolify
 - [x] GitHub Actions: build + push to GHCR on tag (multi-platform: amd64 + arm64)
@@ -112,17 +112,21 @@
 
 ---
 
-## Phase 2.1 — Polish 📋
+## Phase 2.1 — Polish ✅
 
 **Goal:** Quality-of-life improvements for daily use.
 
-- [ ] `POST /api/v1/log/batch` — batch ingest (max 100 per request)
-- [ ] `PATCH /api/v1/emails/{id}/status` — status update endpoint
-- [ ] Loading states (skeleton screens)
-- [ ] Relative timestamps ("2 minutes ago") with full timestamp on hover
-- [ ] Integration snippets in app detail (pre-filled with app's credentials)
-- [ ] Volume sparkline on dashboard (emails per day, last 30 days)
-- [ ] Empty state onboarding ("No emails logged yet. Here's how...")
+- [x] `POST /api/v1/log/batch` — batch ingest (max 100 per request)
+- [x] `PATCH /api/v1/emails/{id}/status` — status update endpoint
+- [x] `DELETE /api/v1/emails/{id}` — delete single email
+- [x] `DELETE /api/v1/apps/{app_id}/emails` — purge all emails for an app
+- [x] `POST /api/v1/admin/cleanup` — manual retention cleanup trigger
+- [x] Relative timestamps ("2 minutes ago") with full timestamp on hover
+- [x] Integration snippets in app detail (pre-filled with app's credentials)
+- [x] Volume sparkline on dashboard (emails per day, last 30 days)
+- [x] Empty state onboarding ("No emails logged yet. Here's how...")
+- [x] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close, `?` help modal)
+- [x] Toast notifications for actions (success and error variants, auto-dismiss)
 
 ---
 

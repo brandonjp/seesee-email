@@ -3,7 +3,7 @@
 import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from aiosmtpd.smtp import Envelope, Session
@@ -12,7 +12,6 @@ from seesee.database import get_db
 from seesee.smtp_server import (
     SeeSeeHandler,
     SmtpAuthenticator,
-    _relay_message,
     parse_mime_message,
 )
 from tests.conftest import create_test_app
@@ -358,10 +357,7 @@ class TestSmtpDatabaseInsertion:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        # Ensure no relay is configured
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            result = await handler.handle_DATA(MagicMock(), session, envelope)
+        result = await handler.handle_DATA(MagicMock(), session, envelope)
 
         assert result == "250 Message accepted for delivery"
 
@@ -397,9 +393,7 @@ class TestSmtpDatabaseInsertion:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            result = await handler.handle_DATA(MagicMock(), session, envelope)
+        result = await handler.handle_DATA(MagicMock(), session, envelope)
 
         assert result == "250 Message accepted for delivery"
 
@@ -426,9 +420,7 @@ class TestSmtpDatabaseInsertion:
         raw_msg = _build_simple_text_email(subject="Method Check")
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         db = await get_db()
         cursor = await db.execute(
@@ -456,9 +448,7 @@ class TestSmtpDatabaseInsertion:
         raw_msg = _build_simple_text_email(subject="Activity Test")
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         cursor = await db.execute("SELECT last_activity_at FROM apps WHERE id = ?", (app_id,))
         row = await cursor.fetchone()
@@ -483,9 +473,7 @@ class TestSmtpDatabaseInsertion:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         db = await get_db()
         cursor = await db.execute(
@@ -523,9 +511,7 @@ class TestSmtpBodyStorageMode:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         db = await get_db()
         cursor = await db.execute("SELECT * FROM emails WHERE app_id = ?", (app_data["id"],))
@@ -555,9 +541,7 @@ class TestSmtpBodyStorageMode:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         db = await get_db()
         cursor = await db.execute("SELECT * FROM emails WHERE app_id = ?", (app_data["id"],))
@@ -587,9 +571,7 @@ class TestSmtpBodyStorageMode:
         )
         envelope = _make_envelope(content=raw_msg)
 
-        with patch("seesee.smtp_server.settings") as mock_settings:
-            mock_settings.smtp_relay_host = ""
-            await handler.handle_DATA(MagicMock(), session, envelope)
+        await handler.handle_DATA(MagicMock(), session, envelope)
 
         db = await get_db()
         cursor = await db.execute("SELECT * FROM emails WHERE app_id = ?", (app_data["id"],))
@@ -600,16 +582,16 @@ class TestSmtpBodyStorageMode:
 
 
 # ---------------------------------------------------------------------------
-# Capture-only mode (no relay)
+# Capture-only mode
 # ---------------------------------------------------------------------------
 
 
 class TestCaptureOnlyMode:
-    """Test that without relay config, emails are logged but not forwarded."""
+    """Test that SMTP ingest captures emails without forwarding."""
 
     @pytest.mark.asyncio
-    async def test_no_relay_when_not_configured(self, client, admin_auth_header):
-        """When smtp_relay_host is empty, no relay attempt is made."""
+    async def test_email_captured_and_stored(self, client, admin_auth_header):
+        """SMTP ingest captures and stores emails."""
         app_data = await create_test_app(client, admin_auth_header)
 
         handler = SeeSeeHandler()
@@ -623,82 +605,7 @@ class TestCaptureOnlyMode:
         raw_msg = _build_simple_text_email(subject="Capture Only")
         envelope = _make_envelope(content=raw_msg)
 
-        with (
-            patch("seesee.smtp_server.settings") as mock_settings,
-            patch("seesee.smtp_server._relay_message") as mock_relay,
-        ):
-            mock_settings.smtp_relay_host = ""
-            result = await handler.handle_DATA(MagicMock(), session, envelope)
-
-        assert result == "250 Message accepted for delivery"
-        mock_relay.assert_not_called()
-
-        # Email is still stored
-        db = await get_db()
-        cursor = await db.execute("SELECT * FROM emails WHERE app_id = ?", (app_data["id"],))
-        row = await cursor.fetchone()
-        assert row is not None
-        assert row["error_message"] is None
-
-
-# ---------------------------------------------------------------------------
-# Relay behavior tests (mocked)
-# ---------------------------------------------------------------------------
-
-
-class TestRelayBehavior:
-    """Tests for the upstream relay feature."""
-
-    @pytest.mark.asyncio
-    async def test_relay_called_when_configured(self, client, admin_auth_header):
-        """When smtp_relay_host is set, _relay_message is called."""
-        app_data = await create_test_app(client, admin_auth_header)
-
-        handler = SeeSeeHandler()
-        app = {
-            "id": app_data["id"],
-            "name": "Test App",
-            "body_storage_mode": "full",
-        }
-        session = _make_session(app=app)
-
-        raw_msg = _build_simple_text_email(subject="Relay Test")
-        envelope = _make_envelope(content=raw_msg)
-
-        with (
-            patch("seesee.smtp_server.settings") as mock_settings,
-            patch("seesee.smtp_server._relay_message", new_callable=AsyncMock) as mock_relay,
-        ):
-            mock_settings.smtp_relay_host = "relay.example.com"
-            mock_relay.return_value = "relayed"
-            result = await handler.handle_DATA(MagicMock(), session, envelope)
-
-        assert result == "250 Message accepted for delivery"
-        mock_relay.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_relay_failure_still_stores_email(self, client, admin_auth_header):
-        """When relay fails, the email is still stored but error_message is set."""
-        app_data = await create_test_app(client, admin_auth_header)
-
-        handler = SeeSeeHandler()
-        app = {
-            "id": app_data["id"],
-            "name": "Test App",
-            "body_storage_mode": "full",
-        }
-        session = _make_session(app=app)
-
-        raw_msg = _build_simple_text_email(subject="Relay Fail Test")
-        envelope = _make_envelope(content=raw_msg)
-
-        with (
-            patch("seesee.smtp_server.settings") as mock_settings,
-            patch("seesee.smtp_server._relay_message", new_callable=AsyncMock) as mock_relay,
-        ):
-            mock_settings.smtp_relay_host = "relay.example.com"
-            mock_relay.return_value = "Connection refused"
-            result = await handler.handle_DATA(MagicMock(), session, envelope)
+        result = await handler.handle_DATA(MagicMock(), session, envelope)
 
         assert result == "250 Message accepted for delivery"
 
@@ -707,31 +614,4 @@ class TestRelayBehavior:
         cursor = await db.execute("SELECT * FROM emails WHERE app_id = ?", (app_data["id"],))
         row = await cursor.fetchone()
         assert row is not None
-        assert row["subject"] == "Relay Fail Test"
-        assert "Relay failed" in row["error_message"]
-
-    @pytest.mark.asyncio
-    async def test_relay_message_success(self):
-        """_relay_message returns 'relayed' on successful send."""
-        envelope = _make_envelope()
-
-        mock_aiosmtplib = MagicMock()
-        mock_aiosmtplib.send = AsyncMock()
-
-        with patch.dict("sys.modules", {"aiosmtplib": mock_aiosmtplib}):
-            result = await _relay_message(b"raw email data", envelope)
-
-        assert result == "relayed"
-
-    @pytest.mark.asyncio
-    async def test_relay_message_failure(self):
-        """_relay_message returns error string on failure."""
-        envelope = _make_envelope()
-
-        mock_aiosmtplib = MagicMock()
-        mock_aiosmtplib.send = AsyncMock(side_effect=ConnectionRefusedError("Connection refused"))
-
-        with patch.dict("sys.modules", {"aiosmtplib": mock_aiosmtplib}):
-            result = await _relay_message(b"raw email data", envelope)
-
-        assert "Connection refused" in result
+        assert row["error_message"] is None

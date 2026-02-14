@@ -40,18 +40,6 @@ The database directory must be writable. In Docker, mount a volume at `/data` fo
 | `SEESEE_SMTP_ENABLED` | bool | `true` | Enable the built-in SMTP server |
 | `SEESEE_SMTP_PORT` | int | `2525` | SMTP server listen port |
 
-### SMTP Relay (optional)
-
-When relay is configured, SeeSee captures the email **and** forwards it to an upstream SMTP server for actual delivery.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SEESEE_SMTP_RELAY_HOST` | string | *(empty)* | Upstream SMTP server hostname. Leave empty to disable relay |
-| `SEESEE_SMTP_RELAY_PORT` | int | `587` | Upstream SMTP server port |
-| `SEESEE_SMTP_RELAY_USERNAME` | string | *(empty)* | Upstream SMTP authentication username |
-| `SEESEE_SMTP_RELAY_PASSWORD` | string | *(empty)* | Upstream SMTP authentication password |
-| `SEESEE_SMTP_RELAY_TLS` | bool | `true` | Use TLS when connecting to the upstream relay |
-
 ## Retention
 
 Retention rules control automatic cleanup. The most restrictive rule wins.

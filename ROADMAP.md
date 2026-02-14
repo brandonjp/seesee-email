@@ -70,8 +70,7 @@
 - [x] SMTP AUTH with per-app username/password credentials
 - [x] MIME message parsing (extract to, from, subject, HTML body, text body)
 - [x] Log parsed email to database (same as REST API path)
-- [x] Optional upstream relay (forward to real SMTP server for delivery)
-- [x] Capture-only mode (no relay) for apps that send via provider API separately
+- [x] Capture-only SMTP ingest (emails are logged but never forwarded)
 
 ---
 
@@ -102,7 +101,7 @@
 - [x] Getting started guide (Docker quick start, app creation, first email)
 - [x] Configuration reference (all SEESEE_* variables grouped by category)
 - [x] REST API reference (all endpoints with curl examples)
-- [x] SMTP ingest guide (setup, client examples, relay, troubleshooting)
+- [x] SMTP ingest guide (setup, client examples, troubleshooting)
 - [x] Docker deployment guide (compose, volumes, health checks, reverse proxies)
 - [x] Coolify deployment guide (step-by-step with SSL and storage)
 - [x] Integration guides: PHP/WordPress, Python, JavaScript, cURL

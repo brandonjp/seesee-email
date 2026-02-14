@@ -11,12 +11,9 @@ SeeSee includes a built-in SMTP server powered by `aiosmtpd`. Instead of integra
 2. SeeSee authenticates the connection using per-app SMTP credentials
 3. The MIME message is parsed — subject, addresses, HTML body, text body are extracted
 4. The email is stored in the database, respecting the app's body storage mode
-5. **Optionally**, SeeSee relays the message to an upstream SMTP server for actual delivery
 
 ```
 Your App → SMTP (port 2525) → SeeSee → Database
-                                  ↓
-                            Optional Relay → Real SMTP Server → Delivery
 ```
 
 ## Setup
@@ -141,39 +138,6 @@ await transporter.sendMail({
 });
 ```
 
-## Relay configuration
-
-By default, SeeSee only **captures** SMTP messages — it doesn't deliver them. To also deliver emails, configure an upstream relay:
-
-```bash
-SEESEE_SMTP_RELAY_HOST=smtp.gmail.com
-SEESEE_SMTP_RELAY_PORT=587
-SEESEE_SMTP_RELAY_USERNAME=your-email@gmail.com
-SEESEE_SMTP_RELAY_PASSWORD=your-app-password
-SEESEE_SMTP_RELAY_TLS=true
-```
-
-With relay enabled, SeeSee will:
-
-1. Parse and store the email (as always)
-2. Forward the original raw message to the upstream server
-3. Log relay success or failure in the email's `error_message` field
-
-This lets you use SeeSee as a transparent logging proxy — your emails still get delivered, and you have a complete log.
-
-### Relay providers
-
-Any standard SMTP server works as a relay target:
-
-| Provider | Host | Port | TLS |
-|----------|------|------|-----|
-| Gmail | `smtp.gmail.com` | `587` | yes |
-| Amazon SES | `email-smtp.us-east-1.amazonaws.com` | `587` | yes |
-| SendGrid | `smtp.sendgrid.net` | `587` | yes |
-| Mailgun | `smtp.mailgun.org` | `587` | yes |
-| Postmark | `smtp.postmarkapp.com` | `587` | yes |
-| Custom | Your SMTP server | Varies | Varies |
-
 ## Troubleshooting
 
 ### Connection refused
@@ -195,9 +159,3 @@ Any standard SMTP server works as a relay target:
 - Verify the SMTP user/password match a registered app
 - Check the app's `body_storage_mode` — in `preview` mode, bodies are truncated to 500 characters
 
-### Relay failures
-
-- Check relay credentials and host/port
-- Verify the relay server accepts connections from your SeeSee server's IP
-- Relay errors are logged in the email's `error_message` field — check via API or Web UI
-- Set `SEESEE_LOG_LEVEL=debug` for detailed SMTP relay logs

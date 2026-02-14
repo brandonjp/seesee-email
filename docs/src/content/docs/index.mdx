@@ -39,7 +39,7 @@ docker run -d -p 8080:8080 -p 2525:2525 \
     Log emails from any language with a simple POST request. Bearer token auth per app.
   </Card>
   <Card title="SMTP Ingest" icon="email">
-    Point your app's SMTP settings at SeeSee. It captures every message, with optional relay to deliver them too.
+    Point your app's SMTP settings at SeeSee to capture every message automatically.
   </Card>
   <Card title="Full-Text Search" icon="magnifier">
     SQLite FTS5 powers instant search across subjects, bodies, addresses, and error messages.
@@ -90,13 +90,6 @@ docker run -d -p 8080:8080 -p 2525:2525 \
 │  │   Dashboard · Email List · Detail · App Mgmt   │    │
 │  └─────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
-                           │
-                    Optional SMTP Relay
-                           │
-                    ┌──────▼──────┐
-                    │  Upstream   │
-                    │  SMTP Server│
-                    └─────────────┘
 ```
 
 ## Quick Links

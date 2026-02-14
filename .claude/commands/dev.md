@@ -74,7 +74,7 @@ seesee-email/
 │   ├── models.py            # Pydantic models for API request/response
 │   ├── auth.py              # API key hashing/verification, session management
 │   ├── retention.py         # Cleanup scheduler, per-app + global rules
-│   ├── smtp_server.py       # aiosmtpd handler, MIME parsing, optional relay
+│   ├── smtp_server.py       # aiosmtpd handler, MIME parsing
 │   ├── routes/
 │   │   ├── ingest.py        # POST /api/v1/log, /api/v1/log/batch
 │   │   ├── emails.py        # GET /api/v1/emails, /{id}, /{id}/preview
@@ -143,7 +143,6 @@ See `ROADMAP.md` for detailed phase breakdown.
 - aiosmtpd listener on port 2525
 - SMTP AUTH with per-app credentials
 - MIME message parsing
-- Optional upstream relay
 
 #### Phase 1.3 — Retention + Deployment 📋
 - Retention scheduler (max count, max age, storage cap)
@@ -266,7 +265,7 @@ See `ROADMAP.md` for detailed phase breakdown.
 - Search/filter queries — FTS5 behavior, pagination, combined filters
 - Retention logic — count limits, age limits, per-app overrides
 - Auth — API key verification, session management, invalid credentials
-- SMTP parsing — MIME message extraction, relay behavior
+- SMTP parsing — MIME message extraction
 
 **Don't bother testing:**
 - Jinja2 template rendering details
@@ -302,7 +301,7 @@ See `ROADMAP.md` for detailed phase breakdown.
 | `seesee/routes/ui.py` | All HTML page routes | Adding/changing UI pages |
 | `seesee/templates/` | HTML templates | Any UI change |
 | `seesee/retention.py` | Cleanup logic | Changing retention behavior |
-| `seesee/smtp_server.py` | SMTP capture + relay | Changing SMTP behavior |
+| `seesee/smtp_server.py` | SMTP capture (ingest) | Changing SMTP behavior |
 | `.env.example` | Config documentation | Adding new env vars |
 | `docker-compose.yml` | Deployment template | Changing ports, volumes, health checks |
 | `ROADMAP.md` | Development phases | Completing or planning phases |

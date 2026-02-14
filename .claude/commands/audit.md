@@ -54,7 +54,7 @@ seesee/
 │   ├── models.py               # Pydantic request/response models
 │   ├── auth.py                 # API key + session auth
 │   ├── retention.py            # Cleanup logic + scheduler
-│   ├── smtp_server.py          # aiosmtpd ingest + optional relay
+│   ├── smtp_server.py          # aiosmtpd ingest (capture-only)
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── ingest.py           # POST /api/v1/log, /log/batch
@@ -199,12 +199,6 @@ SEESEE_DB_PATH=/data/seesee.db
 # SMTP Ingest
 SEESEE_SMTP_ENABLED=true
 SEESEE_SMTP_PORT=2525
-SEESEE_SMTP_RELAY_HOST=
-SEESEE_SMTP_RELAY_PORT=587
-SEESEE_SMTP_RELAY_USERNAME=
-SEESEE_SMTP_RELAY_PASSWORD=
-SEESEE_SMTP_RELAY_TLS=true
-
 # Retention
 SEESEE_RETENTION_MAX_COUNT=1000
 SEESEE_RETENTION_MAX_AGE_DAYS=90

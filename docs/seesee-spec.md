@@ -25,7 +25,7 @@ The existing ecosystem offers either full mail delivery platforms (Postal, Cuttl
 
 1. **Log-only, not a mail server.** SeeSee never sends email. Your apps continue using whatever email provider they already use. SeeSee just records what was sent.
 2. **Minimal footprint.** Single Docker container. SQLite by default. No Redis, no RabbitMQ, no Postfix. Target idle RAM: <50MB.
-3. **Universal ingest.** Two ways in: HTTP POST (any app, any language) or SMTP relay (apps that already use SMTP can just point at SeeSee and it captures + forwards).
+3. **Universal ingest.** Two ways in: HTTP POST (any app, any language) or SMTP ingest (apps that already use SMTP can point at SeeSee and it captures the message).
 4. **Configurable retention.** Keep the last N messages per app, or messages within a date range, or up to a storage size limit. Auto-prune on schedule.
 5. **Multi-app awareness.** A single SeeSee instance serves multiple applications, each identified by an app key.
 6. **Good UX matters.** The UI should feel polished and purposeful — fast search, clean layout, keyboard shortcuts. Worth a few extra kilobytes.
@@ -65,8 +65,8 @@ The existing ecosystem offers either full mail delivery platforms (Postal, Cuttl
 #### 1. REST API (Primary)
 Your app sends an HTTP POST to SeeSee after sending an email. Works with any language, any provider. You control exactly what gets logged.
 
-#### 2. SMTP Relay (Secondary)
-SeeSee listens on port 2525 as an SMTP server (via Python's `aiosmtpd`). Your app points its SMTP config at SeeSee. SeeSee captures the full email, logs it, then optionally forwards it to a real SMTP server for actual delivery. This works like Mailpit's relay mode but purpose-built for retention and search.
+#### 2. SMTP Ingest (Secondary)
+SeeSee listens on port 2525 as an SMTP server (via Python's `aiosmtpd`). Your app points its SMTP config at SeeSee. SeeSee captures the full email and logs it. SeeSee never forwards or delivers email — it is purely an observer. Apps should continue sending email through their normal provider separately.
 
 **Docker networking:** The SMTP listener runs on a port inside the SeeSee container. For apps on the same Docker network, point SMTP at `seesee:2525`. For apps on isolated networks, expose the port on the host (`-p 2525:2525`) and connect via `host.docker.internal:2525` or the server's LAN IP. Same routing model as any cross-container service.
 
@@ -335,7 +335,7 @@ This runs as part of the nightly retention job. It preserves the metadata and se
 - Global retention defaults (max count, max age)
 - Storage usage display
 - Admin password change
-- SMTP relay configuration (upstream server for forwarding)
+- SMTP ingest configuration
 - Manual purge button with confirmation
 - Export database / backup download
 
@@ -385,12 +385,6 @@ base_url = "https://seesee.example.com"
 [smtp_ingest]
 enabled = true
 port = 2525
-# Optional: relay captured emails to a real SMTP server
-relay_host = ""
-relay_port = 587
-relay_username = ""
-relay_password = ""
-relay_tls = true
 
 [auth]
 admin_username = "admin"
@@ -414,7 +408,7 @@ level = "info"
 
 ### Environment Variable Mapping
 
-`SEESEE_ADMIN_PASSWORD`, `SEESEE_DB_PATH`, `SEESEE_PORT`, `SEESEE_SMTP_PORT`, `SEESEE_SMTP_RELAY_HOST`, `SEESEE_RETENTION_MAX_COUNT`, etc.
+`SEESEE_ADMIN_PASSWORD`, `SEESEE_DB_PATH`, `SEESEE_PORT`, `SEESEE_SMTP_PORT`, `SEESEE_RETENTION_MAX_COUNT`, etc.
 
 ---
 
@@ -517,18 +511,9 @@ The `docs/` Starlight site auto-deploys to GitHub Pages on push to `main` via a 
    a. Authenticates the sender against app SMTP credentials.
    b. Parses the full MIME message (extracts to, from, subject, HTML body, text body).
    c. Logs the email to the database (same as a REST API call would).
-   d. If relay is configured, forwards the original message to the upstream SMTP server for actual delivery.
-   e. Returns success/failure to the sending app.
+   d. Returns success/failure to the sending app.
 
-### Relay Mode
-
-When `smtp_relay_host` is configured, SeeSee acts as a transparent logging proxy:
-
-```
-Your App → SMTP → SeeSee (logs it) → SMTP → Upstream Provider → Recipient
-```
-
-Without relay configured, SeeSee is capture-only (useful if the app sends via API to its provider separately and uses SeeSee's SMTP ingest purely for logging).
+SeeSee is capture-only — it never forwards or delivers email. Apps should send email through their normal provider and use SeeSee's SMTP ingest purely for logging.
 
 ### SMTP Credentials
 
@@ -672,7 +657,7 @@ curl -X POST https://seesee.example.com/api/v1/log \
 ### In Scope
 
 - [ ] REST API for logging emails (single + batch)
-- [ ] SMTP ingest listener with optional upstream relay
+- [ ] SMTP ingest listener (capture-only)
 - [ ] SQLite storage with FTS5 full-text search
 - [ ] API key authentication per app (REST) + SMTP credentials per app
 - [ ] Body storage modes (full / text_only / preview) configurable per app
@@ -759,7 +744,7 @@ seesee/
 │   ├── models.py               # Pydantic models (request/response)
 │   ├── auth.py                 # API key + session auth
 │   ├── retention.py            # Cleanup logic + scheduler
-│   ├── smtp_server.py          # aiosmtpd ingest + optional relay
+│   ├── smtp_server.py          # aiosmtpd ingest (capture-only)
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── ingest.py           # POST /api/v1/log, /log/batch
@@ -791,7 +776,7 @@ seesee/
 │               ├── getting-started.md  # Quick start guide
 │               ├── configuration.md    # All config options
 │               ├── api-reference.md    # REST API docs
-│               ├── smtp-ingest.md      # SMTP relay setup
+│               ├── smtp-ingest.md      # SMTP ingest setup
 │               ├── deployment/
 │               │   ├── docker.md
 │               │   └── coolify.md

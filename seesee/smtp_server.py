@@ -12,6 +12,7 @@ import email.policy
 import json
 import logging
 import uuid
+import warnings
 from datetime import UTC, datetime
 from email.message import EmailMessage
 
@@ -24,6 +25,33 @@ from seesee.database import get_db
 from seesee.helpers import apply_body_storage_mode
 
 logger = logging.getLogger("seesee.smtp")
+
+# ---------------------------------------------------------------------------
+# Suppress aiosmtpd's noisy "AUTH without TLS" warnings.  TLS termination is
+# handled by the reverse proxy (Traefik / Caddy / nginx), so this is expected.
+#
+# aiosmtpd emits TWO separate messages in SMTP.__init__:
+#   1. warnings.warn("Requiring AUTH while not requiring TLS …")
+#   2. log.warning("auth_required == True but auth_require_tls == False")
+#
+# We silence both at module level because the Controller creates the SMTP
+# instance in a separate thread (so a context-manager approach is unreliable).
+# ---------------------------------------------------------------------------
+warnings.filterwarnings(
+    "ignore",
+    message="Requiring AUTH while not requiring TLS",
+    category=UserWarning,
+)
+
+
+class _SuppressAuthTlsLogFilter(logging.Filter):
+    """Drop the single 'auth_required == True but auth_require_tls == False' record."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "auth_required" not in record.getMessage()
+
+
+logging.getLogger("mail.log").addFilter(_SuppressAuthTlsLogFilter())
 
 
 # ---------------------------------------------------------------------------
@@ -392,7 +420,7 @@ async def start_smtp_server() -> None:
         port=settings.smtp_port,
         authenticator=authenticator,
         auth_required=True,
-        auth_require_tls=False,  # TLS not required for local/dev use
+        auth_require_tls=False,
     )
     _controller.start()
     logger.info("SMTP server started on port %d", settings.smtp_port)

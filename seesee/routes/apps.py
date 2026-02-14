@@ -223,3 +223,24 @@ async def rotate_key(app_id: str) -> KeyRotateResponse:
     await db.commit()
 
     return KeyRotateResponse(api_key=new_key)
+
+
+@router.delete(
+    "/apps/{app_id}/emails",
+    dependencies=[Depends(require_admin)],
+)
+async def purge_app_emails(app_id: str) -> dict:
+    """Delete all emails for an app. Requires admin auth."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails WHERE app_id = ?", (app_id,))
+    count = (await cursor.fetchone())["cnt"]
+
+    await db.execute("DELETE FROM emails WHERE app_id = ?", (app_id,))
+    await db.commit()
+
+    return {"message": f"Deleted {count} emails"}

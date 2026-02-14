@@ -39,11 +39,36 @@ class EmailLogResponse(BaseModel):
     created_at: datetime
 
 
+class BatchLogRequest(BaseModel):
+    """Request body for POST /api/v1/log/batch."""
+
+    emails: list[EmailLogRequest] = Field(..., min_length=1, max_length=100)
+
+
+class BatchLogError(BaseModel):
+    """Individual error in a batch log response."""
+
+    index: int
+    error: str
+
+
 class BatchLogResponse(BaseModel):
     """Response body for POST /api/v1/log/batch."""
 
     logged: int
-    errors: list[str] = []
+    errors: list[BatchLogError] = []
+
+
+class StatusUpdateRequest(BaseModel):
+    """Request body for PATCH /api/v1/emails/{id}/status."""
+
+    status: str = Field(..., min_length=1)
+
+
+class CleanupResponse(BaseModel):
+    """Response body for POST /api/v1/admin/cleanup."""
+
+    message: str = "Cleanup completed"
 
 
 # ---------------------------------------------------------------------------

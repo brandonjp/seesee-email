@@ -1,4 +1,4 @@
-"""Email query routes — GET /api/v1/emails, /{id}, /{id}/preview."""
+"""Email query routes — GET /api/v1/emails, /{id}, /{id}/preview, PATCH /{id}/status, DELETE."""
 
 import json
 import math
@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from seesee.database import get_db
 from seesee.dependencies import require_admin
-from seesee.models import EmailDetail, EmailListResponse, EmailSummary
+from seesee.models import EmailDetail, EmailListResponse, EmailSummary, StatusUpdateRequest
 
 router = APIRouter(prefix="/api/v1", tags=["emails"])
 
@@ -230,3 +230,51 @@ async def preview_email(email_id: str) -> HTMLResponse:
             "X-Frame-Options": "SAMEORIGIN",
         },
     )
+
+
+@router.patch(
+    "/emails/{email_id}/status",
+    response_model=EmailDetail,
+    dependencies=[Depends(require_admin)],
+)
+async def update_email_status(email_id: str, request: StatusUpdateRequest) -> EmailDetail:
+    """Update an email's status. Requires admin auth.
+
+    Use case: provider webhooks update delivery status after initial logging.
+    """
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM emails WHERE id = ?", (email_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email not found")
+
+    await db.execute(
+        "UPDATE emails SET status = ? WHERE id = ?",
+        (request.status, email_id),
+    )
+    await db.commit()
+
+    cursor = await db.execute(
+        f"SELECT {_DETAIL_COLS} FROM emails WHERE id = ?",  # noqa: S608
+        (email_id,),
+    )
+    row = await cursor.fetchone()
+    return _row_to_detail(dict(row))
+
+
+@router.delete(
+    "/emails/{email_id}",
+    dependencies=[Depends(require_admin)],
+)
+async def delete_email(email_id: str) -> dict:
+    """Delete a single email. Requires admin auth."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM emails WHERE id = ?", (email_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email not found")
+
+    await db.execute("DELETE FROM emails WHERE id = ?", (email_id,))
+    await db.commit()
+
+    return {"message": "Email deleted"}

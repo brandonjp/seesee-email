@@ -1,9 +1,11 @@
 """Tests for the web UI — session auth, page rendering, and redirects."""
 
 from httpx import AsyncClient
+from itsdangerous import URLSafeTimedSerializer
 
 from seesee.auth import SESSION_COOKIE_NAME, create_session_token
 from seesee.config import settings
+from seesee.routes.ui import FLASH_COOKIE_NAME
 
 
 def _get_session_cookie(username: str = "admin") -> str:
@@ -293,8 +295,18 @@ async def test_apps_page_with_data(client: AsyncClient, admin_auth_header: dict)
     assert "Listed App" in resp.text
 
 
+def _read_flash(resp) -> dict | None:
+    """Decode the flash cookie from a response."""
+    cookie = resp.cookies.get(FLASH_COOKIE_NAME)
+    if not cookie:
+        return None
+    secret_key = settings.secret_key or settings.admin_password
+    serializer = URLSafeTimedSerializer(secret_key, salt="seesee-flash")
+    return serializer.loads(cookie, max_age=60)
+
+
 async def test_apps_create_via_form(client: AsyncClient) -> None:
-    """POST /apps creates an app and redirects with credentials."""
+    """POST /apps creates an app and redirects with credentials in flash cookie."""
     token = _get_session_cookie()
     resp = await client.post(
         "/apps",
@@ -303,14 +315,18 @@ async def test_apps_create_via_form(client: AsyncClient) -> None:
         follow_redirects=False,
     )
     assert resp.status_code == 303
-    location = resp.headers["location"]
-    assert location.startswith("/apps?created=")
-    assert "api_key" in location
-    assert "smtp_username" in location
+    assert resp.headers["location"] == "/apps"
+    # Credentials must be in the flash cookie, not the URL
+    flash = _read_flash(resp)
+    assert flash is not None
+    creds = flash["created_credentials"]
+    assert creds["api_key"].startswith("ss_")
+    assert creds["smtp_username"]
+    assert creds["smtp_password"]
 
 
 async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> None:
-    """POST /apps/{id}/rotate-key rotates key and redirects."""
+    """POST /apps/{id}/rotate-key rotates key and redirects with key in flash cookie."""
     app_resp = await client.post(
         "/api/v1/apps",
         json={"name": "Rotate Test"},
@@ -325,5 +341,8 @@ async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> 
         follow_redirects=False,
     )
     assert resp.status_code == 303
-    location = resp.headers["location"]
-    assert location.startswith("/apps?rotated_key=ss_")
+    assert resp.headers["location"] == "/apps"
+    # Key must be in the flash cookie, not the URL
+    flash = _read_flash(resp)
+    assert flash is not None
+    assert flash["rotated_key"].startswith("ss_")

@@ -17,6 +17,7 @@
 
     <!-- Rotated key alert -->
     {% if rotated_key %}
+    <script>document.addEventListener('DOMContentLoaded', function() { showToast('API key rotated'); });</script>
     <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
         <div class="flex items-start justify-between">
             <h3 class="font-semibold text-mint">API key rotated — save the new key</h3>

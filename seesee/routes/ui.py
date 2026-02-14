@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from starlette.responses import Response
 
 from seesee.auth import (
     API_KEY_PREFIX,
@@ -27,6 +29,9 @@ from seesee.retention import run_cleanup
 
 router = APIRouter(tags=["ui"])
 
+FLASH_COOKIE_NAME = "seesee_flash"
+_FLASH_MAX_AGE = 60  # seconds — only needs to survive one redirect
+
 _templates: Jinja2Templates | None = None
 
 
@@ -43,6 +48,29 @@ def _get_templates() -> Jinja2Templates:
 def _get_secret_key() -> str:
     """Get the secret key, falling back to admin_password if not configured."""
     return settings.secret_key or settings.admin_password
+
+
+def _set_flash(response: Response, data: dict) -> None:
+    """Store flash data in a signed, short-lived cookie."""
+    serializer = URLSafeTimedSerializer(_get_secret_key(), salt="seesee-flash")
+    response.set_cookie(
+        FLASH_COOKIE_NAME,
+        serializer.dumps(data),
+        max_age=_FLASH_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def _pop_flash(request: Request) -> dict | None:
+    """Read and return flash data from the cookie, or None."""
+    cookie = request.cookies.get(FLASH_COOKIE_NAME)
+    if not cookie:
+        return None
+    serializer = URLSafeTimedSerializer(_get_secret_key(), salt="seesee-flash")
+    with contextlib.suppress(BadSignature, SignatureExpired):
+        return serializer.loads(cookie, max_age=_FLASH_MAX_AGE)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -373,18 +401,12 @@ async def app_list(
     )
     apps = [dict(row) for row in await cursor.fetchall()]
 
-    # Check for flash data from redirects
-    created_credentials = None
-    rotated_key = None
-    created_json = request.query_params.get("created")
-    if created_json:
-        with contextlib.suppress(json.JSONDecodeError, TypeError):
-            created_credentials = json.loads(created_json)
-    rotated_json = request.query_params.get("rotated_key")
-    if rotated_json:
-        rotated_key = rotated_json
+    # Read one-time flash data from signed cookie
+    flash = _pop_flash(request)
+    created_credentials = flash.get("created_credentials") if flash else None
+    rotated_key = flash.get("rotated_key") if flash else None
 
-    return tmpl.TemplateResponse(
+    response = tmpl.TemplateResponse(
         "apps.html",
         {
             "request": request,
@@ -395,6 +417,9 @@ async def app_list(
             "rotated_key": rotated_key,
         },
     )
+    if flash:
+        response.delete_cookie(FLASH_COOKIE_NAME)
+    return response
 
 
 @router.post("/apps", response_class=HTMLResponse)
@@ -451,11 +476,16 @@ async def create_app_ui(
     )
     await db.commit()
 
-    # Redirect back with credentials as query param (shown once)
-    creds = json.dumps(
-        {"api_key": api_key, "smtp_username": smtp_username, "smtp_password": smtp_password}
-    )
-    return RedirectResponse(url=f"/apps?created={creds}", status_code=303)
+    # Flash credentials via signed cookie (consumed on next page load)
+    response = RedirectResponse(url="/apps", status_code=303)
+    _set_flash(response, {
+        "created_credentials": {
+            "api_key": api_key,
+            "smtp_username": smtp_username,
+            "smtp_password": smtp_password,
+        }
+    })
+    return response
 
 
 @router.post("/apps/{app_id}/rotate-key")
@@ -480,7 +510,9 @@ async def rotate_key_ui(
     )
     await db.commit()
 
-    return RedirectResponse(url=f"/apps?rotated_key={new_key}", status_code=303)
+    response = RedirectResponse(url="/apps", status_code=303)
+    _set_flash(response, {"rotated_key": new_key})
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -531,10 +563,11 @@ async def app_detail(
     row = await cursor.fetchone()
     app["last_email_at"] = row["logged_at"] if row else None
 
-    # Check for flash data
-    rotated_key = request.query_params.get("rotated_key")
+    # Read one-time flash data from signed cookie
+    flash = _pop_flash(request)
+    rotated_key = flash.get("rotated_key") if flash else None
 
-    return tmpl.TemplateResponse(
+    response = tmpl.TemplateResponse(
         "app_detail.html",
         {
             "request": request,
@@ -546,6 +579,9 @@ async def app_detail(
             "rotated_key": rotated_key,
         },
     )
+    if flash:
+        response.delete_cookie(FLASH_COOKIE_NAME)
+    return response
 
 
 @router.post("/apps/{app_id}/purge")

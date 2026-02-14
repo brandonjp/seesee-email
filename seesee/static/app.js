@@ -135,14 +135,10 @@ document.addEventListener('alpine:init', function() {
 });
 
 // Flash message → toast bridge: detect query params and fire toasts
+// Note: credentials (created, rotated_key) use server-side flash cookies
+// and fire toasts via inline <script> tags in templates instead.
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('created')) {
-        showToast('App created successfully');
-    }
-    if (params.has('rotated_key')) {
-        showToast('API key rotated');
-    }
     if (params.has('purged')) {
         showToast('All emails purged');
     }

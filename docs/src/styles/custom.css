@@ -1,0 +1,28 @@
+/* SeeSee brand customization for Starlight */
+
+:root {
+  /* Phosphor mint brand color */
+  --sl-color-accent-low: #0d3d2f;
+  --sl-color-accent: #32f5c0;
+  --sl-color-accent-high: #b0fce5;
+
+  --sl-color-white: #f6f1e6;
+  --sl-color-gray-1: #eee9db;
+  --sl-color-gray-2: #c4bfb3;
+  --sl-color-gray-3: #8a857b;
+  --sl-color-gray-4: #56524a;
+  --sl-color-gray-5: #38352f;
+  --sl-color-gray-6: #252320;
+  --sl-color-black: #181614;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #d1faed;
+  --sl-color-accent: #0fa87a;
+  --sl-color-accent-high: #0a5c44;
+}
+
+/* Hero section customization */
+.hero {
+  --sl-color-text-accent: var(--sl-color-accent);
+}

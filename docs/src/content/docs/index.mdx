@@ -1,0 +1,117 @@
+---
+title: SeeSee
+description: See what your apps sent. Lightweight, self-hosted email log viewer.
+template: splash
+hero:
+  title: See what your apps sent.
+  tagline: Lightweight, self-hosted email log viewer. One container, all your apps, every email logged.
+  actions:
+    - text: Get Started
+      link: /getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/brandonjp/seesee-email
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Why SeeSee?
+
+You run multiple apps — WordPress sites, Python services, Node.js APIs — each sending email through different providers. When something goes wrong, you're digging through provider dashboards, server logs, and inboxes.
+
+**SeeSee gives you one place to see every email your apps sent.** Point your apps at SeeSee via REST API or SMTP, and every outgoing email gets logged, searchable, and browsable.
+
+```bash
+# One container. That's it.
+docker run -d -p 8080:8080 -p 2525:2525 \
+  -e SEESEE_ADMIN_PASSWORD=your-password \
+  -v seesee-data:/data \
+  ghcr.io/brandonjp/seesee-email:latest
+```
+
+## Features
+
+<CardGrid>
+  <Card title="REST API" icon="rocket">
+    Log emails from any language with a simple POST request. Bearer token auth per app.
+  </Card>
+  <Card title="SMTP Ingest" icon="email">
+    Point your app's SMTP settings at SeeSee. It captures every message, with optional relay to deliver them too.
+  </Card>
+  <Card title="Full-Text Search" icon="magnifier">
+    SQLite FTS5 powers instant search across subjects, bodies, addresses, and error messages.
+  </Card>
+  <Card title="Multi-App" icon="list-format">
+    Each app gets its own API key and SMTP credentials. Filter and search per app.
+  </Card>
+  <Card title="Web Dashboard" icon="laptop">
+    Browse emails, view HTML previews, manage apps, and monitor stats — dark mode included.
+  </Card>
+  <Card title="Retention Policies" icon="setting">
+    Automatic cleanup by count, age, or storage cap. Per-app overrides for fine-grained control.
+  </Card>
+  <Card title="Single Container" icon="seti:docker">
+    SQLite database, no external dependencies. Deploy with Docker or Docker Compose in seconds.
+  </Card>
+  <Card title="Privacy First" icon="approve-check">
+    Self-hosted — your email data never leaves your server. Configurable body storage modes for sensitive content.
+  </Card>
+</CardGrid>
+
+## Architecture
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  WordPress   │     │  Python App  │     │  Node.js App │
+│  (wp_mail)   │     │  (smtplib)   │     │  (fetch)     │
+└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+       │                    │                    │
+       │  REST API          │  SMTP              │  REST API
+       │  POST /api/v1/log  │  Port 2525         │  POST /api/v1/log
+       ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────┐
+│                        SeeSee                           │
+│  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐  │
+│  │  FastAPI     │  │  SMTP       │  │  Retention     │  │
+│  │  REST API    │  │  Ingest     │  │  Scheduler     │  │
+│  └──────┬──────┘  └──────┬──────┘  └────────┬───────┘  │
+│         │                │                   │          │
+│         ▼                ▼                   ▼          │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │              SQLite + FTS5                      │    │
+│  │              /data/seesee.db                    │    │
+│  └─────────────────────────────────────────────────┘    │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │           Web UI (Jinja2 + Tailwind)            │    │
+│  │   Dashboard · Email List · Detail · App Mgmt   │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+                           │
+                    Optional SMTP Relay
+                           │
+                    ┌──────▼──────┐
+                    │  Upstream   │
+                    │  SMTP Server│
+                    └─────────────┘
+```
+
+## Quick Links
+
+<CardGrid>
+  <Card title="Quick Start" icon="rocket">
+    [Get running in 60 seconds →](/getting-started/quick-start/)
+  </Card>
+  <Card title="API Reference" icon="open-book">
+    [Full endpoint documentation →](/reference/api/)
+  </Card>
+  <Card title="Configuration" icon="setting">
+    [All environment variables →](/reference/configuration/)
+  </Card>
+  <Card title="Integrations" icon="puzzle">
+    [PHP, Python, Node.js examples →](/guides/integrations/)
+  </Card>
+</CardGrid>

@@ -16,28 +16,28 @@
             <div class="flex items-center justify-between py-3">
                 <div>
                     <p class="text-sm font-medium">Max email count</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_COUNT</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">SEESEE_RETENTION_MAX_COUNT</p>
                 </div>
                 <span class="text-sm font-semibold">{{ settings.retention_max_count | default(1000) }}</span>
             </div>
             <div class="flex items-center justify-between py-3">
                 <div>
                     <p class="text-sm font-medium">Max age (days)</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_AGE_DAYS</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">SEESEE_RETENTION_MAX_AGE_DAYS</p>
                 </div>
                 <span class="text-sm font-semibold">{{ settings.retention_max_age_days | default(90) }}</span>
             </div>
             <div class="flex items-center justify-between py-3">
                 <div>
                     <p class="text-sm font-medium">Max storage (MB)</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_MAX_STORAGE_MB</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">SEESEE_RETENTION_MAX_STORAGE_MB</p>
                 </div>
                 <span class="text-sm font-semibold">{{ settings.retention_max_storage_mb | default(500) }}</span>
             </div>
             <div class="flex items-center justify-between py-3">
                 <div>
                     <p class="text-sm font-medium">Cleanup interval (minutes)</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES</p>
                 </div>
                 <span class="text-sm font-semibold">{{ settings.retention_cleanup_interval_minutes | default(60) }}</span>
             </div>

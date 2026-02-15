@@ -241,7 +241,7 @@ Instead of the REST API hook, you can use a WordPress SMTP plugin (e.g., WP Mail
 | Password | SMTP password from app creation |
 | Encryption | None |
 
-With [SMTP relay](/guides/smtp-ingest/#relay-configuration) enabled, emails will still be delivered while SeeSee captures a copy.
+SeeSee captures a copy of every email sent via SMTP. Your app should also send the email through its normal provider for actual delivery.
 
 ### PHP (standalone)
 

@@ -48,7 +48,7 @@ volumes:
 ## How It Works
 
 1. Your apps send email through their normal provider (Resend, SendGrid, SES, SMTP, etc.)
-2. After sending, they log the email to SeeSee via a simple HTTP POST or SMTP relay
+2. After sending, they log the email to SeeSee via a simple HTTP POST or SMTP ingest
 3. SeeSee stores the metadata and body in SQLite with full-text search
 4. You search and inspect sent emails through the web UI
 

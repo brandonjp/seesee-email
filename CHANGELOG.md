@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- SMTP relay feature — SeeSee no longer forwards emails to upstream SMTP servers. The SMTP ingest remains as a capture-only feature, consistent with SeeSee's core principle of being a log viewer, not a mail server. Removed `aiosmtplib` dependency, all `SEESEE_SMTP_RELAY_*` configuration variables, and the `_relay_message()` function. SMTP ingest (capture-only) continues to work as before.
+
 ### Added
 - Web UI Polish (Phase 1.1 completion + Phase 2.1):
   - App detail page (`GET /apps/{id}`) with email stats, status breakdown, integration snippets (REST, Python, Node.js, PHP, SMTP), rotate key and purge buttons
@@ -54,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Getting started guide (docker run/compose, create app, log first email, verify)
   - Configuration reference documenting all 19 `SEESEE_*` environment variables grouped by category
   - REST API reference with all endpoints, request/response schemas, and curl examples
-  - SMTP ingest guide with setup instructions, Python/PHP/Node.js client examples, relay configuration
+  - SMTP ingest guide with setup instructions, Python/PHP/Node.js client examples
   - Docker deployment guide with compose, volumes, health checks, and reverse proxy examples (nginx, Caddy, Traefik)
   - Coolify deployment guide with step-by-step setup, domain/SSL, and persistent storage
   - Integration guides for PHP/WordPress (wp_mail hook), Python, Node.js, and cURL
@@ -100,12 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MIME message parsing via Python `email` stdlib — extracts subject, from, to, cc, reply-to, text/plain body, text/html body; handles multipart/alternative and multipart/mixed; skips attachments
   - Parsed emails inserted into `emails` table with `ingest_method = 'smtp'`
   - App `body_storage_mode` (full / text_only / preview) enforced on SMTP path, same as REST API
-  - Optional upstream relay via `aiosmtplib` when `SEESEE_SMTP_RELAY_HOST` is configured; relay failures logged but captured email preserved
-  - Capture-only mode (no relay) when relay host not configured
+  - Capture-only SMTP ingest (emails are logged but never forwarded)
   - Graceful start/stop wired into FastAPI lifespan in `main.py`
-  - 27 new tests covering AUTH, MIME parsing, DB insertion, body storage modes, capture-only, and relay behavior
+  - 27 new tests covering AUTH, MIME parsing, DB insertion, body storage modes, and capture-only behavior
 - `seesee/helpers.py` — shared body storage helpers (`apply_body_storage_mode`, `strip_html_tags`) used by both REST and SMTP ingest paths
-- `aiosmtplib>=3.0.0` dependency for async upstream relay
 
 ### Changed
 - Refactored `_apply_body_storage_mode` out of `routes/ingest.py` into `seesee/helpers.py` for reuse

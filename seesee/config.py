@@ -25,11 +25,6 @@ class SeeSeeSettings(BaseSettings):
     # SMTP Ingest
     smtp_enabled: bool = True
     smtp_port: int = 2525
-    smtp_relay_host: str = ""
-    smtp_relay_port: int = 587
-    smtp_relay_username: str = ""
-    smtp_relay_password: str = ""
-    smtp_relay_tls: bool = True
 
     # Retention
     retention_max_count: int = 1000

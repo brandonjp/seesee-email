@@ -81,7 +81,7 @@ seesee-email/
 │   ├── models.py            # Pydantic request/response models
 │   ├── auth.py              # API key hashing, session management
 │   ├── retention.py         # Cleanup scheduler, retention enforcement
-│   ├── smtp_server.py       # aiosmtpd handler, MIME parsing, relay
+│   ├── smtp_server.py       # aiosmtpd handler, MIME parsing
 │   ├── routes/
 │   │   ├── ingest.py        # POST /api/v1/log, /api/v1/log/batch
 │   │   ├── emails.py        # GET /api/v1/emails, /{id}, /{id}/preview
@@ -118,7 +118,7 @@ SeeSee uses pytest with pytest-asyncio for async test support.
 - Search and filter queries — FTS5 behavior, pagination
 - Retention logic — count limits, age limits, per-app overrides
 - Auth — API key verification, session management
-- SMTP parsing — MIME extraction, relay behavior
+- SMTP parsing — MIME extraction
 
 **Test patterns:**
 - API tests use httpx `AsyncClient` with FastAPI's `TestClient`

@@ -4,7 +4,6 @@ Listens on a configurable port (default 2525) and:
 1. Authenticates senders against per-app SMTP credentials
 2. Parses MIME messages (extracts to, from, subject, HTML/text body)
 3. Logs the email to the database
-4. Optionally relays the message to an upstream SMTP server
 """
 
 import email
@@ -198,7 +197,7 @@ def _parse_address_list(header_values: list | None) -> list[str]:
 
 
 class SeeSeeHandler:
-    """aiosmtpd handler that logs emails to the database and optionally relays."""
+    """aiosmtpd handler that logs emails to the database."""
 
     async def handle_RCPT(  # noqa: N802
         self,
@@ -234,7 +233,7 @@ class SeeSeeHandler:
         session: Session,
         envelope: Envelope,
     ) -> str:
-        """Process the received message: parse, store in DB, optionally relay."""
+        """Process the received message: parse and store in DB."""
         app = getattr(session, "app", None)
         if not app:
             return "530 5.7.0 Authentication required"
@@ -268,25 +267,11 @@ class SeeSeeHandler:
                 reply_to=parsed["reply_to"],
             )
 
-            # Optional relay
-            relay_status = None
-            if settings.smtp_relay_host:
-                relay_status = await _relay_message(raw_data, envelope)
-                if relay_status != "relayed":
-                    # Update the email record to note relay failure
-                    db = await get_db()
-                    await db.execute(
-                        "UPDATE emails SET error_message = ? WHERE id = ?",
-                        (f"Relay failed: {relay_status}", email_id),
-                    )
-                    await db.commit()
-
             logger.info(
-                "SMTP email logged: id=%s app=%s to=%s relay=%s",
+                "SMTP email logged: id=%s app=%s to=%s",
                 email_id,
                 app["name"],
                 to_addresses,
-                relay_status or "none",
             )
             return "250 Message accepted for delivery"
 
@@ -367,36 +352,6 @@ async def _store_email(
 
     await db.commit()
     return email_id
-
-
-# ---------------------------------------------------------------------------
-# Optional upstream relay
-# ---------------------------------------------------------------------------
-
-
-async def _relay_message(raw_data: bytes, envelope: Envelope) -> str:
-    """Forward the raw message to the configured upstream SMTP server.
-
-    Returns 'relayed' on success, or an error description on failure.
-    """
-    try:
-        import aiosmtplib
-
-        await aiosmtplib.send(
-            raw_data,
-            sender=envelope.mail_from,
-            recipients=envelope.rcpt_tos,
-            hostname=settings.smtp_relay_host,
-            port=settings.smtp_relay_port,
-            username=settings.smtp_relay_username or None,
-            password=settings.smtp_relay_password or None,
-            use_tls=settings.smtp_relay_tls,
-        )
-        logger.info("Relayed message to %s:%d", settings.smtp_relay_host, settings.smtp_relay_port)
-        return "relayed"
-    except Exception as exc:
-        logger.error("Relay failed: %s", exc)
-        return str(exc)
 
 
 # ---------------------------------------------------------------------------

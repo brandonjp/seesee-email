@@ -79,7 +79,7 @@ SeeSee automatically deletes old data based on configurable retention rules:
 All data is stored locally on your server:
 
 - **Database:** Single SQLite file at the configured `SEESEE_DB_PATH` (default `/data/seesee.db`)
-- **No cloud services** — SeeSee makes no outbound connections (except optional SMTP relay)
+- **No cloud services** — SeeSee makes no outbound connections
 - **No telemetry** — no usage data is sent anywhere
 - **No CDN** — the Web UI uses bundled assets (Tailwind CSS and Alpine.js from CDN are loaded client-side)
 

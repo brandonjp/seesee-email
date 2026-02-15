@@ -58,7 +58,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Subject</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">From</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">To</th>
@@ -68,7 +68,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     {% for email in emails %}
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition-colors"
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
                         data-href="/emails/{{ email.id }}"
                         onclick="window.location='/emails/{{ email.id }}'">
                         <td class="px-4 py-3">

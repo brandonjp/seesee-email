@@ -244,3 +244,27 @@ async def purge_app_emails(app_id: str) -> dict:
     await db.commit()
 
     return {"message": f"Deleted {count} emails"}
+
+
+@router.delete(
+    "/apps/{app_id}",
+    dependencies=[Depends(require_admin)],
+)
+async def delete_app(app_id: str) -> dict:
+    """Delete an app and all its emails. Requires admin auth."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id, name FROM apps WHERE id = ?", (app_id,))
+    app = await cursor.fetchone()
+    if app is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails WHERE app_id = ?", (app_id,))
+    email_count = (await cursor.fetchone())["cnt"]
+
+    # Delete emails first (FK constraint: no CASCADE), then the app
+    await db.execute("DELETE FROM emails WHERE app_id = ?", (app_id,))
+    await db.execute("DELETE FROM apps WHERE id = ?", (app_id,))
+    await db.commit()
+
+    return {"message": f"Deleted app '{app['name']}' and {email_count} emails"}

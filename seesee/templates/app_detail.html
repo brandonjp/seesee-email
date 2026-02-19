@@ -8,7 +8,7 @@
     <a href="/apps" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">&larr; Back to apps</a>
 </div>
 {% else %}
-<div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false }">
+<div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false, confirmDelete: false }">
     <!-- Back link -->
     <a href="/apps" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -225,6 +225,11 @@ echo $response;</code></pre>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Purge All Emails
             </button>
+            <button @click="confirmDelete = true"
+                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Delete App
+            </button>
         </div>
     </div>
 
@@ -257,6 +262,23 @@ echo $response;</code></pre>
                 <form action="/apps/{{ app.id }}/purge" method="post" class="inline">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Purge All</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete app confirmation modal -->
+    <div x-show="confirmDelete" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="confirmDelete = false"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 class="text-lg font-bold">Delete App?</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete <strong>{{ app.name }}</strong> and <strong>all {{ app.email_count }} emails</strong>. API keys and SMTP credentials will stop working immediately. This action cannot be undone.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmDelete = false"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <form action="/apps/{{ app.id }}/delete" method="post" class="inline">
+                    <button type="submit"
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete App</button>
                 </form>
             </div>
         </div>

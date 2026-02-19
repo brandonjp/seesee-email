@@ -405,6 +405,7 @@ async def app_list(
     flash = _pop_flash(request)
     created_credentials = flash.get("created_credentials") if flash else None
     rotated_key = flash.get("rotated_key") if flash else None
+    deleted_app = flash.get("deleted_app") if flash else None
 
     response = tmpl.TemplateResponse(
         "apps.html",
@@ -415,6 +416,7 @@ async def app_list(
             "apps": apps,
             "created_credentials": created_credentials,
             "rotated_key": rotated_key,
+            "deleted_app": deleted_app,
         },
     )
     if flash:
@@ -603,6 +605,40 @@ async def purge_app_emails_ui(
     await db.commit()
 
     return RedirectResponse(url=f"/apps/{app_id}?purged=1", status_code=303)
+
+
+@router.post("/apps/{app_id}/delete")
+async def delete_app_ui(
+    app_id: str,
+    user: str = Depends(require_session),
+) -> RedirectResponse:
+    """Delete an app and all its emails via the web UI."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id, name FROM apps WHERE id = ?", (app_id,))
+    app = await cursor.fetchone()
+    if app is None:
+        return RedirectResponse(url="/apps", status_code=303)
+
+    cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails WHERE app_id = ?", (app_id,))
+    email_count = (await cursor.fetchone())["cnt"]
+
+    # Delete emails first (FK constraint: no CASCADE), then the app
+    await db.execute("DELETE FROM emails WHERE app_id = ?", (app_id,))
+    await db.execute("DELETE FROM apps WHERE id = ?", (app_id,))
+    await db.commit()
+
+    response = RedirectResponse(url="/apps", status_code=303)
+    _set_flash(
+        response,
+        {
+            "deleted_app": {
+                "name": app["name"],
+                "email_count": email_count,
+            }
+        },
+    )
+    return response
 
 
 @router.post("/emails/{email_id}/delete")

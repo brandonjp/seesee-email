@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Apps — SeeSee{% endblock %}
 {% block content %}
-<div class="space-y-4" x-data="{ showAddForm: false, confirmRotate: null }">
+<div class="space-y-4" x-data="{ showAddForm: false, confirmRotate: null, confirmDelete: null }">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold">Apps</h1>
         <button @click="showAddForm = true"
@@ -58,6 +58,20 @@
     </div>
     {% endif %}
 
+    <!-- Deleted app alert -->
+    {% if deleted_app %}
+    <script>document.addEventListener('DOMContentLoaded', function() { showToast('App deleted'); });</script>
+    <div class="rounded-xl border-2 border-red-500 bg-red-50 dark:bg-red-900/10 p-5 space-y-2" x-data="{ show: true }" x-show="show">
+        <div class="flex items-start justify-between">
+            <h3 class="font-semibold text-red-600 dark:text-red-400">App "{{ deleted_app.name }}" deleted</h3>
+            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ deleted_app.email_count }} email(s) were also removed.</p>
+    </div>
+    {% endif %}
+
     <!-- Add app modal -->
     <div x-show="showAddForm" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
         <div class="fixed inset-0 bg-black/50" @click="showAddForm = false"></div>
@@ -110,6 +124,23 @@
         </div>
     </div>
 
+    <!-- Delete app confirmation -->
+    <div x-show="confirmDelete" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-black/50" @click="confirmDelete = null"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 class="text-lg font-bold">Delete App?</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete this app and <strong>all its emails</strong>. API keys and SMTP credentials will stop working immediately. This action cannot be undone.</p>
+            <div class="flex gap-3 justify-end">
+                <button @click="confirmDelete = null"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <form :action="'/apps/' + confirmDelete + '/delete'" method="post" class="inline">
+                    <button type="submit"
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete App</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- App list -->
     {% if apps %}
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -150,6 +181,11 @@
                                     class="text-xs text-gray-500 dark:text-gray-400 hover:text-mint transition-colors"
                                     title="Rotate API key">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                            <button @click="confirmDelete = '{{ app.id }}'"
+                                    class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors ml-2"
+                                    title="Delete app">
+                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </td>
                     </tr>

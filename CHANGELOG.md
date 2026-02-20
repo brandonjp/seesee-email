@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Search-and-delete / GDPR right to erasure (Phase 3.0):
+  - `DELETE /api/v1/emails` — bulk delete emails matching search criteria (admin auth required)
+  - Accepts same filter parameters as `GET /api/v1/emails`: `q`, `app_id`, `status`, `provider`, `date_from`, `date_to`
+  - Returns `{"deleted": N, "message": "Deleted N emails"}` response
+  - Safety: requires at least one filter parameter to prevent accidental full-database wipes (returns 422 if no filters)
+  - FTS5 index automatically cleaned up via existing delete triggers
+  - "Delete matching" button on emails search page when filters are active, with confirmation modal showing count
+  - Toast notification on completion with deleted count
+  - 11 new tests covering bulk delete by app, status, provider, FTS query, date range, combined filters, empty results, no-filter rejection, auth requirement, and FTS consistency after delete
+  - 257 total tests passing
+
+### Changed
+- Version bump: 0.12.0-dev → 0.13.0-dev
+
+### Added
 - Timezone handling architecture — consistent UTC storage and configurable admin display:
   - `SEESEE_DISPLAY_TIMEZONE` env var — IANA timezone string (default: `UTC`) controlling how dates are shown in admin views; does not affect storage or API responses
   - `seesee/timezone.py` helper module — `utc_now_iso()`, `utc_iso()`, `utc_cutoff_iso()`, `format_for_display()`, `get_display_tz()`, `display_day_start_utc()` for consistent timestamp handling

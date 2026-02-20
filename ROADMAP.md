@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.12.0-dev
+**Version:** 0.13.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -138,7 +138,7 @@
 - [x] Graduated body degradation (full → text → preview over time)
 - [x] Provider webhook receivers (Resend, SendGrid status callbacks)
 - [x] Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
-- [ ] Search-and-delete (GDPR right to erasure)
+- [x] Search-and-delete (GDPR right to erasure)
 - [ ] Data export per recipient (GDPR right of access)
 - [ ] CSV/JSON search export
 - [ ] Prometheus metrics endpoint

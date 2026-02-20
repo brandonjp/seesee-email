@@ -58,7 +58,7 @@ npm run dev                  # Dev server at localhost:4321
 
 **Type:** Self-hosted web application (API + SMTP + Web UI)
 **Stack:** Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind + Alpine.js
-**Version:** 0.12.0-dev (Semantic Versioning)
+**Version:** 0.13.0-dev (Semantic Versioning)
 **Package Manager:** pip with pyproject.toml
 **Deployment:** Docker single container → GHCR, Coolify-compatible
 

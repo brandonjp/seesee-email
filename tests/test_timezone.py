@@ -1,10 +1,7 @@
 """Tests for timezone utilities and consistent timestamp handling."""
 
-from datetime import UTC, datetime, timedelta, timezone
-from unittest.mock import patch
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
-
-import pytest
 
 from seesee.timezone import (
     _parse_stored_iso,

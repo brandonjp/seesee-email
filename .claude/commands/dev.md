@@ -74,6 +74,7 @@ seesee-email/
 │   ├── models.py            # Pydantic models for API request/response
 │   ├── auth.py              # API key hashing/verification, session management
 │   ├── retention.py         # Cleanup scheduler, per-app + global rules
+│   ├── timezone.py          # Timezone helpers (UTC storage, display formatting)
 │   ├── smtp_server.py       # aiosmtpd handler, MIME parsing
 │   ├── routes/
 │   │   ├── ingest.py        # POST /api/v1/log, /api/v1/log/batch
@@ -129,6 +130,7 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 #### Phase 3.0 — Future 🔮
 - ✅ Graduated body degradation (full → text → preview over time)
 - ✅ Provider webhook receivers (Resend, SendGrid status callbacks)
+- ✅ Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
 - Search-and-delete (GDPR right to erasure)
 - Data export per recipient
 - CSV/JSON search export
@@ -259,6 +261,7 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 | `seesee/routes/ui.py` | All HTML page routes | Adding/changing UI pages |
 | `seesee/templates/` | HTML templates | Any UI change |
 | `seesee/retention.py` | Cleanup logic | Changing retention behavior |
+| `seesee/timezone.py` | UTC helpers + display formatting | Adding time-related features |
 | `seesee/smtp_server.py` | SMTP capture (ingest) | Changing SMTP behavior |
 | `.env.example` | Config documentation | Adding new env vars |
 | `docker-compose.yml` | Deployment template | Changing ports, volumes, health checks |

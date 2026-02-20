@@ -3,14 +3,12 @@
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, status
 
 from seesee.database import get_db
 from seesee.dependencies import get_current_app
 from seesee.helpers import apply_body_storage_mode
-from seesee.timezone import utc_iso, utc_now, utc_now_iso
 from seesee.models import (
     BatchLogError,
     BatchLogRequest,
@@ -18,6 +16,7 @@ from seesee.models import (
     EmailLogRequest,
     EmailLogResponse,
 )
+from seesee.timezone import utc_iso, utc_now, utc_now_iso
 
 logger = logging.getLogger("seesee.ingest")
 

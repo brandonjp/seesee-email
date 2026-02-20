@@ -5,10 +5,8 @@ import json
 import math
 import secrets
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Form, Query, Request
-from seesee.timezone import utc_cutoff_iso, utc_now_iso
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -27,6 +25,7 @@ from seesee.config import settings
 from seesee.database import get_db
 from seesee.dependencies import require_session
 from seesee.retention import run_cleanup
+from seesee.timezone import utc_cutoff_iso, utc_now_iso
 
 router = APIRouter(tags=["ui"])
 

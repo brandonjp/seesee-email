@@ -106,9 +106,7 @@ def display_day_start_utc(date_offset_days: int = 0) -> str:
     tz = get_display_tz()
     now_local = datetime.now(tz)
     target_date = (now_local + timedelta(days=date_offset_days)).date()
-    local_midnight = datetime(
-        target_date.year, target_date.month, target_date.day, tzinfo=tz
-    )
+    local_midnight = datetime(target_date.year, target_date.month, target_date.day, tzinfo=tz)
     return utc_iso(local_midnight)
 
 

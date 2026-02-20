@@ -14,7 +14,7 @@ from seesee import __version__
 from seesee.config import settings
 from seesee.database import close_db, get_db, init_db
 from seesee.retention import start_retention_scheduler, stop_retention_scheduler
-from seesee.routes import admin, apps, emails, ingest, stats, ui, webhooks
+from seesee.routes import admin, apps, emails, export, ingest, stats, ui, webhooks
 from seesee.smtp_server import start_smtp_server, stop_smtp_server
 
 logger = logging.getLogger("seesee")
@@ -78,6 +78,7 @@ if _templates_dir.is_dir():
 app.include_router(ingest.router)
 app.include_router(apps.router)
 app.include_router(emails.router)
+app.include_router(export.router)
 app.include_router(stats.router)
 app.include_router(admin.router)
 app.include_router(webhooks.router)

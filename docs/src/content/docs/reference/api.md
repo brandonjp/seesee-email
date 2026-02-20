@@ -576,6 +576,81 @@ Unmatched events (where `provider_message_id` doesn't match any stored email) st
 
 ---
 
+## Data Export (GDPR)
+
+### Export recipient data
+
+#### `GET /api/v1/export`
+
+Export all emails associated with a specific recipient email address. Supports GDPR Article 15 (right of access) — when a user requests their data, the admin can export everything SeeSee has logged for that address.
+
+Searches across `to_addresses`, `cc_addresses`, and `bcc_addresses` fields (case-insensitive). Requires admin Basic Auth.
+
+```bash
+curl "http://localhost:8080/api/v1/export?recipient=user@example.com" \
+  -u admin:your-password
+```
+
+**Query parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `recipient` | string | yes | Email address to export data for |
+| `format` | string | no | Response format: `json` (default) or `csv` |
+
+You can also request CSV format via the `Accept: text/csv` header instead of the `format` parameter.
+
+**JSON response (200):**
+
+```json
+{
+  "recipient": "user@example.com",
+  "total": 2,
+  "exported_at": "2026-02-20T12:00:00Z",
+  "emails": [
+    {
+      "id": "abc-123",
+      "app_id": "def-456",
+      "to_addresses": ["user@example.com"],
+      "from_address": "app@example.com",
+      "subject": "Welcome!",
+      "body_preview": "Thanks for signing up...",
+      "body_html": "<h1>Welcome</h1><p>Thanks for signing up.</p>",
+      "body_text": "Welcome! Thanks for signing up.",
+      "status": "sent",
+      "provider": "resend",
+      "ingest_method": "api",
+      "logged_at": "2026-02-20T10:00:00",
+      "cc_addresses": null,
+      "bcc_addresses": null
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `recipient` | The email address that was searched |
+| `total` | Number of matching emails found |
+| `exported_at` | Timestamp when the export was generated |
+| `emails` | Array of email records with metadata and body content |
+
+**CSV response:**
+
+```bash
+curl "http://localhost:8080/api/v1/export?recipient=user@example.com&format=csv" \
+  -u admin:your-password \
+  -o export.csv
+```
+
+Returns a CSV file with columns: `id`, `app_id`, `to_addresses`, `from_address`, `subject`, `body_preview`, `body_html`, `body_text`, `status`, `provider`, `ingest_method`, `logged_at`, `cc_addresses`, `bcc_addresses`.
+
+:::tip
+The CSV format is useful for importing into spreadsheets or data processing tools when responding to GDPR data access requests.
+:::
+
+---
+
 ## Admin
 
 ### Trigger retention cleanup

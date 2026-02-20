@@ -100,12 +100,16 @@ Since SeeSee is self-hosted, **you are the data controller**. Here's how SeeSee 
 
 ### Right to erasure (Article 17)
 
-- Currently, emails can be deleted through retention policies
-- **Planned:** Search-and-delete functionality for targeted removal by recipient address
+- `DELETE /api/v1/emails` — bulk delete emails matching search criteria (by app, status, provider, date range, or full-text query)
+- `DELETE /api/v1/emails/{id}` — delete individual emails
+- Automatic retention policies continuously delete old data
 
-### Data portability (Article 20)
+### Right of access / Data portability (Articles 15 & 20)
 
-- **Planned:** Data export per recipient in standard formats
+- `GET /api/v1/export?recipient=user@example.com` — export all emails associated with a recipient address
+- Searches across to, cc, and bcc fields (case-insensitive)
+- Supports JSON and CSV output formats
+- Includes email metadata and body content
 
 ### Security (Article 32)
 

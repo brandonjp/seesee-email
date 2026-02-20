@@ -221,6 +221,39 @@ class PersistenceDiagnostics(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Export models (GDPR right of access)
+# ---------------------------------------------------------------------------
+
+
+class ExportEmail(BaseModel):
+    """Single email record in a data export."""
+
+    id: str
+    app_id: str
+    to_addresses: list[str]
+    from_address: str
+    subject: str
+    body_preview: str | None = None
+    body_html: str | None = None
+    body_text: str | None = None
+    status: str
+    provider: str | None = None
+    ingest_method: str
+    logged_at: datetime
+    cc_addresses: list[str] | None = None
+    bcc_addresses: list[str] | None = None
+
+
+class ExportResponse(BaseModel):
+    """Response body for GET /api/v1/export."""
+
+    recipient: str
+    total: int
+    exported_at: datetime
+    emails: list[ExportEmail]
+
+
+# ---------------------------------------------------------------------------
 # Webhook models
 # ---------------------------------------------------------------------------
 

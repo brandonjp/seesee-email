@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Added `SEESEE_DISPLAY_TIMEZONE` to docs site configuration reference (was missing from the UI table and example `.env` block)
+- Added `SEESEE_DISPLAY_TIMEZONE` to `docker-compose.yml` environment section
+- Marked search-and-delete as completed in dev.md Phase 3.0 checklist
+
+### Changed
+- Version bump: 0.13.0-dev → 0.13.1-dev
+
 ### Added
 - Search-and-delete / GDPR right to erasure (Phase 3.0):
   - `DELETE /api/v1/emails` — bulk delete emails matching search criteria (admin auth required)

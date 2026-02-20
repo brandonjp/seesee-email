@@ -71,6 +71,7 @@ Set `SEESEE_SECRET_KEY` to a unique random string in production. If not set, it 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `SEESEE_THEME` | string | `system` | Default theme: `light`, `dark`, or `system` (follows OS preference) |
+| `SEESEE_DISPLAY_TIMEZONE` | string | `UTC` | IANA timezone string for admin date display (e.g. `America/Chicago`, `Europe/London`). Controls how dates appear in admin views only — does **not** affect storage (always UTC) or API responses (always UTC ISO 8601) |
 
 ## Webhook Secrets
 
@@ -114,6 +115,9 @@ SEESEE_RETENTION_MAX_AGE_DAYS=90
 SEESEE_RETENTION_MAX_STORAGE_MB=500
 SEESEE_RETENTION_DEGRADE_TO_TEXT_DAYS=0
 SEESEE_RETENTION_DEGRADE_TO_PREVIEW_DAYS=0
+
+# UI
+SEESEE_DISPLAY_TIMEZONE=UTC  # e.g. "America/Chicago", "Europe/London"
 
 # Session
 SEESEE_SECRET_KEY=your-random-secret-key

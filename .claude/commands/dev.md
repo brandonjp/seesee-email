@@ -58,7 +58,7 @@ npm run dev                  # Dev server at localhost:4321
 
 **Type:** Self-hosted web application (API + SMTP + Web UI)
 **Stack:** Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind + Alpine.js
-**Version:** 0.13.0-dev (Semantic Versioning)
+**Version:** 0.13.1-dev (Semantic Versioning)
 **Package Manager:** pip with pyproject.toml
 **Deployment:** Docker single container → GHCR, Coolify-compatible
 
@@ -131,7 +131,7 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 - ✅ Graduated body degradation (full → text → preview over time)
 - ✅ Provider webhook receivers (Resend, SendGrid status callbacks)
 - ✅ Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
-- Search-and-delete (GDPR right to erasure)
+- ✅ Search-and-delete (GDPR right to erasure)
 - Data export per recipient
 - CSV/JSON search export
 - Prometheus metrics

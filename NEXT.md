@@ -1,21 +1,23 @@
 # Next Steps — SeeSee
 
-**Version:** 0.10.0-dev
+**Version:** 0.11.0-dev
 **Updated:** 2026-02-20
 
 ## Just Completed
 
-- **Persistence diagnostics & Coolify volume fix** — Diagnosed and fixed why apps/emails were lost on every Coolify redeploy:
-  - Removed `VOLUME ["/data"]` from Dockerfile (creates anonymous volumes that mask volume mounting failures)
-  - Added startup persistence diagnostics logging (database state, app/email counts, mount info, WARNING on fresh DB)
-  - Added `GET /api/v1/admin/debug/persistence` endpoint (volume mount status, database stats, container hostname, uptime)
-  - Rewrote Coolify deployment docs with explicit Storages setup instructions and detailed troubleshooting for data loss
-  - Added API reference docs for the new endpoint
-  - 2 new tests, 160 total passing
+- **Provider webhook receivers** (Phase 3.0) — Automatic email delivery status updates from provider callbacks:
+  - `POST /api/v1/webhooks/resend` — Resend delivery status webhooks (sent, delivered, bounced, complained, delayed)
+  - `POST /api/v1/webhooks/sendgrid` — SendGrid event webhooks (delivered, bounced, dropped, deferred, complained)
+  - Resend: Svix HMAC-SHA256 signature verification (`SEESEE_WEBHOOK_SECRET_RESEND`)
+  - SendGrid: token-based verification via URL query parameter (`SEESEE_WEBHOOK_SECRET_SENDGRID`)
+  - Matches webhook events to stored emails by `provider` + `provider_message_id`
+  - Secrets optional — skips verification with a logged warning if not configured
+  - Database index on `provider_message_id` for efficient lookups
+  - 23 new tests, 183 total passing
 
 ## Highest Priority Next Task
 
-**Provider webhook receivers** (Phase 3.0) — Add webhook endpoints for email delivery status callbacks from providers like Resend and SendGrid. When a provider reports a delivery, bounce, or complaint, automatically update the email's status in SeeSee.
+Pick from remaining Phase 3.0 candidates based on user feedback.
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
@@ -32,9 +34,10 @@
 
 ## Current State
 
-- All phases 0 through 2.1 complete
-- 160 tests passing
+- All phases 0 through 2.1 complete, plus provider webhook receivers from Phase 3.0
+- 183 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
+- Provider webhook receivers for Resend and SendGrid
 - Docker multi-platform builds (amd64 + arm64)
 - Documentation site deployed via GitHub Pages
 - Persistence diagnostics for debugging deployment issues

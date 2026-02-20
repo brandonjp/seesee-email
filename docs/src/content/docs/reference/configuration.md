@@ -70,6 +70,19 @@ Set `SEESEE_SECRET_KEY` to a unique random string in production. If not set, it 
 |----------|------|---------|-------------|
 | `SEESEE_THEME` | string | `system` | Default theme: `light`, `dark`, or `system` (follows OS preference) |
 
+## Webhook Secrets
+
+Optional secrets for verifying webhook payloads from email providers. If not set, signature verification is skipped (a warning is logged).
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SEESEE_WEBHOOK_SECRET_RESEND` | string | *(empty)* | Svix signing secret from the Resend dashboard (starts with `whsec_`) |
+| `SEESEE_WEBHOOK_SECRET_SENDGRID` | string | *(empty)* | Shared secret for SendGrid webhook token verification |
+
+:::tip
+For production deployments, always configure webhook secrets to prevent unauthorized status updates. See the [Webhooks API reference](/reference/api/#webhooks) for setup instructions.
+:::
+
 ## Logging
 
 | Variable | Type | Default | Description |
@@ -101,6 +114,10 @@ SEESEE_RETENTION_MAX_STORAGE_MB=500
 # Session
 SEESEE_SECRET_KEY=your-random-secret-key
 SEESEE_SESSION_MAX_AGE_DAYS=7
+
+# Webhook secrets (optional)
+SEESEE_WEBHOOK_SECRET_RESEND=whsec_your_resend_signing_secret
+SEESEE_WEBHOOK_SECRET_SENDGRID=your-sendgrid-shared-secret
 
 # Logging
 SEESEE_LOG_LEVEL=info

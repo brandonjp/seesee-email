@@ -466,6 +466,116 @@ curl http://localhost:8080/api/v1/stats \
 
 ---
 
+## Webhooks
+
+Webhook endpoints receive delivery status callbacks from email providers and automatically update the matching email's status in SeeSee. No admin auth is required — these endpoints authenticate via provider-specific signature/token verification.
+
+### Receive webhook
+
+#### `POST /api/v1/webhooks/{provider}`
+
+Supported providers: `resend`, `sendgrid`. Unknown providers return `404`.
+
+Events are matched to stored emails using the `provider` and `provider_message_id` fields that were set when the email was originally logged.
+
+#### Resend setup
+
+1. In your Resend dashboard, go to **Webhooks** and add a new endpoint:
+   - **URL:** `https://your-seesee-domain/api/v1/webhooks/resend`
+   - **Events:** Select the events you want (e.g., `email.delivered`, `email.bounced`, `email.complained`)
+2. Copy the **Signing secret** (starts with `whsec_`) and set it as `SEESEE_WEBHOOK_SECRET_RESEND`
+
+Resend uses Svix HMAC-SHA256 signatures via `svix-id`, `svix-timestamp`, and `svix-signature` headers.
+
+**Event mapping:**
+
+| Resend Event | SeeSee Status |
+|-------------|---------------|
+| `email.sent` | `sent` |
+| `email.delivered` | `delivered` |
+| `email.delivery_delayed` | `delayed` |
+| `email.bounced` | `bounced` |
+| `email.complained` | `complained` |
+
+**Example Resend payload:**
+
+```json
+{
+  "type": "email.delivered",
+  "created_at": "2026-01-01T00:00:00.000Z",
+  "data": {
+    "email_id": "d1234567-abcd-1234-efgh-123456789012",
+    "from": "sender@example.com",
+    "to": ["user@example.com"],
+    "subject": "Welcome"
+  }
+}
+```
+
+#### SendGrid setup
+
+1. In your SendGrid dashboard, go to **Settings > Mail Settings > Event Webhook**
+2. Set the **HTTP Post URL** to: `https://your-seesee-domain/api/v1/webhooks/sendgrid?verification_token=YOUR_SECRET`
+3. Set the same secret value as `SEESEE_WEBHOOK_SECRET_SENDGRID` in your SeeSee environment
+4. Select the events you want (e.g., `delivered`, `bounce`, `spamreport`)
+
+**Event mapping:**
+
+| SendGrid Event | SeeSee Status |
+|---------------|---------------|
+| `processed` | `sent` |
+| `delivered` | `delivered` |
+| `bounce` | `bounced` |
+| `dropped` | `dropped` |
+| `deferred` | `deferred` |
+| `spamreport` | `complained` |
+
+**Example SendGrid payload:**
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "timestamp": 1234567890,
+    "event": "delivered",
+    "sg_message_id": "abc123.filter0001.16648.5515E0B88.0"
+  }
+]
+```
+
+#### Webhook response
+
+All successfully parsed webhooks return `200`:
+
+```json
+{
+  "processed": 1,
+  "matched": 1,
+  "events": [
+    {
+      "provider_message_id": "d1234567-abcd-1234-efgh-123456789012",
+      "event_type": "email.delivered",
+      "new_status": "delivered",
+      "email_id": "uuid-of-matched-email",
+      "matched": true
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `processed` | Number of events parsed from the payload |
+| `matched` | Number of events that matched a stored email |
+| `events[].matched` | Whether this specific event matched a stored email |
+| `events[].email_id` | The SeeSee email ID (null if not matched) |
+
+:::note
+Unmatched events (where `provider_message_id` doesn't match any stored email) still return `200`. This is standard webhook practice — it prevents providers from retrying events for emails not tracked in SeeSee.
+:::
+
+---
+
 ## Admin
 
 ### Trigger retention cleanup

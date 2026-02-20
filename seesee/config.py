@@ -39,6 +39,10 @@ class SeeSeeSettings(BaseSettings):
     # UI
     theme: str = "system"
 
+    # Webhook secrets (per-provider, optional — skip verification if empty)
+    webhook_secret_resend: str = ""
+    webhook_secret_sendgrid: str = ""
+
     # Logging
     log_level: str = "info"
 

@@ -5,6 +5,7 @@
 
 ## Just Completed
 
+- **Click-to-copy buttons on credential values** — Small clipboard icon next to API Key, SMTP Username, SMTP Password, and rotated key values in the Apps page. Uses native Clipboard API with checkmark feedback and existing toast notifications.
 - **Provider webhook receivers** (Phase 3.0) — Automatic email delivery status updates from provider callbacks:
   - `POST /api/v1/webhooks/resend` — Resend delivery status webhooks (sent, delivered, bounced, complained, delayed)
   - `POST /api/v1/webhooks/sendgrid` — SendGrid event webhooks (delivered, bounced, dropped, deferred, complained)

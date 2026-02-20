@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.10.0-dev
+**Version:** 0.11.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -136,7 +136,7 @@
 **Goal:** Advanced features based on user feedback.
 
 - [ ] Graduated body degradation (full → text → preview over time)
-- [ ] Provider webhook receivers (Resend, SendGrid status callbacks)
+- [x] Provider webhook receivers (Resend, SendGrid status callbacks)
 - [ ] Search-and-delete (GDPR right to erasure)
 - [ ] Data export per recipient (GDPR right of access)
 - [ ] CSV/JSON search export

@@ -70,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_emails_app_id ON emails(app_id);
 CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
 CREATE INDEX IF NOT EXISTS idx_emails_logged_at ON emails(logged_at);
 CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
+CREATE INDEX IF NOT EXISTS idx_emails_provider_message_id ON emails(provider_message_id);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS emails_fts USING fts5(
     subject,

@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Provider webhook receivers — automatically update email delivery status from provider callbacks:
+  - `POST /api/v1/webhooks/resend` — receive Resend delivery status webhooks (sent, delivered, bounced, complained, delayed)
+  - `POST /api/v1/webhooks/sendgrid` — receive SendGrid event webhooks (delivered, bounced, dropped, deferred, complained)
+  - Resend signature verification via Svix HMAC-SHA256 (`SEESEE_WEBHOOK_SECRET_RESEND`)
+  - SendGrid token-based verification via URL query parameter (`SEESEE_WEBHOOK_SECRET_SENDGRID`)
+  - Automatic email matching by `provider` + `provider_message_id`, with SendGrid `.filter` suffix fallback
+  - Webhook secrets optional — skips verification with a logged warning if not configured
+  - `WebhookResponse` and `WebhookEventResult` Pydantic response models
+  - Database index on `provider_message_id` for efficient webhook event matching
+  - 23 new tests covering signature verification, event parsing, status updates, unknown providers, invalid signatures, edge cases
+  - 183 total tests passing
+
+### Changed
+- Version bump: 0.10.0-dev → 0.11.0-dev
+
+### Added
 - Persistence diagnostics — startup logging and admin debug endpoint for diagnosing volume/data loss issues:
   - `GET /api/v1/admin/debug/persistence` — returns database path, size, app/email counts, volume mount status, container hostname, and uptime (admin auth)
   - Startup diagnostics logged on every boot: database state (new vs existing), app/email counts, mount info, with `WARNING` when database appears freshly created

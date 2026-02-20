@@ -204,3 +204,26 @@ class PersistenceDiagnostics(BaseModel):
     hostname: str
     volume_mounted: bool
     mount_info: str
+
+
+# ---------------------------------------------------------------------------
+# Webhook models
+# ---------------------------------------------------------------------------
+
+
+class WebhookEventResult(BaseModel):
+    """Result of processing a single webhook event."""
+
+    provider_message_id: str
+    event_type: str
+    new_status: str
+    email_id: str | None = None
+    matched: bool = False
+
+
+class WebhookResponse(BaseModel):
+    """Response body for POST /api/v1/webhooks/{provider}."""
+
+    processed: int = 0
+    matched: int = 0
+    events: list[WebhookEventResult] = []

@@ -27,6 +27,27 @@ function showToast(message, type) {
 }
 
 // ---------------------------------------------------------------------------
+// Click-to-copy helper
+// ---------------------------------------------------------------------------
+function copyToClipboard(text, buttonEl) {
+    navigator.clipboard.writeText(text).then(function() {
+        showToast('Copied to clipboard');
+        if (buttonEl) {
+            const icon = buttonEl.querySelector('.copy-icon');
+            const check = buttonEl.querySelector('.check-icon');
+            if (icon && check) {
+                icon.classList.add('hidden');
+                check.classList.remove('hidden');
+                setTimeout(function() {
+                    icon.classList.remove('hidden');
+                    check.classList.add('hidden');
+                }, 1500);
+            }
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Keyboard shortcuts (/, j, k, Enter, Esc)
 // ---------------------------------------------------------------------------
 document.addEventListener('keydown', function(e) {

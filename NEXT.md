@@ -13,7 +13,8 @@
   - Opt-in: disabled by default (0 = never degrade)
   - Preserves/generates body_text and body_preview during degradation
   - Updates body_size_bytes and FTS5 index automatically
-  - Database schema migration v1 → v2
+  - `body_degraded_at` audit timestamp for tracking when degradation occurred
+  - Database schema migrations v1 → v3
   - 26 new tests, 209 total passing
 
 ## Highest Priority Next Task

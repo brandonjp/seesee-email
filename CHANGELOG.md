@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updates `body_size_bytes` to reflect actual stored content after degradation
   - FTS5 search index automatically updated via existing triggers
   - Opt-in and non-destructive: disabled by default (0 = never degrade)
-  - Database schema migration (v1 → v2) adds per-app override columns
+  - `body_degraded_at` audit timestamp on emails — records when degradation occurred
+  - Database schema migrations (v1 → v2 → v3) add per-app override columns and audit timestamp
   - 26 new tests covering degradation logic, thresholds, per-app overrides, FTS consistency, and body_size accuracy
 
 ### Changed

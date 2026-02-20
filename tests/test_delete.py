@@ -108,3 +108,71 @@ async def test_purge_requires_admin(client: AsyncClient, admin_auth_header: dict
 
     resp = await client.delete(f"/api/v1/apps/{app_id}/emails")
     assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# Delete app (app + all emails)
+# ---------------------------------------------------------------------------
+
+
+async def test_delete_app(client: AsyncClient, admin_auth_header: dict) -> None:
+    """DELETE /api/v1/apps/{app_id} deletes the app and all its emails."""
+    app_data = await create_test_app(client, admin_auth_header)
+    api_key = app_data["api_key"]
+    app_id = app_data["id"]
+
+    # Log a few emails
+    for i in range(3):
+        await client.post(
+            "/api/v1/log",
+            json={
+                "to": [f"user{i}@example.com"],
+                "from": "sender@example.com",
+                "subject": f"Delete app test {i}",
+            },
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+
+    resp = await client.delete(
+        f"/api/v1/apps/{app_id}",
+        headers=admin_auth_header,
+    )
+    assert resp.status_code == 200
+    assert "3" in resp.json()["message"]
+    assert app_data["name"] in resp.json()["message"]
+
+    # Verify app is gone
+    resp = await client.get("/api/v1/apps", headers=admin_auth_header)
+    app_ids = [a["id"] for a in resp.json()]
+    assert app_id not in app_ids
+
+
+async def test_delete_app_no_emails(client: AsyncClient, admin_auth_header: dict) -> None:
+    """DELETE /api/v1/apps/{app_id} works when the app has no emails."""
+    app_data = await create_test_app(client, admin_auth_header)
+    app_id = app_data["id"]
+
+    resp = await client.delete(
+        f"/api/v1/apps/{app_id}",
+        headers=admin_auth_header,
+    )
+    assert resp.status_code == 200
+    assert "0" in resp.json()["message"]
+
+
+async def test_delete_nonexistent_app(client: AsyncClient, admin_auth_header: dict) -> None:
+    """DELETE /api/v1/apps/{app_id} with bad ID returns 404."""
+    resp = await client.delete(
+        "/api/v1/apps/nonexistent-id",
+        headers=admin_auth_header,
+    )
+    assert resp.status_code == 404
+
+
+async def test_delete_app_requires_admin(client: AsyncClient, admin_auth_header: dict) -> None:
+    """DELETE app requires admin auth."""
+    app_data = await create_test_app(client, admin_auth_header)
+    app_id = app_data["id"]
+
+    resp = await client.delete(f"/api/v1/apps/{app_id}")
+    assert resp.status_code in (401, 403)

@@ -486,3 +486,46 @@ curl -X POST http://localhost:8080/api/v1/admin/cleanup \
   "message": "Cleanup completed"
 }
 ```
+
+### Persistence diagnostics
+
+#### `GET /api/v1/admin/debug/persistence`
+
+Return diagnostic information about database persistence and volume mounting. Useful for debugging data loss after container redeploys, especially on platforms like Coolify. Requires admin Basic Auth.
+
+```bash
+curl http://localhost:8080/api/v1/admin/debug/persistence \
+  -u admin:your-password
+```
+
+**Response (200):**
+
+```json
+{
+  "db_path": "/data/seesee.db",
+  "db_size_bytes": 245760,
+  "db_modified_at": "2026-02-20T10:30:00+00:00",
+  "app_count": 3,
+  "email_count": 1234,
+  "schema_version": "1",
+  "oldest_app_created_at": "2026-01-15T10:30:00",
+  "uptime_seconds": 3661.42,
+  "hostname": "abc123def456",
+  "volume_mounted": true,
+  "mount_info": "device=overlay mount=/data fstype=overlay"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `db_path` | Resolved path to the SQLite database file |
+| `db_size_bytes` | Database file size in bytes |
+| `db_modified_at` | Last modification time (ISO 8601) |
+| `app_count` | Number of registered apps |
+| `email_count` | Total number of stored emails |
+| `schema_version` | Database schema version |
+| `oldest_app_created_at` | Creation time of the oldest app |
+| `uptime_seconds` | Seconds since application startup |
+| `hostname` | Container hostname (container ID in Docker) |
+| `volume_mounted` | Whether `/data` is a separate mount point |
+| `mount_info` | Filesystem device and type for the data directory |

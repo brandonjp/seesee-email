@@ -4,11 +4,18 @@ Uses aiosqlite for async access. WAL mode is enabled for concurrent reads.
 All queries must use parameterized values — never string-format SQL.
 """
 
+import logging
+import pathlib
+import time
+
 import aiosqlite
 
 from seesee.config import settings
 
+logger = logging.getLogger("seesee")
+
 _db: aiosqlite.Connection | None = None
+_startup_time: float = 0.0
 
 SCHEMA_VERSION = 1
 
@@ -105,7 +112,12 @@ async def get_db() -> aiosqlite.Connection:
 
 async def init_db() -> None:
     """Initialize the database connection and create schema."""
-    global _db
+    global _db, _startup_time
+
+    db_path = pathlib.Path(settings.db_path)
+    db_existed = db_path.exists()
+    db_size_before = db_path.stat().st_size if db_existed else 0
+
     _db = await aiosqlite.connect(settings.db_path)
     _db.row_factory = aiosqlite.Row
     await _db.execute("PRAGMA journal_mode=WAL")
@@ -116,6 +128,74 @@ async def init_db() -> None:
         ("schema_version", str(SCHEMA_VERSION)),
     )
     await _db.commit()
+
+    _startup_time = time.monotonic()
+
+    # --- Persistence diagnostics ---
+    db_size_after = db_path.stat().st_size if db_path.exists() else 0
+
+    cursor = await _db.execute("SELECT COUNT(*) FROM apps")
+    app_count = (await cursor.fetchone())[0]
+
+    cursor = await _db.execute("SELECT COUNT(*) FROM emails")
+    email_count = (await cursor.fetchone())[0]
+
+    mount_info = _get_mount_info(str(db_path.parent))
+
+    logger.info("--- SeeSee Persistence Diagnostics ---")
+    logger.info("Database path: %s", settings.db_path)
+    logger.info(
+        "Database file: %s (size before init: %d bytes, after: %d bytes)",
+        "EXISTING" if db_existed else "NEW",
+        db_size_before,
+        db_size_after,
+    )
+    logger.info("Data: %d apps, %d emails", app_count, email_count)
+    logger.info("Mount info for %s: %s", db_path.parent, mount_info)
+
+    if not db_existed or app_count == 0:
+        logger.warning(
+            "DATABASE APPEARS FRESHLY CREATED (0 apps). "
+            "If you expected existing data, your volume may not be persisting "
+            "across deploys. Check your Coolify Storages configuration or "
+            "docker-compose volume mounts."
+        )
+
+    logger.info("--- End Persistence Diagnostics ---")
+
+
+def get_startup_time() -> float:
+    """Return the monotonic timestamp recorded at startup."""
+    return _startup_time
+
+
+def _get_mount_info(directory: str) -> str:
+    """Check /proc/mounts to determine what filesystem a directory is on.
+
+    Returns a human-readable string describing the mount, or a fallback
+    message on non-Linux systems.
+    """
+    proc_mounts = pathlib.Path("/proc/mounts")
+    if not proc_mounts.exists():
+        return "(/proc/mounts not available)"
+
+    try:
+        mounts_text = proc_mounts.read_text()
+        best_match = ""
+        best_line = ""
+        for line in mounts_text.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 4:
+                mount_point = parts[1]
+                if directory.startswith(mount_point) and len(mount_point) > len(best_match):
+                    best_match = mount_point
+                    best_line = line
+        if best_line:
+            parts = best_line.split()
+            return f"device={parts[0]} mount={parts[1]} fstype={parts[2]}"
+        return "(no matching mount found)"
+    except Exception as e:
+        return f"(error reading /proc/mounts: {e})"
 
 
 async def close_db() -> None:

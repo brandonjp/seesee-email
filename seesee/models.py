@@ -183,3 +183,24 @@ class DashboardStats(BaseModel):
     total_apps: int
     by_status: dict[str, int] = {}
     by_app: list[dict] = []
+
+
+# ---------------------------------------------------------------------------
+# Admin diagnostic models
+# ---------------------------------------------------------------------------
+
+
+class PersistenceDiagnostics(BaseModel):
+    """Response body for GET /api/v1/admin/debug/persistence."""
+
+    db_path: str
+    db_size_bytes: int
+    db_modified_at: str | None = None
+    app_count: int
+    email_count: int
+    schema_version: str | None = None
+    oldest_app_created_at: str | None = None
+    uptime_seconds: float
+    hostname: str
+    volume_mounted: bool
+    mount_info: str

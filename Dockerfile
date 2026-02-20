@@ -45,7 +45,9 @@ EXPOSE 8080 2525
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/health')" || exit 1
 
-# Persistent storage
-VOLUME ["/data"]
+# Data directory: mount a volume at /data for persistence.
+# No VOLUME instruction — it creates anonymous volumes that interfere
+# with named volume mounting in orchestrators like Coolify.
+# Configure volumes via docker-compose.yml or your platform's storage UI.
 
 CMD ["python", "-m", "seesee"]

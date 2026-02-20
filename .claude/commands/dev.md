@@ -58,7 +58,7 @@ npm run dev                  # Dev server at localhost:4321
 
 **Type:** Self-hosted web application (API + SMTP + Web UI)
 **Stack:** Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind + Alpine.js
-**Version:** 0.1.0-dev (Semantic Versioning)
+**Version:** 0.10.0-dev (Semantic Versioning)
 **Package Manager:** pip with pyproject.toml
 **Deployment:** Docker single container → GHCR, Coolify-compatible
 
@@ -80,6 +80,7 @@ seesee-email/
 │   │   ├── emails.py        # GET /api/v1/emails, /{id}, /{id}/preview
 │   │   ├── apps.py          # CRUD for app registration + key management
 │   │   ├── stats.py         # GET /api/v1/stats (dashboard data)
+│   │   ├── admin.py         # Admin endpoints (cleanup, persistence diagnostics)
 │   │   └── ui.py            # Jinja2 HTML page routes (/, /emails, /apps, etc.)
 │   ├── templates/           # Jinja2 HTML (Tailwind + Alpine.js, no build step)
 │   └── static/              # CSS, JS, favicon
@@ -112,61 +113,18 @@ See `ROADMAP.md` for detailed phase breakdown.
 **Phase Status Legend:**
 - ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
-### Current Focus: Phase 1.1 — Web UI (foundation complete)
+### Current Focus: Phase 3.0 — Future features
 
-### Phase Overview
+All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 
-#### Phase 1.0 — Core API + Storage ✅
-- ✅ SQLite database with FTS5 schema + sync triggers
-- ✅ POST /api/v1/log endpoint
-- ✅ API key auth per app (O(1) prefix lookup)
-- ✅ App registration endpoints (POST + GET + PATCH /api/v1/apps)
-- ✅ POST /api/v1/apps/{id}/rotate-key
-- ✅ Body storage modes (full / text_only / preview)
-- ✅ GET /api/v1/emails (list/search), GET /api/v1/emails/{id}, GET /api/v1/emails/{id}/preview
-- ✅ GET /api/v1/stats (dashboard statistics)
-- ✅ Health endpoint with database status
-- ✅ Error response consistency
-
-#### Phase 1.1 — Web UI 🚧
-- ✅ Login page + session auth (itsdangerous signed cookies)
-- ✅ Dashboard with stats cards, status breakdown, per-app counts
-- ✅ Email list with search + filters + pagination
-- ✅ Email detail with tabbed content (preview iframe, HTML, text, metadata)
-- ✅ App management page (list, add, rotate key)
-- ✅ Dark/light mode (system preference + manual toggle)
-- ✅ Base layout with sidebar nav, brand styling
-- 📋 Settings page
-- 📋 Keyboard shortcuts
-
-#### Phase 1.2 — SMTP Ingest 📋
-- aiosmtpd listener on port 2525
-- SMTP AUTH with per-app credentials
-- MIME message parsing
-
-#### Phase 1.3 — Retention + Deployment 📋
-- Retention scheduler (max count, max age, storage cap)
-- Dockerfile (multi-stage, non-root)
-- Docker Compose with health check
-- GitHub Actions: build → GHCR
-- .env.example with all vars documented
-
-#### Phase 2.0 — Documentation Site 📋
-- Astro Starlight setup in docs/
-- Marketing landing page
-- Getting started guide
-- API reference
-- Integration guides (PHP, Python, JS, WordPress)
-- Privacy & compliance page
-- GitHub Actions: docs → GitHub Pages
-
-#### Phase 2.1 — Polish 📋
-- Batch ingest endpoint
-- Status update endpoint (PATCH)
-- Keyboard shortcuts
-- Toast notifications
-- Empty state onboarding
-- Integration snippets in app detail (pre-filled with credentials)
+#### Completed Phases
+- ✅ Phase 0 — Project Setup
+- ✅ Phase 1.0 — Core API + Storage
+- ✅ Phase 1.1 — Web UI
+- ✅ Phase 1.2 — SMTP Ingest
+- ✅ Phase 1.3 — Retention + Deployment
+- ✅ Phase 2.0 — Documentation Site
+- ✅ Phase 2.1 — Polish
 
 #### Phase 3.0 — Future 🔮
 - Graduated body degradation (full → text → preview over time)

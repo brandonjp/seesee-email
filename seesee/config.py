@@ -32,6 +32,10 @@ class SeeSeeSettings(BaseSettings):
     retention_max_storage_mb: int = 500
     retention_cleanup_interval_minutes: int = 60
 
+    # Body degradation (0 = disabled, never degrade)
+    retention_degrade_to_text_days: int = 0
+    retention_degrade_to_preview_days: int = 0
+
     # Session
     secret_key: str = ""
     session_max_age_days: int = 7

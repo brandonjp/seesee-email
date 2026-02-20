@@ -98,6 +98,7 @@ class EmailDetail(EmailSummary):
     body_html: str | None = None
     body_text: str | None = None
     body_size_bytes: int = 0
+    body_degraded_at: datetime | None = None
     provider_message_id: str | None = None
     error_message: str | None = None
     metadata: dict | None = None
@@ -129,6 +130,8 @@ class AppCreateRequest(BaseModel):
     body_storage_mode: str = "full"
     retention_max_count: int | None = None
     retention_max_age_days: int | None = None
+    retention_degrade_to_text_days: int | None = None
+    retention_degrade_to_preview_days: int | None = None
 
 
 class AppUpdateRequest(BaseModel):
@@ -138,6 +141,8 @@ class AppUpdateRequest(BaseModel):
     body_storage_mode: str | None = None
     retention_max_count: int | None = None
     retention_max_age_days: int | None = None
+    retention_degrade_to_text_days: int | None = None
+    retention_degrade_to_preview_days: int | None = None
 
 
 class AppResponse(BaseModel):
@@ -149,6 +154,8 @@ class AppResponse(BaseModel):
     body_storage_mode: str
     retention_max_count: int | None = None
     retention_max_age_days: int | None = None
+    retention_degrade_to_text_days: int | None = None
+    retention_degrade_to_preview_days: int | None = None
     created_at: datetime
     last_activity_at: datetime | None = None
 

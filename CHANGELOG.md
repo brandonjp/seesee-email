@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Graduated body degradation (Phase 3.0) — automatically degrade email body storage over time to save disk space:
+  - `full` → `text_only`: strip HTML body after a configurable number of days, preserving text and preview
+  - `text_only` → `preview`: strip text body after a configurable number of days, keeping only the preview (first 500 chars)
+  - `SEESEE_RETENTION_DEGRADE_TO_TEXT_DAYS` — global threshold for HTML stripping (0 = never, default)
+  - `SEESEE_RETENTION_DEGRADE_TO_PREVIEW_DAYS` — global threshold for text stripping (0 = never, default)
+  - Per-app overrides via `retention_degrade_to_text_days` and `retention_degrade_to_preview_days` fields on app create/update
+  - Runs as part of the existing retention scheduler cycle — no additional scheduler needed
+  - Preserves body_text (generated from HTML if missing) during text degradation
+  - Preserves body_preview (generated from text/HTML if missing) during preview degradation
+  - Updates `body_size_bytes` to reflect actual stored content after degradation
+  - FTS5 search index automatically updated via existing triggers
+  - Opt-in and non-destructive: disabled by default (0 = never degrade)
+  - `body_degraded_at` audit timestamp on emails — records when degradation occurred
+  - Database schema migrations (v1 → v2 → v3) add per-app override columns and audit timestamp
+  - 26 new tests covering degradation logic, thresholds, per-app overrides, FTS consistency, and body_size accuracy
+
+### Changed
+- Version bump: 0.11.0-dev → 0.12.0-dev
+
+### Added
 - Click-to-copy buttons on credential values — small clipboard icon next to API Key, SMTP Username, SMTP Password, and rotated key values; copies to clipboard on click with checkmark feedback and toast notification
 - Provider webhook receivers — automatically update email delivery status from provider callbacks:
   - `POST /api/v1/webhooks/resend` — receive Resend delivery status webhooks (sent, delivered, bounced, complained, delayed)

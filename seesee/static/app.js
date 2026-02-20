@@ -113,17 +113,27 @@ function _highlightRow(rows, idx) {
 }
 
 // ---------------------------------------------------------------------------
-// Relative timestamps
+// Relative timestamps — all stored timestamps are UTC
 // ---------------------------------------------------------------------------
+function _parseUtcTimestamp(isoString) {
+    if (!isoString) return null;
+    // Ensure the string is interpreted as UTC: append Z if no timezone indicator
+    var s = isoString;
+    if (!s.endsWith('Z') && !s.includes('+') && !/\d{2}:\d{2}$/.test(s.slice(-6))) {
+        s = s + 'Z';
+    }
+    return new Date(s);
+}
+
 function relativeTime(isoString) {
-    if (!isoString) return '';
-    const date = new Date(isoString.endsWith('Z') ? isoString : isoString + 'Z');
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHr / 24);
+    var date = _parseUtcTimestamp(isoString);
+    if (!date || isNaN(date.getTime())) return '';
+    var now = new Date();
+    var diffMs = now - date;
+    var diffSec = Math.floor(diffMs / 1000);
+    var diffMin = Math.floor(diffSec / 60);
+    var diffHr = Math.floor(diffMin / 60);
+    var diffDay = Math.floor(diffHr / 24);
 
     if (diffSec < 60) return 'just now';
     if (diffMin < 60) return diffMin + ' minute' + (diffMin === 1 ? '' : 's') + ' ago';
@@ -131,16 +141,52 @@ function relativeTime(isoString) {
     if (diffDay === 1) return 'yesterday';
     if (diffDay < 30) return diffDay + ' day' + (diffDay === 1 ? '' : 's') + ' ago';
 
-    // Fall back to short date
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    // Fall back to short date in user's local timezone
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return months[date.getMonth()] + ' ' + date.getDate();
+}
+
+function _formatLocalDateTime(date) {
+    // Format in the browser's local timezone with timezone label
+    try {
+        return date.toLocaleString(undefined, {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+        });
+    } catch (e) {
+        return date.toString();
+    }
+}
+
+function _formatUtcDateTime(date) {
+    // Format as UTC with timezone label
+    try {
+        return date.toLocaleString(undefined, {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit',
+            timeZone: 'UTC', timeZoneName: 'short'
+        });
+    } catch (e) {
+        return date.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+    }
 }
 
 function updateRelativeTimes() {
     document.querySelectorAll('[data-timestamp]').forEach(function(el) {
-        const iso = el.getAttribute('data-timestamp');
+        var iso = el.getAttribute('data-timestamp');
+        var date = _parseUtcTimestamp(iso);
+        if (!date || isNaN(date.getTime())) return;
+
         el.textContent = relativeTime(iso);
-        el.setAttribute('title', iso.replace('T', ' ').substring(0, 19));
+
+        // Tooltip: show local time (and UTC if different from local)
+        var localStr = _formatLocalDateTime(date);
+        var utcStr = _formatUtcDateTime(date);
+        if (localStr !== utcStr) {
+            el.setAttribute('title', localStr + '\n' + utcStr);
+        } else {
+            el.setAttribute('title', utcStr);
+        }
     });
 }
 

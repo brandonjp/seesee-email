@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from seesee.database import get_db
 from seesee.dependencies import require_admin
 from seesee.models import DashboardStats
+from seesee.timezone import utc_cutoff_iso
 
 router = APIRouter(prefix="/api/v1", tags=["stats"])
 
@@ -22,19 +23,23 @@ async def get_stats() -> DashboardStats:
     cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails")
     total_emails = (await cursor.fetchone())["cnt"]
 
-    # Emails in time windows
+    # Emails in time windows (use Python-computed UTC cutoffs for format consistency)
+    cutoff_1d = utc_cutoff_iso(1)
+    cutoff_7d = utc_cutoff_iso(7)
+    cutoff_30d = utc_cutoff_iso(30)
+
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-1 day')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_1d,)
     )
     emails_24h = (await cursor.fetchone())["cnt"]
 
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-7 days')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_7d,)
     )
     emails_7d = (await cursor.fetchone())["cnt"]
 
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-30 days')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_30d,)
     )
     emails_30d = (await cursor.fetchone())["cnt"]
 

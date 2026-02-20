@@ -88,7 +88,7 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden sm:table-cell">
-                            <span data-timestamp="{{ email.logged_at }}">{{ email.logged_at[:16] | replace('T', ' ') }}</span>
+                            <span data-timestamp="{{ email.logged_at }}">{{ email.logged_at | display_dt }}</span>
                         </td>
                     </tr>
                     {% endfor %}

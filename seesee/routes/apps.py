@@ -1,7 +1,6 @@
 """App management routes — CRUD for app registration and key management."""
 
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -21,6 +20,7 @@ from seesee.models import (
     AppUpdateRequest,
     KeyRotateResponse,
 )
+from seesee.timezone import utc_now, utc_now_iso
 
 router = APIRouter(prefix="/api/v1", tags=["apps"])
 
@@ -64,7 +64,8 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
     smtp_password = generate_smtp_password()
     smtp_password_hash = hash_secret(smtp_password)
 
-    now = datetime.now(UTC)
+    now = utc_now()
+    now_iso = utc_now_iso()
 
     await db.execute(
         """INSERT INTO apps (id, name, slug, api_key, key_prefix, smtp_username, smtp_password,
@@ -85,7 +86,7 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
             request.retention_max_age_days,
             request.retention_degrade_to_text_days,
             request.retention_degrade_to_preview_days,
-            now.isoformat(),
+            now_iso,
         ),
     )
     await db.commit()

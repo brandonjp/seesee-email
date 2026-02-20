@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Timezone handling architecture — consistent UTC storage and configurable admin display:
+  - `SEESEE_DISPLAY_TIMEZONE` env var — IANA timezone string (default: `UTC`) controlling how dates are shown in admin views; does not affect storage or API responses
+  - `seesee/timezone.py` helper module — `utc_now_iso()`, `utc_iso()`, `utc_cutoff_iso()`, `format_for_display()`, `get_display_tz()`, `display_day_start_utc()` for consistent timestamp handling
+  - `display_dt` Jinja2 filter — server-rendered timestamp fallback in admin templates using the configured display timezone
+  - Client-side timezone display — JavaScript shows relative times with tooltips showing both local and UTC times via `Intl.DateTimeFormat`
+  - 37 new tests covering timezone helpers, DST transitions, non-hour offset timezones (Asia/Kolkata, Pacific/Chatham), format consistency, and display formatting
+
+### Fixed
+- Timestamp comparison bug — replaced all SQLite `datetime('now', ...)` calls with Python-computed UTC parameters; the format mismatch (SQLite's space separator vs Python's `T` separator) caused incorrect lexicographic comparisons in time-window queries (dashboard stats, retention cleanup)
+- Standardized all timestamp storage to `YYYY-MM-DDTHH:MM:SS` format (no microseconds, no offset suffix) across API ingest, SMTP ingest, app creation, and retention cleanup for consistent cross-query comparisons
+
+### Added
 - Graduated body degradation (Phase 3.0) — automatically degrade email body storage over time to save disk space:
   - `full` → `text_only`: strip HTML body after a configurable number of days, preserving text and preview
   - `text_only` → `preview`: strip text body after a configurable number of days, keeping only the preview (first 500 chars)

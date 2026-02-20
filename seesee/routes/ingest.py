@@ -3,7 +3,6 @@
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, status
 
@@ -17,6 +16,7 @@ from seesee.models import (
     EmailLogRequest,
     EmailLogResponse,
 )
+from seesee.timezone import utc_iso, utc_now, utc_now_iso
 
 logger = logging.getLogger("seesee.ingest")
 
@@ -36,7 +36,8 @@ async def log_email(
     db = await get_db()
 
     email_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
+    now = utc_now()
+    now_iso = utc_now_iso()
 
     body_html, body_text, body_preview, body_size_bytes = apply_body_storage_mode(
         email.body_html,
@@ -51,7 +52,7 @@ async def log_email(
     tags_json = json.dumps(email.tags) if email.tags else None
     metadata_json = json.dumps(email.metadata) if email.metadata else None
 
-    logged_at = email.logged_at or now
+    logged_at_iso = utc_iso(email.logged_at) if email.logged_at else now_iso
 
     await db.execute(
         """INSERT INTO emails (
@@ -81,15 +82,15 @@ async def log_email(
             email.reply_to,
             tags_json,
             "api",
-            logged_at.isoformat(),
-            now.isoformat(),
+            logged_at_iso,
+            now_iso,
         ),
     )
 
     # Update app's last_activity_at
     await db.execute(
         "UPDATE apps SET last_activity_at = ? WHERE id = ?",
-        (now.isoformat(), app["id"]),
+        (now_iso, app["id"]),
     )
 
     await db.commit()
@@ -105,7 +106,7 @@ async def _insert_single_email(email: EmailLogRequest, app: dict) -> str:
     """Insert a single email into the database. Returns the email ID."""
     db = await get_db()
     email_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
+    now_iso = utc_now_iso()
 
     body_html, body_text, body_preview, body_size_bytes = apply_body_storage_mode(
         email.body_html, email.body_text, app["body_storage_mode"]
@@ -116,7 +117,7 @@ async def _insert_single_email(email: EmailLogRequest, app: dict) -> str:
     bcc_json = json.dumps(email.bcc) if email.bcc else None
     tags_json = json.dumps(email.tags) if email.tags else None
     metadata_json = json.dumps(email.metadata) if email.metadata else None
-    logged_at = email.logged_at or now
+    logged_at_iso = utc_iso(email.logged_at) if email.logged_at else now_iso
 
     await db.execute(
         """INSERT INTO emails (
@@ -146,8 +147,8 @@ async def _insert_single_email(email: EmailLogRequest, app: dict) -> str:
             email.reply_to,
             tags_json,
             "api",
-            logged_at.isoformat(),
-            now.isoformat(),
+            logged_at_iso,
+            now_iso,
         ),
     )
     return email_id
@@ -177,10 +178,9 @@ async def log_email_batch(
 
     # Update app's last_activity_at
     if logged > 0:
-        now = datetime.now(UTC)
         await db.execute(
             "UPDATE apps SET last_activity_at = ? WHERE id = ?",
-            (now.isoformat(), app["id"]),
+            (utc_now_iso(), app["id"]),
         )
 
     await db.commit()

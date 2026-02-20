@@ -67,6 +67,13 @@ _templates_dir = _pkg_dir / "templates"
 if _templates_dir.is_dir():
     templates = Jinja2Templates(directory=str(_templates_dir))
 
+    # Register timezone display filter for server-rendered timestamp fallbacks.
+    # Templates use: {{ timestamp | display_dt }} — shows time in SEESEE_DISPLAY_TIMEZONE.
+    # JS enhances these to relative times with local-timezone tooltips.
+    from seesee.timezone import format_for_display
+
+    templates.env.filters["display_dt"] = format_for_display
+
 # Register route modules
 app.include_router(ingest.router)
 app.include_router(apps.router)

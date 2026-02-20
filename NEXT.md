@@ -5,17 +5,14 @@
 
 ## Just Completed
 
-- **Graduated body degradation** (Phase 3.0) — Automatic email body storage degradation over time to save disk space:
-  - `full` → `text_only`: strip HTML body after configurable days (`SEESEE_RETENTION_DEGRADE_TO_TEXT_DAYS`)
-  - `text_only` → `preview`: strip text body after configurable days (`SEESEE_RETENTION_DEGRADE_TO_PREVIEW_DAYS`)
-  - Per-app overrides supported (same pattern as retention overrides)
-  - Runs as part of the existing retention scheduler cycle
-  - Opt-in: disabled by default (0 = never degrade)
-  - Preserves/generates body_text and body_preview during degradation
-  - Updates body_size_bytes and FTS5 index automatically
-  - `body_degraded_at` audit timestamp for tracking when degradation occurred
-  - Database schema migrations v1 → v3
-  - 26 new tests, 209 total passing
+- **Timezone handling architecture** — Consistent UTC storage with configurable admin display:
+  - `SEESEE_DISPLAY_TIMEZONE` env var (IANA timezone string, default: `UTC`) controls admin view date formatting
+  - `seesee/timezone.py` helper module with `utc_now_iso()`, `utc_iso()`, `utc_cutoff_iso()`, `format_for_display()`, etc.
+  - Fixed critical timestamp comparison bug: replaced all SQLite `datetime('now', ...)` with Python-computed UTC parameters (format mismatch caused incorrect time-window queries)
+  - Standardized all timestamp storage to `YYYY-MM-DDTHH:MM:SS` (no microseconds, no offset)
+  - Client-side JS shows relative times with local + UTC tooltips
+  - `display_dt` Jinja2 filter for server-rendered fallbacks
+  - 37 new tests, 246 total passing
 
 ## Highest Priority Next Task
 
@@ -35,11 +32,12 @@ Pick from remaining Phase 3.0 candidates based on user feedback.
 
 ## Current State
 
-- All phases 0 through 2.1 complete, plus provider webhook receivers and graduated body degradation from Phase 3.0
-- 209 tests passing
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, and timezone handling from Phase 3.0
+- 246 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - Provider webhook receivers for Resend and SendGrid
 - Graduated body degradation (full → text → preview over time)
+- Timezone architecture: UTC storage, configurable display, format-consistent queries
 - Docker multi-platform builds (amd64 + arm64)
 - Documentation site deployed via GitHub Pages
 - Persistence diagnostics for debugging deployment issues

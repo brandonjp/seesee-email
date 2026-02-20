@@ -75,7 +75,7 @@
         <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
             <p class="text-sm text-gray-500 dark:text-gray-400">Last Email</p>
             {% if app.last_email_at %}
-            <p class="mt-1 text-lg font-bold" data-timestamp="{{ app.last_email_at }}">{{ app.last_email_at[:16] | replace('T', ' ') }}</p>
+            <p class="mt-1 text-lg font-bold" data-timestamp="{{ app.last_email_at }}">{{ app.last_email_at | display_dt }}</p>
             {% else %}
             <p class="mt-1 text-lg font-bold text-gray-400">Never</p>
             {% endif %}

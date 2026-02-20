@@ -1,17 +1,17 @@
 # Next Steps — SeeSee
 
-**Version:** 0.13.0-dev
+**Version:** 0.13.1-dev
 **Updated:** 2026-02-20
 
 ## Just Completed
 
-- **Search-and-delete / GDPR right to erasure** — Bulk delete emails matching search criteria:
-  - `DELETE /api/v1/emails` endpoint with same filter parameters as list (q, app_id, status, provider, date_from, date_to)
-  - Safety: requires at least one filter parameter (422 if no filters provided)
-  - FTS5 index automatically cleaned up via existing delete triggers
-  - "Delete matching" button on emails search page with confirmation modal and count
-  - Toast notification on completion
-  - 11 new tests, 257 total passing
+- **Timezone variable audit & documentation gaps** — Final pass verifying `SEESEE_DISPLAY_TIMEZONE` implementation against comprehensive timezone guide:
+  - Confirmed zero references to `APP_TIMEZONE` — project correctly uses `SEESEE_DISPLAY_TIMEZONE`
+  - Added `SEESEE_DISPLAY_TIMEZONE` to docs site configuration reference (was missing)
+  - Added `SEESEE_DISPLAY_TIMEZONE` to `docker-compose.yml` environment section
+  - Added `SEESEE_DISPLAY_TIMEZONE` to docs site example `.env` block
+  - Fixed dev.md Phase 3.0 checklist (search-and-delete now marked ✅)
+  - 257 tests passing, all lint checks pass
 
 ## Highest Priority Next Task
 

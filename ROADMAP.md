@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.8.0-dev
+**Version:** 0.9.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -126,6 +126,8 @@
 - [x] Empty state onboarding ("No emails logged yet. Here's how...")
 - [x] Keyboard shortcuts (`/` search, `j`/`k` navigate, `Enter` open, `Esc` close, `?` help modal)
 - [x] Toast notifications for actions (success and error variants, auto-dismiss)
+- [x] `DELETE /api/v1/apps/{app_id}` — delete app and all its emails
+- [x] App deletion UI with confirmation modal (apps list + app detail page)
 
 ---
 

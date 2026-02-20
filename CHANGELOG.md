@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- App deletion — permanently remove an app and all its emails from both the REST API and admin UI:
+  - `DELETE /api/v1/apps/{app_id}` — delete an app and all its emails (admin auth)
+  - Delete button (trash icon) in Apps list Actions column with confirmation modal
+  - "Delete App" button on app detail page alongside existing Rotate Key and Purge actions
+  - Flash alert on Apps page confirming deletion with email count
+  - 4 new tests covering app deletion (with emails, without emails, 404, auth required)
+
 ### Removed
 - SMTP relay feature — SeeSee no longer forwards emails to upstream SMTP servers. The SMTP ingest remains as a capture-only feature, consistent with SeeSee's core principle of being a log viewer, not a mail server. Removed `aiosmtplib` dependency, all `SEESEE_SMTP_RELAY_*` configuration variables, and the `_relay_message()` function. SMTP ingest (capture-only) continues to work as before.
 
@@ -41,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Apps list table rows are clickable links to app detail pages
 - `BatchLogResponse.errors` field now uses structured `BatchLogError` objects (index + error) instead of plain strings
 - `app.js` rewritten with toast manager, keyboard shortcuts, relative timestamp utilities, and flash-to-toast bridge
-- Version bump: 0.7.0-dev → 0.8.0-dev
+- Version bump: 0.7.0-dev → 0.8.0-dev → 0.9.0-dev
 
 ### Security
 - App credentials (API key, SMTP username/password) and rotated keys are no longer exposed in URL query parameters; they are now passed via signed, httponly flash cookies that are consumed on the next page load and immediately deleted — prevents leakage via browser history, server logs, and Referer headers

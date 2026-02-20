@@ -65,6 +65,13 @@ class StatusUpdateRequest(BaseModel):
     status: str = Field(..., min_length=1)
 
 
+class BulkDeleteResponse(BaseModel):
+    """Response body for DELETE /api/v1/emails (bulk delete)."""
+
+    deleted: int
+    message: str
+
+
 class CleanupResponse(BaseModel):
     """Response body for POST /api/v1/admin/cleanup."""
 

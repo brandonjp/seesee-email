@@ -646,6 +646,59 @@ async def delete_app_ui(
     return response
 
 
+@router.post("/emails/bulk-delete")
+async def bulk_delete_emails_ui(
+    request: Request,
+    user: str = Depends(require_session),
+    q: str = Form(""),
+    app_id: str = Form(""),
+    status_val: str = Form("", alias="status"),
+    provider: str = Form(""),
+    date_from: str = Form(""),
+    date_to: str = Form(""),
+) -> RedirectResponse:
+    """Bulk delete emails matching search criteria via the web UI."""
+    db = await get_db()
+
+    # Build WHERE conditions (same logic as email_list)
+    conditions: list[str] = []
+    params: list[str | int] = []
+
+    if q:
+        conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+        params.append(q)
+    if app_id:
+        conditions.append("app_id = ?")
+        params.append(app_id)
+    if status_val:
+        conditions.append("status = ?")
+        params.append(status_val)
+    if provider:
+        conditions.append("provider = ?")
+        params.append(provider)
+    if date_from:
+        conditions.append("logged_at >= ?")
+        params.append(date_from)
+    if date_to:
+        conditions.append("logged_at <= ?")
+        params.append(date_to)
+
+    if not conditions:
+        return RedirectResponse(url="/emails", status_code=303)
+
+    where_clause = "WHERE " + " AND ".join(conditions)
+
+    count_sql = f"SELECT COUNT(*) as cnt FROM emails {where_clause}"  # noqa: S608
+    cursor = await db.execute(count_sql, params)
+    count = (await cursor.fetchone())["cnt"]
+
+    delete_sql = f"DELETE FROM emails {where_clause}"  # noqa: S608
+    await db.execute(delete_sql, params)
+    await db.commit()
+
+    return RedirectResponse(url=f"/emails?bulk_deleted={count}", status_code=303)
+
+
 @router.post("/emails/{email_id}/delete")
 async def delete_email_ui(
     email_id: str,

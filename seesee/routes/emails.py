@@ -8,7 +8,13 @@ from fastapi.responses import HTMLResponse
 
 from seesee.database import get_db
 from seesee.dependencies import require_admin
-from seesee.models import EmailDetail, EmailListResponse, EmailSummary, StatusUpdateRequest
+from seesee.models import (
+    BulkDeleteResponse,
+    EmailDetail,
+    EmailListResponse,
+    EmailSummary,
+    StatusUpdateRequest,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["emails"])
 
@@ -156,6 +162,74 @@ async def list_emails(
         page=page,
         per_page=per_page,
         pages=pages,
+    )
+
+
+@router.delete(
+    "/emails",
+    response_model=BulkDeleteResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def bulk_delete_emails(
+    q: str | None = Query(None, description="Full-text search query"),
+    app_id: str | None = Query(None, description="Filter by app ID"),
+    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
+    provider: str | None = Query(None, description="Filter by provider"),
+    date_from: str | None = Query(None, description="Filter emails logged on or after (ISO date)"),
+    date_to: str | None = Query(None, description="Filter emails logged on or before (ISO date)"),
+) -> BulkDeleteResponse:
+    """Bulk delete emails matching search criteria. Requires admin auth.
+
+    At least one filter parameter must be provided to prevent accidental
+    full-database wipes (GDPR right to erasure use case).
+    """
+    # Safety: require at least one filter
+    if not any([q, app_id, status_filter, provider, date_from, date_to]):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="At least one filter parameter is required (q, app_id, status, provider, date_from, date_to)",
+        )
+
+    db = await get_db()
+
+    # Build WHERE conditions (same logic as list_emails)
+    conditions: list[str] = []
+    params: list[str | int] = []
+
+    if q:
+        conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+        params.append(q)
+    if app_id:
+        conditions.append("app_id = ?")
+        params.append(app_id)
+    if status_filter:
+        conditions.append("status = ?")
+        params.append(status_filter)
+    if provider:
+        conditions.append("provider = ?")
+        params.append(provider)
+    if date_from:
+        conditions.append("logged_at >= ?")
+        params.append(date_from)
+    if date_to:
+        conditions.append("logged_at <= ?")
+        params.append(date_to)
+
+    where_clause = "WHERE " + " AND ".join(conditions)
+
+    # Count before deleting
+    count_sql = f"SELECT COUNT(*) as cnt FROM emails {where_clause}"  # noqa: S608
+    cursor = await db.execute(count_sql, params)
+    count = (await cursor.fetchone())["cnt"]
+
+    # Delete matching rows (FTS5 triggers handle index cleanup)
+    delete_sql = f"DELETE FROM emails {where_clause}"  # noqa: S608
+    await db.execute(delete_sql, params)
+    await db.commit()
+
+    return BulkDeleteResponse(
+        deleted=count,
+        message=f"Deleted {count} email{'s' if count != 1 else ''}",
     )
 
 

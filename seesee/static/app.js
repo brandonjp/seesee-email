@@ -212,6 +212,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (params.has('deleted')) {
         showToast('Email deleted');
     }
+    if (params.has('bulk_deleted')) {
+        var n = params.get('bulk_deleted');
+        showToast('Deleted ' + n + ' email' + (n === '1' ? '' : 's'));
+    }
     if (params.has('cleanup')) {
         showToast('Cleanup completed');
     }

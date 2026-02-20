@@ -68,8 +68,10 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
 
     await db.execute(
         """INSERT INTO apps (id, name, slug, api_key, key_prefix, smtp_username, smtp_password,
-                             body_storage_mode, retention_max_count, retention_max_age_days, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                             body_storage_mode, retention_max_count, retention_max_age_days,
+                             retention_degrade_to_text_days, retention_degrade_to_preview_days,
+                             created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             app_id,
             request.name,
@@ -81,6 +83,8 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
             request.body_storage_mode,
             request.retention_max_count,
             request.retention_max_age_days,
+            request.retention_degrade_to_text_days,
+            request.retention_degrade_to_preview_days,
             now.isoformat(),
         ),
     )
@@ -93,6 +97,8 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
         body_storage_mode=request.body_storage_mode,
         retention_max_count=request.retention_max_count,
         retention_max_age_days=request.retention_max_age_days,
+        retention_degrade_to_text_days=request.retention_degrade_to_text_days,
+        retention_degrade_to_preview_days=request.retention_degrade_to_preview_days,
         created_at=now,
         last_activity_at=None,
         api_key=api_key,
@@ -111,7 +117,9 @@ async def list_apps() -> list[AppResponse]:
     db = await get_db()
     cursor = await db.execute(
         "SELECT id, name, slug, body_storage_mode, retention_max_count, "
-        "retention_max_age_days, created_at, last_activity_at FROM apps ORDER BY created_at DESC"
+        "retention_max_age_days, retention_degrade_to_text_days, "
+        "retention_degrade_to_preview_days, created_at, last_activity_at "
+        "FROM apps ORDER BY created_at DESC"
     )
     rows = await cursor.fetchall()
     return [
@@ -122,6 +130,8 @@ async def list_apps() -> list[AppResponse]:
             body_storage_mode=row["body_storage_mode"],
             retention_max_count=row["retention_max_count"],
             retention_max_age_days=row["retention_max_age_days"],
+            retention_degrade_to_text_days=row["retention_degrade_to_text_days"],
+            retention_degrade_to_preview_days=row["retention_degrade_to_preview_days"],
             created_at=row["created_at"],
             last_activity_at=row["last_activity_at"],
         )
@@ -141,7 +151,9 @@ async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
     # Verify app exists
     cursor = await db.execute(
         "SELECT id, name, slug, body_storage_mode, retention_max_count, "
-        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        "retention_max_age_days, retention_degrade_to_text_days, "
+        "retention_degrade_to_preview_days, created_at, last_activity_at "
+        "FROM apps WHERE id = ?",
         (app_id,),
     )
     row = await cursor.fetchone()
@@ -167,6 +179,10 @@ async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
         updates["retention_max_count"] = request.retention_max_count
     if "retention_max_age_days" in request.model_fields_set:
         updates["retention_max_age_days"] = request.retention_max_age_days
+    if "retention_degrade_to_text_days" in request.model_fields_set:
+        updates["retention_degrade_to_text_days"] = request.retention_degrade_to_text_days
+    if "retention_degrade_to_preview_days" in request.model_fields_set:
+        updates["retention_degrade_to_preview_days"] = request.retention_degrade_to_preview_days
 
     if not updates:
         raise HTTPException(
@@ -183,7 +199,9 @@ async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
     # Return updated row
     cursor = await db.execute(
         "SELECT id, name, slug, body_storage_mode, retention_max_count, "
-        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        "retention_max_age_days, retention_degrade_to_text_days, "
+        "retention_degrade_to_preview_days, created_at, last_activity_at "
+        "FROM apps WHERE id = ?",
         (app_id,),
     )
     updated = await cursor.fetchone()
@@ -194,6 +212,8 @@ async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
         body_storage_mode=updated["body_storage_mode"],
         retention_max_count=updated["retention_max_count"],
         retention_max_age_days=updated["retention_max_age_days"],
+        retention_degrade_to_text_days=updated["retention_degrade_to_text_days"],
+        retention_degrade_to_preview_days=updated["retention_degrade_to_preview_days"],
         created_at=updated["created_at"],
         last_activity_at=updated["last_activity_at"],
     )

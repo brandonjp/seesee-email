@@ -17,7 +17,7 @@ logger = logging.getLogger("seesee")
 _db: aiosqlite.Connection | None = None
 _startup_time: float = 0.0
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS metadata (
@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS apps (
     body_storage_mode TEXT NOT NULL DEFAULT 'full',
     retention_max_count INTEGER,
     retention_max_age_days INTEGER,
+    retention_degrade_to_text_days INTEGER,
+    retention_degrade_to_preview_days INTEGER,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     last_activity_at DATETIME
 );
@@ -130,6 +132,9 @@ async def init_db() -> None:
     )
     await _db.commit()
 
+    # --- Migrations ---
+    await _run_migrations()
+
     _startup_time = time.monotonic()
 
     # --- Persistence diagnostics ---
@@ -163,6 +168,31 @@ async def init_db() -> None:
         )
 
     logger.info("--- End Persistence Diagnostics ---")
+
+
+async def _run_migrations() -> None:
+    """Run schema migrations based on current version."""
+    assert _db is not None
+    cursor = await _db.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
+    row = await cursor.fetchone()
+    current_version = int(row[0]) if row else 1
+
+    if current_version < 2:
+        # Add body degradation override columns to apps table
+        cursor = await _db.execute("PRAGMA table_info(apps)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "retention_degrade_to_text_days" not in columns:
+            await _db.execute("ALTER TABLE apps ADD COLUMN retention_degrade_to_text_days INTEGER")
+        if "retention_degrade_to_preview_days" not in columns:
+            await _db.execute(
+                "ALTER TABLE apps ADD COLUMN retention_degrade_to_preview_days INTEGER"
+            )
+        await _db.execute(
+            "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+            (str(SCHEMA_VERSION),),
+        )
+        await _db.commit()
+        logger.info("Database migrated to schema version %d", SCHEMA_VERSION)
 
 
 def get_startup_time() -> float:

@@ -1,11 +1,17 @@
 # Next Steps — SeeSee
 
-**Version:** 0.9.0-dev
+**Version:** 0.10.0-dev
 **Updated:** 2026-02-20
 
 ## Just Completed
 
-- **App deletion** — `DELETE /api/v1/apps/{app_id}` API endpoint + admin UI with trash icon on apps list and "Delete App" button on app detail page, both with confirmation modals. Flash alerts confirm deletion. 4 new tests added.
+- **Persistence diagnostics & Coolify volume fix** — Diagnosed and fixed why apps/emails were lost on every Coolify redeploy:
+  - Removed `VOLUME ["/data"]` from Dockerfile (creates anonymous volumes that mask volume mounting failures)
+  - Added startup persistence diagnostics logging (database state, app/email counts, mount info, WARNING on fresh DB)
+  - Added `GET /api/v1/admin/debug/persistence` endpoint (volume mount status, database stats, container hostname, uptime)
+  - Rewrote Coolify deployment docs with explicit Storages setup instructions and detailed troubleshooting for data loss
+  - Added API reference docs for the new endpoint
+  - 2 new tests, 160 total passing
 
 ## Highest Priority Next Task
 
@@ -27,7 +33,8 @@
 ## Current State
 
 - All phases 0 through 2.1 complete
-- 158 tests passing
+- 160 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - Docker multi-platform builds (amd64 + arm64)
 - Documentation site deployed via GitHub Pages
+- Persistence diagnostics for debugging deployment issues

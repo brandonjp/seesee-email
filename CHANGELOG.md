@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Persistence diagnostics — startup logging and admin debug endpoint for diagnosing volume/data loss issues:
+  - `GET /api/v1/admin/debug/persistence` — returns database path, size, app/email counts, volume mount status, container hostname, and uptime (admin auth)
+  - Startup diagnostics logged on every boot: database state (new vs existing), app/email counts, mount info, with `WARNING` when database appears freshly created
+  - `PersistenceDiagnostics` Pydantic response model
+  - 2 new tests covering the debug endpoint (happy path + auth requirement)
+- Coolify deployment troubleshooting docs — detailed "Data lost after redeploy" section with debug endpoint usage, Storages verification steps, startup log examples, and common volume pitfalls
+
+### Changed
+- Removed `VOLUME ["/data"]` instruction from Dockerfile — it creates anonymous volumes that interfere with named volume mounting in orchestrators like Coolify, causing silent data loss on redeploy. Named volumes in docker-compose.yml are unaffected.
+- Updated Coolify deployment guide: persistent storage section now clearly states the requirement to verify Coolify Storages configuration, with explicit field values for adding a mount
+- Version bump: 0.9.0-dev → 0.10.0-dev
+
+### Added
 - App deletion — permanently remove an app and all its emails from both the REST API and admin UI:
   - `DELETE /api/v1/apps/{app_id}` — delete an app and all its emails (admin auth)
   - Delete button (trash icon) in Apps list Actions column with confirmation modal

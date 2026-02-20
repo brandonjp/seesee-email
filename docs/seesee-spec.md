@@ -675,7 +675,7 @@ curl -X POST https://seesee.example.com/api/v1/log \
 ### Out of Scope (Future Versions)
 
 - [ ] Graduated body degradation (full → text → preview over time)
-- [ ] Webhook receiver for provider status updates (Resend, SendGrid callbacks)
+- [x] Webhook receiver for provider status updates (Resend, SendGrid callbacks)
 - [ ] Email resend/forward capability
 - [ ] Multi-user auth with roles
 - [ ] Postgres support as alternative to SQLite

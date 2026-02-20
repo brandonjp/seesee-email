@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Form, Query, Request
+from seesee.timezone import utc_cutoff_iso, utc_now_iso
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -153,19 +154,23 @@ async def dashboard(request: Request, user: str = Depends(require_session)) -> H
     cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails")
     total_emails = (await cursor.fetchone())["cnt"]
 
-    # Time-window counts
+    # Time-window counts (use Python-computed UTC cutoffs for format consistency)
+    cutoff_1d = utc_cutoff_iso(1)
+    cutoff_7d = utc_cutoff_iso(7)
+    cutoff_30d = utc_cutoff_iso(30)
+
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-1 day')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_1d,)
     )
     emails_24h = (await cursor.fetchone())["cnt"]
 
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-7 days')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_7d,)
     )
     emails_7d = (await cursor.fetchone())["cnt"]
 
     cursor = await db.execute(
-        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= datetime('now', '-30 days')"
+        "SELECT COUNT(*) as cnt FROM emails WHERE logged_at >= ?", (cutoff_30d,)
     )
     emails_30d = (await cursor.fetchone())["cnt"]
 
@@ -193,8 +198,9 @@ async def dashboard(request: Request, user: str = Depends(require_session)) -> H
     # Daily volume for last 30 days (for sparkline)
     cursor = await db.execute(
         "SELECT DATE(logged_at) as day, COUNT(*) as cnt "
-        "FROM emails WHERE logged_at >= datetime('now', '-30 days') "
-        "GROUP BY DATE(logged_at) ORDER BY day"
+        "FROM emails WHERE logged_at >= ? "
+        "GROUP BY DATE(logged_at) ORDER BY day",
+        (cutoff_30d,),
     )
     daily_volume = [{"day": row["day"], "count": row["cnt"]} for row in await cursor.fetchall()]
 
@@ -458,7 +464,7 @@ async def create_app_ui(
     smtp_password = generate_smtp_password()
     smtp_password_hash = hash_secret(smtp_password)
 
-    now = datetime.now(UTC)
+    now_iso = utc_now_iso()
 
     await db.execute(
         """INSERT INTO apps (id, name, slug, api_key, key_prefix, smtp_username, smtp_password,
@@ -473,7 +479,7 @@ async def create_app_ui(
             smtp_username,
             smtp_password_hash,
             body_storage_mode,
-            now.isoformat(),
+            now_iso,
         ),
     )
     await db.commit()

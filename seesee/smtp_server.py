@@ -12,7 +12,6 @@ import json
 import logging
 import uuid
 import warnings
-from datetime import UTC, datetime
 from email.message import EmailMessage
 
 from aiosmtpd.controller import Controller
@@ -22,6 +21,7 @@ from seesee.auth import verify_secret
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.helpers import apply_body_storage_mode
+from seesee.timezone import utc_now_iso
 
 logger = logging.getLogger("seesee.smtp")
 
@@ -301,7 +301,7 @@ async def _store_email(
     db = await get_db()
 
     email_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
+    now_iso = utc_now_iso()
 
     # Apply the app's body_storage_mode
     stored_html, stored_text, body_preview, _ = apply_body_storage_mode(
@@ -339,15 +339,15 @@ async def _store_email(
             reply_to,
             None,  # tags
             "smtp",
-            now.isoformat(),
-            now.isoformat(),
+            now_iso,
+            now_iso,
         ),
     )
 
     # Update app's last_activity_at
     await db.execute(
         "UPDATE apps SET last_activity_at = ? WHERE id = ?",
-        (now.isoformat(), app["id"]),
+        (now_iso, app["id"]),
     )
 
     await db.commit()

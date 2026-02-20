@@ -15,11 +15,11 @@ Degradation is opt-in (0 = never degrade).
 import asyncio
 import contextlib
 import logging
-from datetime import UTC, datetime, timedelta
 
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.helpers import strip_html_tags
+from seesee.timezone import utc_cutoff_iso, utc_now_iso
 
 logger = logging.getLogger("seesee.retention")
 
@@ -73,7 +73,7 @@ async def enforce_max_age(app_id: str, effective_days: int) -> int:
     Returns the number of emails deleted.
     """
     db = await get_db()
-    cutoff = (datetime.now(UTC) - timedelta(days=effective_days)).isoformat()
+    cutoff = utc_cutoff_iso(effective_days)
     deleted = 0
 
     while True:
@@ -185,7 +185,7 @@ async def degrade_to_text(app_id: str, cutoff: str) -> int:
     """
     db = await get_db()
     degraded = 0
-    now = datetime.now(UTC).isoformat()
+    now_iso = utc_now_iso()
 
     while True:
         cursor = await db.execute(
@@ -217,7 +217,7 @@ async def degrade_to_text(app_id: str, cutoff: str) -> int:
                 """UPDATE emails SET body_html = NULL, body_text = ?,
                 body_preview = ?, body_size_bytes = ?, body_degraded_at = ?
                 WHERE id = ?""",
-                (body_text, body_preview, new_size, now, row["id"]),
+                (body_text, body_preview, new_size, now_iso, row["id"]),
             )
 
         await db.commit()
@@ -237,7 +237,7 @@ async def degrade_to_preview(app_id: str, cutoff: str) -> int:
     """
     db = await get_db()
     degraded = 0
-    now = datetime.now(UTC).isoformat()
+    now_iso = utc_now_iso()
 
     while True:
         cursor = await db.execute(
@@ -268,7 +268,7 @@ async def degrade_to_preview(app_id: str, cutoff: str) -> int:
                 """UPDATE emails SET body_html = NULL, body_text = NULL,
                 body_preview = ?, body_size_bytes = ?, body_degraded_at = ?
                 WHERE id = ?""",
-                (body_preview, new_size, now, row["id"]),
+                (body_preview, new_size, now_iso, row["id"]),
             )
 
         await db.commit()
@@ -327,7 +327,7 @@ async def run_cleanup() -> None:
             settings.retention_degrade_to_text_days,
         )
         if effective_text_days > 0:
-            cutoff = (datetime.now(UTC) - timedelta(days=effective_text_days)).isoformat()
+            cutoff = utc_cutoff_iso(effective_text_days)
             text_degraded = await degrade_to_text(app_id, cutoff)
             if text_degraded > 0:
                 logger.info(
@@ -344,7 +344,7 @@ async def run_cleanup() -> None:
             settings.retention_degrade_to_preview_days,
         )
         if effective_preview_days > 0:
-            cutoff = (datetime.now(UTC) - timedelta(days=effective_preview_days)).isoformat()
+            cutoff = utc_cutoff_iso(effective_preview_days)
             preview_degraded = await degrade_to_preview(app_id, cutoff)
             if preview_degraded > 0:
                 logger.info(

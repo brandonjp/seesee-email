@@ -21,7 +21,7 @@
             <div class="min-w-0">
                 <h1 class="text-xl font-bold break-words">{{ email.subject }}</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    <span data-timestamp="{{ email.logged_at }}">{{ email.logged_at[:19] | replace('T', ' ') }}</span>
+                    <span data-timestamp="{{ email.logged_at }}">{{ email.logged_at | display_dt }}</span>
                     {% if email.app_name %}&middot; {{ email.app_name }}{% endif %}
                 </p>
             </div>

@@ -92,6 +92,13 @@ Full documentation at **[seesee.email](https://seesee.email)** — getting start
 
 Auto-generated OpenAPI docs also available at `/docs` on your running instance.
 
+## Timezone Handling
+
+- **Storage:** All dates stored in UTC. Do not change this.
+- **Admin display:** Controlled by `SEESEE_DISPLAY_TIMEZONE` env var (default: `UTC`). IANA timezone string (e.g. `America/Chicago`). Used in admin views via `seesee.timezone` helpers and the `display_dt` Jinja2 filter.
+- **User display:** Dates are displayed in the browser's local timezone via client-side JavaScript (`Intl.DateTimeFormat`). Tooltips show both local and UTC times.
+- **API responses:** Always UTC ISO 8601.
+
 ## Tech Stack
 
 Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind CSS + Alpine.js / Docker

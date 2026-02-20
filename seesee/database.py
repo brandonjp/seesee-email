@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS apps (
     retention_max_age_days INTEGER,
     retention_degrade_to_text_days INTEGER,
     retention_degrade_to_preview_days INTEGER,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
     last_activity_at DATETIME
 );
 
@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS emails (
     reply_to TEXT,
     tags TEXT,
     ingest_method TEXT NOT NULL DEFAULT 'api',
-    logged_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    logged_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+    created_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
     body_degraded_at DATETIME
 );
 

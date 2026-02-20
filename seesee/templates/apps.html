@@ -187,7 +187,7 @@
                         <td class="px-4 py-3">{{ app.email_count }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden lg:table-cell">
                             {% if app.last_activity_at %}
-                            <span data-timestamp="{{ app.last_activity_at }}">{{ app.last_activity_at[:16] | replace('T', ' ') }}</span>
+                            <span data-timestamp="{{ app.last_activity_at }}">{{ app.last_activity_at | display_dt }}</span>
                             {% else %}
                             <span class="text-gray-400">Never</span>
                             {% endif %}

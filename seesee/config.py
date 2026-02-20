@@ -43,6 +43,11 @@ class SeeSeeSettings(BaseSettings):
     # UI
     theme: str = "system"
 
+    # Display timezone — controls how dates are shown in admin views.
+    # IANA timezone string (e.g. "America/Chicago", "Europe/London").
+    # Does NOT affect storage (always UTC) or API responses (always UTC ISO 8601).
+    display_timezone: str = "UTC"
+
     # Webhook secrets (per-provider, optional — skip verification if empty)
     webhook_secret_resend: str = ""
     webhook_secret_sendgrid: str = ""

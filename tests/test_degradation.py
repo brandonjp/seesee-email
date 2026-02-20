@@ -89,7 +89,8 @@ async def _get_email(email_id: str) -> dict:
     """Fetch an email row as a dict."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, body_html, body_text, body_preview, body_size_bytes FROM emails WHERE id = ?",
+        "SELECT id, body_html, body_text, body_preview, body_size_bytes, body_degraded_at "
+        "FROM emails WHERE id = ?",
         (email_id,),
     )
     row = await cursor.fetchone()
@@ -164,6 +165,8 @@ async def test_degrade_to_text_strips_html():
     assert email["body_preview"] == "Hello World"
     # body_size_bytes should only reflect body_text now
     assert email["body_size_bytes"] == len(b"Hello World")
+    # body_degraded_at should be set for auditability
+    assert email["body_degraded_at"] is not None
 
 
 @pytest.mark.asyncio
@@ -210,9 +213,11 @@ async def test_degrade_to_text_skips_recent_emails():
 
     old_email = await _get_email(old_id)
     assert old_email["body_html"] is None
+    assert old_email["body_degraded_at"] is not None
 
     new_email = await _get_email(new_id)
     assert new_email["body_html"] is not None
+    assert new_email["body_degraded_at"] is None
 
 
 @pytest.mark.asyncio
@@ -287,6 +292,8 @@ async def test_degrade_to_preview_strips_text():
     assert email["body_text"] is None
     assert email["body_preview"] == "Full text content"
     assert email["body_size_bytes"] == len(b"Full text content")
+    # body_degraded_at should be set for auditability
+    assert email["body_degraded_at"] is not None
 
 
 @pytest.mark.asyncio

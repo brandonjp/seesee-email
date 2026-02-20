@@ -17,7 +17,7 @@ logger = logging.getLogger("seesee")
 _db: aiosqlite.Connection | None = None
 _startup_time: float = 0.0
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS metadata (
@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS emails (
     tags TEXT,
     ingest_method TEXT NOT NULL DEFAULT 'api',
     logged_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    body_degraded_at DATETIME
 );
 
 CREATE INDEX IF NOT EXISTS idx_emails_app_id ON emails(app_id);
@@ -187,12 +188,25 @@ async def _run_migrations() -> None:
             await _db.execute(
                 "ALTER TABLE apps ADD COLUMN retention_degrade_to_preview_days INTEGER"
             )
-        await _db.execute(
-            "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
-            (str(SCHEMA_VERSION),),
-        )
+        current_version = 2
         await _db.commit()
-        logger.info("Database migrated to schema version %d", SCHEMA_VERSION)
+        logger.info("Database migrated to schema version 2")
+
+    if current_version < 3:
+        # Add body_degraded_at audit column to emails table
+        cursor = await _db.execute("PRAGMA table_info(emails)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "body_degraded_at" not in columns:
+            await _db.execute("ALTER TABLE emails ADD COLUMN body_degraded_at DATETIME")
+        current_version = 3
+        await _db.commit()
+        logger.info("Database migrated to schema version 3")
+
+    await _db.execute(
+        "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+        (str(SCHEMA_VERSION),),
+    )
+    await _db.commit()
 
 
 def get_startup_time() -> float:

@@ -98,6 +98,7 @@ class EmailDetail(EmailSummary):
     body_html: str | None = None
     body_text: str | None = None
     body_size_bytes: int = 0
+    body_degraded_at: datetime | None = None
     provider_message_id: str | None = None
     error_message: str | None = None
     metadata: dict | None = None

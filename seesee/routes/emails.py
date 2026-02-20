@@ -18,7 +18,7 @@ _SUMMARY_COLS = (
     "status, provider, ingest_method, logged_at, created_at"
 )
 _DETAIL_COLS = (
-    f"{_SUMMARY_COLS}, body_html, body_text, body_size_bytes, "
+    f"{_SUMMARY_COLS}, body_html, body_text, body_size_bytes, body_degraded_at, "
     "provider_message_id, error_message, metadata, cc_addresses, "
     "bcc_addresses, reply_to, tags"
 )
@@ -68,6 +68,7 @@ def _row_to_detail(row: dict) -> EmailDetail:
         body_html=row["body_html"],
         body_text=row["body_text"],
         body_size_bytes=row["body_size_bytes"] or 0,
+        body_degraded_at=row["body_degraded_at"],
         provider_message_id=row["provider_message_id"],
         error_message=row["error_message"],
         metadata=_parse_json_or_none(row["metadata"]),

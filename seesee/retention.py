@@ -179,12 +179,13 @@ async def degrade_to_text(app_id: str, cutoff: str) -> int:
     """Degrade emails from full to text_only for an app.
 
     Strips HTML, preserves text body and preview. Targets emails older than
-    cutoff that still have body_html set.
+    cutoff that still have body_html set. Sets body_degraded_at for audit.
 
     Returns the number of emails degraded.
     """
     db = await get_db()
     degraded = 0
+    now = datetime.now(UTC).isoformat()
 
     while True:
         cursor = await db.execute(
@@ -214,8 +215,9 @@ async def degrade_to_text(app_id: str, cutoff: str) -> int:
 
             await db.execute(
                 """UPDATE emails SET body_html = NULL, body_text = ?,
-                body_preview = ?, body_size_bytes = ? WHERE id = ?""",
-                (body_text, body_preview, new_size, row["id"]),
+                body_preview = ?, body_size_bytes = ?, body_degraded_at = ?
+                WHERE id = ?""",
+                (body_text, body_preview, new_size, now, row["id"]),
             )
 
         await db.commit()
@@ -229,11 +231,13 @@ async def degrade_to_preview(app_id: str, cutoff: str) -> int:
 
     Strips both HTML and text body, preserving only the preview. Targets
     emails older than cutoff that still have body_text or body_html.
+    Sets body_degraded_at for audit.
 
     Returns the number of emails degraded.
     """
     db = await get_db()
     degraded = 0
+    now = datetime.now(UTC).isoformat()
 
     while True:
         cursor = await db.execute(
@@ -262,8 +266,9 @@ async def degrade_to_preview(app_id: str, cutoff: str) -> int:
 
             await db.execute(
                 """UPDATE emails SET body_html = NULL, body_text = NULL,
-                body_preview = ?, body_size_bytes = ? WHERE id = ?""",
-                (body_preview, new_size, row["id"]),
+                body_preview = ?, body_size_bytes = ?, body_degraded_at = ?
+                WHERE id = ?""",
+                (body_preview, new_size, now, row["id"]),
             )
 
         await db.commit()

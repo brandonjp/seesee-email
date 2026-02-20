@@ -50,8 +50,10 @@ Retention rules control automatic cleanup. The most restrictive rule wins.
 | `SEESEE_RETENTION_MAX_AGE_DAYS` | int | `90` | Delete emails older than this many days |
 | `SEESEE_RETENTION_MAX_STORAGE_MB` | int | `500` | Global storage cap in MB. Oldest emails deleted first when exceeded |
 | `SEESEE_RETENTION_CLEANUP_INTERVAL_MINUTES` | int | `60` | How often the retention scheduler runs (in minutes) |
+| `SEESEE_RETENTION_DEGRADE_TO_TEXT_DAYS` | int | `0` | Strip HTML body after N days, keeping text + preview. `0` = never degrade |
+| `SEESEE_RETENTION_DEGRADE_TO_PREVIEW_DAYS` | int | `0` | Strip text body after N days, keeping preview only. `0` = never degrade |
 
-Apps can override `max_count` and `max_age_days` with per-app values set during app creation or update. The effective limit is the **minimum** of the per-app and global value.
+Apps can override `max_count`, `max_age_days`, `degrade_to_text_days`, and `degrade_to_preview_days` with per-app values set during app creation or update. For retention limits, the effective value is the **minimum** of the per-app and global value. For degradation thresholds, a per-app override can enable degradation even if the global setting is disabled.
 
 ## Session
 
@@ -110,6 +112,8 @@ SEESEE_SMTP_PORT=2525
 SEESEE_RETENTION_MAX_COUNT=1000
 SEESEE_RETENTION_MAX_AGE_DAYS=90
 SEESEE_RETENTION_MAX_STORAGE_MB=500
+SEESEE_RETENTION_DEGRADE_TO_TEXT_DAYS=0
+SEESEE_RETENTION_DEGRADE_TO_PREVIEW_DAYS=0
 
 # Session
 SEESEE_SECRET_KEY=your-random-secret-key

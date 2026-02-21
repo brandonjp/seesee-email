@@ -58,7 +58,7 @@ npm run dev                  # Dev server at localhost:4321
 
 **Type:** Self-hosted web application (API + SMTP + Web UI)
 **Stack:** Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind + Alpine.js
-**Version:** 0.15.0-dev (Semantic Versioning)
+**Version:** 0.16.0-dev (Semantic Versioning)
 **Package Manager:** pip with pyproject.toml
 **Deployment:** Docker single container → GHCR, Coolify-compatible
 
@@ -134,6 +134,7 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 - ✅ Search-and-delete (GDPR right to erasure)
 - ✅ Data export per recipient (GDPR right of access)
 - ✅ Mobile UX polish + CSS custom properties theme system
+- ✅ Admin UX audit (iOS zoom fix, sortable columns, touch targets, copy buttons, loading states)
 - Theme selector UI on settings page
 - CSV/JSON search export
 - Prometheus metrics

@@ -1,18 +1,14 @@
 # Next Steps — SeeSee
 
-**Version:** 0.15.0-dev
+**Version:** 0.16.0-dev
 **Updated:** 2026-02-21
 
 ## Just Completed
 
-- **Mobile UX, theme system foundation, and UI polish** — Phase 2.1:
-  - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute — current mint palette is the default; future themes just add a `[data-theme="name"]` CSS block
-  - Tailwind config uses CSS variable-based colors; all `mint` classes renamed to `accent` across templates
-  - Active/tap feedback on all interactive elements for touch devices
-  - Enlarged touch targets on icon-only buttons (44px minimum)
-  - Copy buttons on email addresses (From, To, CC, BCC, Reply-To) and all code snippets
-  - Code copy buttons: always visible on touch, hover-to-reveal on desktop
-  - Active filter count badge, responsive metadata labels, aria-labels on icon-only buttons
+- **Admin UX audit — 12 fixes across 7 files** (Phase 3.0):
+  - Critical: iOS Safari auto-zoom fix (16px min on inputs), clickable sort column headers with indicators
+  - Moderate: 44px touch targets on coarse-pointer devices, copy buttons on metadata/SMTP settings, title tooltips on truncated cells, loading states on login + app creation
+  - Minor: `type="search"` on search input, required field asterisk, email ID display + copy, "View emails" link on app detail, copy buttons on body tabs
   - 272 tests passing
 
 ## Highest Priority Next Task
@@ -31,7 +27,7 @@
 
 ## Current State
 
-- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, and data export per recipient from Phase 3.0
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, and admin UX audit from Phase 3.0
 - 272 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - CSS custom properties theme system ready for multiple themes
@@ -40,6 +36,7 @@
 - Timezone architecture: UTC storage, configurable display, format-consistent queries
 - Search-and-delete: GDPR erasure via bulk delete with filters
 - Data export per recipient: GDPR right of access via JSON/CSV export
+- Admin UX audit: iOS zoom fix, sortable columns, touch targets, copy buttons, loading states, tooltips
 - Docker multi-platform builds (amd64 + arm64)
 - Documentation site deployed via GitHub Pages
 - Persistence diagnostics for debugging deployment issues

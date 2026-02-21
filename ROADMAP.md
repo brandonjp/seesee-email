@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.15.0-dev
+**Version:** 0.16.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -145,6 +145,7 @@
 - [x] Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
 - [x] Search-and-delete (GDPR right to erasure)
 - [x] Data export per recipient (GDPR right of access)
+- [x] Admin UX audit — iOS input zoom fix, sortable columns, touch targets, copy buttons, form loading states, tooltips
 - [ ] Theme selector UI on settings page (themes stored in CSS custom properties, ready to implement)
 - [ ] CSV/JSON search export
 - [ ] Prometheus metrics endpoint

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Data export per recipient — GDPR right of access (Phase 3.0):
+  - `GET /api/v1/export?recipient=user@example.com` — export all emails associated with a recipient address (admin auth required)
+  - Searches across `to_addresses`, `cc_addresses`, and `bcc_addresses` fields (case-insensitive)
+  - Returns email metadata (subject, from, to, cc, bcc, status, provider, ingest_method, logged_at) and body content (body_html, body_text, body_preview)
+  - JSON format by default with `ExportResponse` envelope (recipient, total, exported_at, emails)
+  - CSV format via `format=csv` query parameter or `Accept: text/csv` header, with `Content-Disposition` attachment header
+  - Input validation: requires valid email address (must contain `@`)
+  - `ExportEmail` and `ExportResponse` Pydantic models
+  - 15 new tests covering: export by to/cc/bcc, cross-field matching, no results, auth required, missing/invalid recipient, case-insensitive matching, body content, metadata fields, CSV format (param and Accept header), CSV empty results, exported_at timestamp
+  - 272 total tests passing
+
+### Changed
+- Version bump: 0.13.1-dev → 0.14.0-dev
+
 ### Fixed
 - Added `SEESEE_DISPLAY_TIMEZONE` to docs site configuration reference (was missing from the UI table and example `.env` block)
 - Added `SEESEE_DISPLAY_TIMEZONE` to `docker-compose.yml` environment section

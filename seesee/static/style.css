@@ -1,1 +1,64 @@
-/* SeeSee — minimal custom styles beyond Tailwind CDN */
+/* SeeSee — custom styles beyond Tailwind CDN */
+
+/* ------------------------------------------------------------------ */
+/* Theme system — CSS custom properties                                */
+/* Each theme defines its accent/brand colors. The active theme is     */
+/* set via [data-theme] on <html>. Tailwind references these vars.     */
+/* To add a new theme: add a [data-theme="name"] block below.          */
+/* ------------------------------------------------------------------ */
+
+:root,
+[data-theme="mint"] {
+    --color-accent: 50 245 192;       /* #32F5C0 — mint */
+    --color-paper: 246 241 230;       /* #F6F1E6 — warm paper */
+}
+
+/* Future themes — uncomment or add new blocks to enable:
+[data-theme="indigo"] {
+    --color-accent: 99 102 241;
+    --color-paper: 241 245 249;
+}
+[data-theme="rose"] {
+    --color-accent: 244 63 94;
+    --color-paper: 255 241 242;
+}
+[data-theme="amber"] {
+    --color-accent: 245 158 11;
+    --color-paper: 255 251 235;
+}
+*/
+
+/* ------------------------------------------------------------------ */
+/* Active / tap feedback for touch devices                             */
+/* ------------------------------------------------------------------ */
+
+tr.cursor-pointer:active {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+.dark tr.cursor-pointer:active {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+button:active:not(:disabled),
+a.inline-flex:active {
+    transform: scale(0.97);
+}
+
+/* ------------------------------------------------------------------ */
+/* Code copy buttons: always visible on touch, hover-reveal on desktop */
+/* ------------------------------------------------------------------ */
+
+.code-copy-btn {
+    opacity: 1;
+    transition: opacity 150ms;
+}
+
+@media (hover: hover) {
+    .code-copy-btn {
+        opacity: 0;
+    }
+    .group\/code:hover .code-copy-btn,
+    .code-copy-btn:focus {
+        opacity: 1;
+    }
+}

@@ -10,15 +10,19 @@
             <div class="flex-1 relative">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" name="q" value="{{ q }}" placeholder="Search emails..."
-                       class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-3 py-2 text-sm shadow-sm focus:border-mint focus:outline-none focus:ring-1 focus:ring-mint">
+                       class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-3 py-2 text-sm shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
             </div>
             <button type="button" @click="filtersOpen = !filtersOpen"
-                    class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    :class="filtersOpen ? 'border-mint text-mint' : ''">
+                    class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors"
+                    :class="filtersOpen ? 'border-accent text-accent' : ''">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                {% set active_filter_count = (1 if app_id else 0) + (1 if status_filter else 0) + (1 if provider_filter else 0) %}
+                {% if active_filter_count > 0 %}
+                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-[10px] font-bold text-gray-900 flex items-center justify-center">{{ active_filter_count }}</span>
+                {% endif %}
             </button>
             <button type="submit"
-                    class="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+                    class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">
                 Search
             </button>
         </div>
@@ -59,7 +63,7 @@
     <div x-data="{ showDeleteModal: false }" class="flex items-center justify-between">
         <p class="text-sm text-gray-500 dark:text-gray-400">{{ total }} email{{ 's' if total != 1 else '' }} match your filters</p>
         <button type="button" @click="showDeleteModal = true"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Delete matching
         </button>
@@ -71,14 +75,14 @@
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">This will permanently delete all {{ total }} email{{ 's' if total != 1 else '' }} matching your current filters. This action cannot be undone.</p>
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" @click="showDeleteModal = false"
-                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                     <form method="post" action="/emails/bulk-delete">
                         <input type="hidden" name="q" value="{{ q }}">
                         <input type="hidden" name="app_id" value="{{ app_id }}">
                         <input type="hidden" name="status" value="{{ status_filter }}">
                         <input type="hidden" name="provider" value="{{ provider_filter }}">
                         <button type="submit"
-                                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete {{ total }} email{{ 's' if total != 1 else '' }}</button>
+                                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete {{ total }} email{{ 's' if total != 1 else '' }}</button>
                     </form>
                 </div>
             </div>
@@ -102,7 +106,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     {% for email in emails %}
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                    <tr class="hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700/50 dark:active:bg-gray-700 cursor-pointer transition-colors"
                         data-href="/emails/{{ email.id }}"
                         onclick="window.location='/emails/{{ email.id }}'">
                         <td class="px-4 py-3">
@@ -139,21 +143,21 @@
             <div class="flex gap-1">
                 {% if page > 1 %}
                 <a href="/emails?page={{ page - 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
-                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Prev</a>
+                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Prev</a>
                 {% endif %}
                 {% for p in range(1, pages + 1) %}
                     {% if p == page %}
-                    <span class="rounded-lg bg-mint px-3 py-1 text-sm font-medium text-gray-900">{{ p }}</span>
+                    <span class="rounded-lg bg-accent px-3 py-1 text-sm font-medium text-gray-900">{{ p }}</span>
                     {% elif p <= 3 or p > pages - 2 or (p >= page - 1 and p <= page + 1) %}
                     <a href="/emails?page={{ p }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
-                       class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">{{ p }}</a>
+                       class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">{{ p }}</a>
                     {% elif p == 4 or p == pages - 2 %}
                     <span class="px-1 py-1 text-sm text-gray-400">...</span>
                     {% endif %}
                 {% endfor %}
                 {% if page < pages %}
                 <a href="/emails?page={{ page + 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
-                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Next</a>
+                   class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Next</a>
                 {% endif %}
             </div>
         </div>
@@ -166,7 +170,7 @@
         {% if q or app_id or status_filter or provider_filter %}
         <h2 class="mt-4 text-lg font-semibold">No emails match your filters</h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Try adjusting your search or filters.</p>
-        <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">Clear all filters</a>
+        <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">Clear all filters</a>
         {% else %}
         <h2 class="mt-4 text-lg font-semibold">No emails yet</h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Emails will appear here once your apps start logging them.</p>

@@ -5,12 +5,12 @@
 <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
     <h2 class="text-lg font-semibold">Email not found</h2>
     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">The email you're looking for doesn't exist or has been deleted.</p>
-    <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">&larr; Back to emails</a>
+    <a href="/emails" class="mt-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">&larr; Back to emails</a>
 </div>
 {% else %}
 <div class="space-y-4">
     <!-- Back link -->
-    <a href="/emails" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <a href="/emails" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 active:text-gray-900 dark:hover:text-white dark:active:text-white transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to emails
     </a>
@@ -36,7 +36,7 @@
                 <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-sm font-medium">{{ email.status }}</span>
                 {% endif %}
                 <button @click="confirmDelete = true"
-                        class="inline-flex items-center gap-1 rounded-lg border border-red-300 dark:border-red-700 px-3 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        class="inline-flex items-center gap-1 rounded-lg border border-red-300 dark:border-red-700 px-3 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors"
                         title="Delete this email">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     Delete
@@ -52,10 +52,10 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
                 <div class="flex gap-3 justify-end">
                     <button @click="confirmDelete = false"
-                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                     <form method="post" action="/emails/{{ email.id }}/delete" class="inline">
                         <button type="submit"
-                                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete</button>
+                                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete</button>
                     </form>
                 </div>
             </div>
@@ -65,30 +65,50 @@
     <!-- Address block -->
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
         <div class="grid gap-2 text-sm">
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-start">
                 <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">From</span>
-                <span class="font-medium break-all">{{ email.from_address }}</span>
+                <span class="font-medium break-all flex-1 min-w-0">{{ email.from_address }}</span>
+                <button onclick="copyToClipboard('{{ email.from_address }}', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-start">
                 <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">To</span>
-                <span class="break-all">{{ email.to_addresses | join(', ') }}</span>
+                <span class="break-all flex-1 min-w-0">{{ email.to_addresses | join(', ') }}</span>
+                <button onclick="copyToClipboard('{{ email.to_addresses | join(', ') }}', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
             {% if email.cc_addresses %}
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-start">
                 <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">CC</span>
-                <span class="break-all">{{ email.cc_addresses | join(', ') }}</span>
+                <span class="break-all flex-1 min-w-0">{{ email.cc_addresses | join(', ') }}</span>
+                <button onclick="copyToClipboard('{{ email.cc_addresses | join(', ') }}', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
             {% endif %}
             {% if email.bcc_addresses %}
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-start">
                 <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">BCC</span>
-                <span class="break-all">{{ email.bcc_addresses | join(', ') }}</span>
+                <span class="break-all flex-1 min-w-0">{{ email.bcc_addresses | join(', ') }}</span>
+                <button onclick="copyToClipboard('{{ email.bcc_addresses | join(', ') }}', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
             {% endif %}
             {% if email.reply_to %}
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-start">
                 <span class="text-gray-500 dark:text-gray-400 w-16 shrink-0">Reply-To</span>
-                <span class="break-all">{{ email.reply_to }}</span>
+                <span class="break-all flex-1 min-w-0">{{ email.reply_to }}</span>
+                <button onclick="copyToClipboard('{{ email.reply_to }}', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
             {% endif %}
         </div>
@@ -98,13 +118,13 @@
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" x-data="{ tab: 'preview' }">
         <!-- Tab buttons -->
         <div class="flex border-b border-gray-200 dark:border-gray-700 px-5 overflow-x-auto">
-            <button @click="tab = 'preview'" :class="tab === 'preview' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'preview'" :class="tab === 'preview' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Preview</button>
-            <button @click="tab = 'html'" :class="tab === 'html' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'html'" :class="tab === 'html' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">HTML Source</button>
-            <button @click="tab = 'text'" :class="tab === 'text' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'text'" :class="tab === 'text' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Plain Text</button>
-            <button @click="tab = 'metadata'" :class="tab === 'metadata' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'metadata'" :class="tab === 'metadata' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Metadata</button>
         </div>
 
@@ -147,24 +167,24 @@
             <div x-show="tab === 'metadata'" style="display: none;">
                 <div class="grid gap-3 text-sm">
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Provider</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Provider</span>
                         <span>{{ email.provider or '—' }}</span>
                     </div>
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Provider Message ID</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Provider Message ID</span>
                         <span class="break-all">{{ email.provider_message_id or '—' }}</span>
                     </div>
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Body Size</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Body Size</span>
                         <span>{{ email.body_size_bytes or 0 }} bytes</span>
                     </div>
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Ingest Method</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Ingest Method</span>
                         <span>{{ email.ingest_method }}</span>
                     </div>
                     {% if email.tags %}
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Tags</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Tags</span>
                         <div class="flex flex-wrap gap-1">
                             {% for tag in email.tags %}
                             <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs">{{ tag }}</span>
@@ -174,13 +194,13 @@
                     {% endif %}
                     {% if email.error_message %}
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Error</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Error</span>
                         <span class="text-red-600 dark:text-red-400 break-words">{{ email.error_message }}</span>
                     </div>
                     {% endif %}
                     {% if email.metadata %}
                     <div class="flex gap-3">
-                        <span class="text-gray-500 dark:text-gray-400 w-40 shrink-0">Custom Metadata</span>
+                        <span class="text-gray-500 dark:text-gray-400 w-24 sm:w-40 shrink-0">Custom Metadata</span>
                         <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded p-2 overflow-x-auto">{{ email.metadata | tojson(indent=2) }}</pre>
                     </div>
                     {% endif %}

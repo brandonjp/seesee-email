@@ -1,22 +1,23 @@
 # Next Steps — SeeSee
 
-**Version:** 0.14.0-dev
+**Version:** 0.15.0-dev
 **Updated:** 2026-02-21
 
 ## Just Completed
 
-- **Data export per recipient (GDPR right of access)** — Phase 3.0 feature:
-  - `GET /api/v1/export?recipient=user@example.com` — export all emails where recipient appears in to, cc, or bcc (admin auth required)
-  - JSON response with metadata envelope (recipient, total, exported_at) and full email records
-  - CSV format supported via `format=csv` query parameter or `Accept: text/csv` header
-  - Case-insensitive matching across to_addresses, cc_addresses, bcc_addresses
-  - Includes email metadata and body content (whatever storage mode allows)
-  - Input validation (requires valid email address)
-  - 15 new tests, 272 total tests passing
+- **Mobile UX, theme system foundation, and UI polish** — Phase 2.1:
+  - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute — current mint palette is the default; future themes just add a `[data-theme="name"]` CSS block
+  - Tailwind config uses CSS variable-based colors; all `mint` classes renamed to `accent` across templates
+  - Active/tap feedback on all interactive elements for touch devices
+  - Enlarged touch targets on icon-only buttons (44px minimum)
+  - Copy buttons on email addresses (From, To, CC, BCC, Reply-To) and all code snippets
+  - Code copy buttons: always visible on touch, hover-to-reveal on desktop
+  - Active filter count badge, responsive metadata labels, aria-labels on icon-only buttons
+  - 272 tests passing
 
 ## Highest Priority Next Task
 
-Pick from remaining Phase 3.0 candidates based on user feedback.
+- **Theme selector UI** on settings page — dropdown that sets `data-theme` and persists to `localStorage`. The CSS variable infrastructure is already in place; just needs the UI component and a few theme color palettes defined in `style.css`.
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
@@ -33,6 +34,7 @@ Pick from remaining Phase 3.0 candidates based on user feedback.
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, and data export per recipient from Phase 3.0
 - 272 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
+- CSS custom properties theme system ready for multiple themes
 - Provider webhook receivers for Resend and SendGrid
 - Graduated body degradation (full → text → preview over time)
 - Timezone architecture: UTC storage, configurable display, format-consistent queries

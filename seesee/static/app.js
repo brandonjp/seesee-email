@@ -48,6 +48,14 @@ function copyToClipboard(text, buttonEl) {
 }
 
 // ---------------------------------------------------------------------------
+// Copy code block helper — reads text from nearest <pre> element
+// ---------------------------------------------------------------------------
+function copyCodeBlock(buttonEl) {
+    var pre = buttonEl.closest('.relative').querySelector('pre');
+    if (pre) copyToClipboard(pre.textContent.trim(), buttonEl);
+}
+
+// ---------------------------------------------------------------------------
 // Keyboard shortcuts (/, j, k, Enter, Esc)
 // ---------------------------------------------------------------------------
 document.addEventListener('keydown', function(e) {
@@ -103,11 +111,11 @@ document.addEventListener('keydown', function(e) {
 
 function _highlightRow(rows, idx) {
     rows.forEach(row => {
-        row.classList.remove('keyboard-highlight', 'ring-2', 'ring-inset', 'ring-mint/50');
+        row.classList.remove('keyboard-highlight', 'ring-2', 'ring-inset', 'ring-accent/50');
     });
     if (idx >= 0 && idx < rows.length) {
         const row = rows[idx];
-        row.classList.add('keyboard-highlight', 'ring-2', 'ring-inset', 'ring-mint/50');
+        row.classList.add('keyboard-highlight', 'ring-2', 'ring-inset', 'ring-accent/50');
         row.scrollIntoView({ block: 'nearest' });
     }
 }

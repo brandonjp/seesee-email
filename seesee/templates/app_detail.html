@@ -5,12 +5,12 @@
 <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 text-center">
     <h2 class="text-lg font-semibold">App not found</h2>
     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">The app you're looking for doesn't exist or has been deleted.</p>
-    <a href="/apps" class="mt-4 inline-flex items-center gap-1 text-sm text-mint hover:underline">&larr; Back to apps</a>
+    <a href="/apps" class="mt-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">&larr; Back to apps</a>
 </div>
 {% else %}
 <div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false, confirmDelete: false }">
     <!-- Back link -->
-    <a href="/apps" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <a href="/apps" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 active:text-gray-900 dark:hover:text-white dark:active:text-white transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to apps
     </a>
@@ -18,19 +18,19 @@
     <!-- Rotated key alert -->
     {% if rotated_key %}
     <script>document.addEventListener('DOMContentLoaded', function() { showToast('API key rotated'); });</script>
-    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
+    <div class="rounded-xl border-2 border-accent bg-accent/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
         <div class="flex items-start justify-between">
-            <h3 class="font-semibold text-mint">API key rotated — save the new key</h3>
-            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <h3 class="font-semibold text-accent">API key rotated — save the new key</h3>
+            <button @click="show = false" class="p-1 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Dismiss">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
         <div class="text-sm flex items-center">
             <span class="text-gray-500 dark:text-gray-400">New API Key:</span>
             <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ rotated_key }}</code>
-            <button onclick="copyToClipboard('{{ rotated_key }}', this)" class="ml-1.5 text-gray-400 hover:text-mint transition-colors shrink-0" title="Copy">
+            <button onclick="copyToClipboard('{{ rotated_key }}', this)" class="ml-1 p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
                 <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <svg class="w-3.5 h-3.5 check-icon hidden text-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             </button>
         </div>
     </div>
@@ -43,7 +43,7 @@
                 <h1 class="text-xl font-bold break-words">{{ app.name }}</h1>
                 <div class="mt-2 flex flex-wrap items-center gap-2">
                     <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{{ app.slug }}</code>
-                    <span class="inline-flex items-center rounded-full bg-mint/10 px-2.5 py-0.5 text-xs font-medium text-mint capitalize">{{ app.body_storage_mode | replace('_', ' ') }}</span>
+                    <span class="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent capitalize">{{ app.body_storage_mode | replace('_', ' ') }}</span>
                 </div>
             </div>
         </div>
@@ -90,22 +90,22 @@
 
         <!-- Tab buttons -->
         <div class="flex border-b border-gray-200 dark:border-gray-700 px-5 overflow-x-auto">
-            <button @click="tab = 'curl'" :class="tab === 'curl' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'curl'" :class="tab === 'curl' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">REST API (curl)</button>
-            <button @click="tab = 'python'" :class="tab === 'python' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'python'" :class="tab === 'python' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Python</button>
-            <button @click="tab = 'node'" :class="tab === 'node' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'node'" :class="tab === 'node' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Node.js</button>
-            <button @click="tab = 'php'" :class="tab === 'php' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'php'" :class="tab === 'php' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">PHP</button>
-            <button @click="tab = 'smtp'" :class="tab === 'smtp' ? 'border-mint text-mint' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            <button @click="tab = 'smtp'" :class="tab === 'smtp' ? 'border-accent text-accent' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 active:text-gray-700 dark:hover:text-gray-300 dark:active:text-gray-300'"
                     class="px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">SMTP Settings</button>
         </div>
 
         <!-- Tab content -->
         <div class="p-5">
             <!-- curl tab -->
-            <div x-show="tab === 'curl'">
+            <div x-show="tab === 'curl'" class="relative group/code">
                 <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>curl -X POST {{ base_url }}/api/v1/emails \
   -H "Authorization: Bearer ss_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -116,10 +116,14 @@
   "body_text": "Hello from {{ app.slug }}!",
   "status": "sent"
 }'</code></pre>
+                <button onclick="copyCodeBlock(this)" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-accent active:text-accent" aria-label="Copy code" title="Copy">
+                    <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-4 h-4 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
 
             <!-- Python tab -->
-            <div x-show="tab === 'python'" style="display: none;">
+            <div x-show="tab === 'python'" style="display: none;" class="relative group/code">
                 <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>import requests
 
 response = requests.post(
@@ -138,10 +142,14 @@ response = requests.post(
 )
 
 print(response.json())</code></pre>
+                <button onclick="copyCodeBlock(this)" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-accent active:text-accent" aria-label="Copy code" title="Copy">
+                    <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-4 h-4 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
 
             <!-- Node.js tab -->
-            <div x-show="tab === 'node'" style="display: none;">
+            <div x-show="tab === 'node'" style="display: none;" class="relative group/code">
                 <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>const response = await fetch("{{ base_url }}/api/v1/emails", {
   method: "POST",
   headers: {
@@ -159,10 +167,14 @@ print(response.json())</code></pre>
 
 const data = await response.json();
 console.log(data);</code></pre>
+                <button onclick="copyCodeBlock(this)" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-accent active:text-accent" aria-label="Copy code" title="Copy">
+                    <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-4 h-4 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
 
             <!-- PHP tab -->
-            <div x-show="tab === 'php'" style="display: none;">
+            <div x-show="tab === 'php'" style="display: none;" class="relative group/code">
                 <pre class="text-xs bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words"><code>$ch = curl_init("{{ base_url }}/api/v1/emails");
 
 curl_setopt_array($ch, [
@@ -185,6 +197,10 @@ $response = curl_exec($ch);
 curl_close($ch);
 
 echo $response;</code></pre>
+                <button onclick="copyCodeBlock(this)" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-accent active:text-accent" aria-label="Copy code" title="Copy">
+                    <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-4 h-4 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
             </div>
 
             <!-- SMTP Settings tab -->
@@ -220,17 +236,17 @@ echo $response;</code></pre>
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Actions</h2>
         <div class="flex flex-wrap gap-3">
             <button @click="confirmRotate = true"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Rotate Key
             </button>
             <button @click="confirmPurge = true"
-                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Purge All Emails
             </button>
             <button @click="confirmDelete = true"
-                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Delete App
             </button>
@@ -245,10 +261,10 @@ echo $response;</code></pre>
             <p class="text-sm text-gray-500 dark:text-gray-400">The current key will be immediately invalidated. Make sure you can update your integration before proceeding.</p>
             <div class="flex gap-3 justify-end">
                 <button @click="confirmRotate = false"
-                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/rotate-key" method="post" class="inline">
                     <button type="submit"
-                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Rotate Key</button>
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Rotate Key</button>
                 </form>
             </div>
         </div>
@@ -262,10 +278,10 @@ echo $response;</code></pre>
             <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete <strong>all {{ app.email_count }} emails</strong> for this app. This action cannot be undone.</p>
             <div class="flex gap-3 justify-end">
                 <button @click="confirmPurge = false"
-                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/purge" method="post" class="inline">
                     <button type="submit"
-                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Purge All</button>
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Purge All</button>
                 </form>
             </div>
         </div>
@@ -279,10 +295,10 @@ echo $response;</code></pre>
             <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete <strong>{{ app.name }}</strong> and <strong>all {{ app.email_count }} emails</strong>. API keys and SMTP credentials will stop working immediately. This action cannot be undone.</p>
             <div class="flex gap-3 justify-end">
                 <button @click="confirmDelete = false"
-                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/delete" method="post" class="inline">
                     <button type="submit"
-                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete App</button>
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete App</button>
                 </form>
             </div>
         </div>

@@ -5,7 +5,7 @@
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold">Apps</h1>
         <button @click="showAddForm = true"
-                class="inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+                class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Add App
         </button>
@@ -14,13 +14,13 @@
     <!-- Credentials alert (shown after creation) -->
     {% if created_credentials %}
     <script>document.addEventListener('DOMContentLoaded', function() { showToast('App created successfully'); });</script>
-    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-3" x-data="{ show: true }" x-show="show">
+    <div class="rounded-xl border-2 border-accent bg-accent/5 p-5 space-y-3" x-data="{ show: true }" x-show="show">
         <div class="flex items-start justify-between">
             <div>
-                <h3 class="font-semibold text-mint">App created — save these credentials now</h3>
+                <h3 class="font-semibold text-accent">App created — save these credentials now</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">These credentials will not be shown again.</p>
             </div>
-            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <button @click="show = false" class="p-1 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Dismiss">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -28,25 +28,25 @@
             <div class="flex items-center">
                 <span class="text-gray-500 dark:text-gray-400">API Key:</span>
                 <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ created_credentials.api_key }}</code>
-                <button onclick="copyToClipboard('{{ created_credentials.api_key }}', this)" class="ml-1.5 text-gray-400 hover:text-mint transition-colors shrink-0" title="Copy">
+                <button onclick="copyToClipboard('{{ created_credentials.api_key }}', this)" class="ml-1 p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
                     <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <svg class="w-3.5 h-3.5 check-icon hidden text-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </button>
             </div>
             <div class="flex items-center">
                 <span class="text-gray-500 dark:text-gray-400">SMTP Username:</span>
                 <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ created_credentials.smtp_username }}</code>
-                <button onclick="copyToClipboard('{{ created_credentials.smtp_username }}', this)" class="ml-1.5 text-gray-400 hover:text-mint transition-colors shrink-0" title="Copy">
+                <button onclick="copyToClipboard('{{ created_credentials.smtp_username }}', this)" class="ml-1 p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
                     <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <svg class="w-3.5 h-3.5 check-icon hidden text-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </button>
             </div>
             <div class="flex items-center">
                 <span class="text-gray-500 dark:text-gray-400">SMTP Password:</span>
                 <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ created_credentials.smtp_password }}</code>
-                <button onclick="copyToClipboard('{{ created_credentials.smtp_password }}', this)" class="ml-1.5 text-gray-400 hover:text-mint transition-colors shrink-0" title="Copy">
+                <button onclick="copyToClipboard('{{ created_credentials.smtp_password }}', this)" class="ml-1 p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
                     <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <svg class="w-3.5 h-3.5 check-icon hidden text-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </button>
             </div>
         </div>
@@ -56,19 +56,19 @@
     <!-- Rotated key alert -->
     {% if rotated_key %}
     <script>document.addEventListener('DOMContentLoaded', function() { showToast('API key rotated'); });</script>
-    <div class="rounded-xl border-2 border-mint bg-mint/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
+    <div class="rounded-xl border-2 border-accent bg-accent/5 p-5 space-y-2" x-data="{ show: true }" x-show="show">
         <div class="flex items-start justify-between">
-            <h3 class="font-semibold text-mint">API key rotated — save the new key</h3>
-            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <h3 class="font-semibold text-accent">API key rotated — save the new key</h3>
+            <button @click="show = false" class="p-1 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Dismiss">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
         <div class="text-sm flex items-center">
             <span class="text-gray-500 dark:text-gray-400">New API Key:</span>
             <code class="ml-2 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs break-all">{{ rotated_key }}</code>
-            <button onclick="copyToClipboard('{{ rotated_key }}', this)" class="ml-1.5 text-gray-400 hover:text-mint transition-colors shrink-0" title="Copy">
+            <button onclick="copyToClipboard('{{ rotated_key }}', this)" class="ml-1 p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
                 <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <svg class="w-3.5 h-3.5 check-icon hidden text-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             </button>
         </div>
     </div>
@@ -80,7 +80,7 @@
     <div class="rounded-xl border-2 border-red-500 bg-red-50 dark:bg-red-900/10 p-5 space-y-2" x-data="{ show: true }" x-show="show">
         <div class="flex items-start justify-between">
             <h3 class="font-semibold text-red-600 dark:text-red-400">App "{{ deleted_app.name }}" deleted</h3>
-            <button @click="show = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <button @click="show = false" class="p-1 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Dismiss">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -94,7 +94,7 @@
         <div class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-bold">Add App</h2>
-                <button @click="showAddForm = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <button @click="showAddForm = false" class="p-1 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Close">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -102,7 +102,7 @@
                 <div>
                     <label class="block text-sm font-medium mb-1">App Name</label>
                     <input type="text" name="name" required placeholder="My Application"
-                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-mint focus:outline-none focus:ring-1 focus:ring-mint">
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Body Storage Mode</label>
@@ -115,9 +115,9 @@
                 </div>
                 <div class="flex gap-3 justify-end">
                     <button type="button" @click="showAddForm = false"
-                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                     <button type="submit"
-                            class="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">Create App</button>
+                            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">Create App</button>
                 </div>
             </form>
         </div>
@@ -131,10 +131,10 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">The current key will be immediately invalidated. Make sure you can update your integration before proceeding.</p>
             <div class="flex gap-3 justify-end">
                 <button @click="confirmRotate = null"
-                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form :action="'/apps/' + confirmRotate + '/rotate-key'" method="post" class="inline">
                     <button type="submit"
-                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Rotate Key</button>
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Rotate Key</button>
                 </form>
             </div>
         </div>
@@ -148,10 +148,10 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">This will permanently delete this app and <strong>all its emails</strong>. API keys and SMTP credentials will stop working immediately. This action cannot be undone.</p>
             <div class="flex gap-3 justify-end">
                 <button @click="confirmDelete = null"
-                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form :action="'/apps/' + confirmDelete + '/delete'" method="post" class="inline">
                     <button type="submit"
-                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">Delete App</button>
+                            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete App</button>
                 </form>
             </div>
         </div>
@@ -174,11 +174,11 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     {% for app in apps %}
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                    <tr class="hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700/50 dark:active:bg-gray-700 transition-colors cursor-pointer"
                         data-href="/apps/{{ app.id }}"
                         onclick="window.location='/apps/{{ app.id }}'">
                         <td class="px-4 py-3 font-medium">
-                            <a href="/apps/{{ app.id }}" class="hover:text-mint transition-colors">{{ app.name }}</a>
+                            <a href="/apps/{{ app.id }}" class="hover:text-accent active:text-accent transition-colors">{{ app.name }}</a>
                         </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
                             <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{{ app.slug }}</code>
@@ -194,14 +194,14 @@
                         </td>
                         <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
                             <button @click="confirmRotate = '{{ app.id }}'"
-                                    class="text-xs text-gray-500 dark:text-gray-400 hover:text-mint transition-colors"
-                                    title="Rotate API key">
-                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    class="p-2 -m-2 text-gray-500 dark:text-gray-400 hover:text-accent active:text-accent transition-colors rounded-lg"
+                                    aria-label="Rotate API key" title="Rotate API key">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
                             <button @click="confirmDelete = '{{ app.id }}'"
-                                    class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors ml-2"
-                                    title="Delete app">
-                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    class="p-2 -m-2 text-gray-500 dark:text-gray-400 hover:text-red-500 active:text-red-500 transition-colors ml-1 rounded-lg"
+                                    aria-label="Delete app" title="Delete app">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </td>
                     </tr>
@@ -217,7 +217,7 @@
         <h2 class="mt-4 text-lg font-semibold">No apps yet</h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Register your first app to get API keys and start logging emails.</p>
         <button @click="showAddForm = true"
-                class="mt-4 inline-flex items-center gap-2 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-mint/90 transition-colors">
+                class="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Create your first app
         </button>

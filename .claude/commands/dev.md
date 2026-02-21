@@ -58,7 +58,7 @@ npm run dev                  # Dev server at localhost:4321
 
 **Type:** Self-hosted web application (API + SMTP + Web UI)
 **Stack:** Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind + Alpine.js
-**Version:** 0.14.0-dev (Semantic Versioning)
+**Version:** 0.15.0-dev (Semantic Versioning)
 **Package Manager:** pip with pyproject.toml
 **Deployment:** Docker single container → GHCR, Coolify-compatible
 
@@ -133,6 +133,8 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 - ✅ Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
 - ✅ Search-and-delete (GDPR right to erasure)
 - ✅ Data export per recipient (GDPR right of access)
+- ✅ Mobile UX polish + CSS custom properties theme system
+- Theme selector UI on settings page
 - CSV/JSON search export
 - Prometheus metrics
 - Multi-user auth with roles
@@ -188,8 +190,9 @@ All phases 0 through 2.1 are complete. See `ROADMAP.md` for the full breakdown.
 - **No npm/node required** to run SeeSee — only for the docs site
 - **Dark mode:** Tailwind `dark:` classes, system preference with manual toggle
 - **Keyboard shortcuts:** `/` = search, `j`/`k` = navigate, `Enter` = open, `Esc` = close
-- **Brand color:** Phosphor mint `#32F5C0` — used for primary actions, active states, brand identity
-- **Light mode warm background:** `#F6F1E6` (paper tone, not clinical white)
+- **Brand color:** Phosphor mint `#32F5C0` — defined as CSS custom property `--color-accent` in `style.css`, referenced via Tailwind `accent` color class. Theme-swappable via `[data-theme]` on `<html>`.
+- **Light mode warm background:** `#F6F1E6` — defined as CSS custom property `--color-paper`, referenced via Tailwind `paper` color class
+- **Theme system:** CSS custom properties in `style.css` + `data-theme` attribute on `<html>`. To add a theme, define a `[data-theme="name"]` CSS block with `--color-accent` and `--color-paper`. Theme stored in `localStorage('seesee-theme')`.
 
 ### Auth Implementation
 

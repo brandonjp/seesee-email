@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.14.0-dev
+**Version:** 0.15.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -128,6 +128,11 @@
 - [x] Toast notifications for actions (success and error variants, auto-dismiss)
 - [x] `DELETE /api/v1/apps/{app_id}` — delete app and all its emails
 - [x] App deletion UI with confirmation modal (apps list + app detail page)
+- [x] Mobile UX polish (active/tap states, enlarged touch targets, responsive metadata labels)
+- [x] CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute
+- [x] Copy buttons on email addresses and code snippets
+- [x] Active filter count badge on filter toggle button
+- [x] `aria-label` attributes on all icon-only buttons
 
 ---
 
@@ -140,6 +145,7 @@
 - [x] Timezone handling (UTC storage, SEESEE_DISPLAY_TIMEZONE, format-consistent queries)
 - [x] Search-and-delete (GDPR right to erasure)
 - [x] Data export per recipient (GDPR right of access)
+- [ ] Theme selector UI on settings page (themes stored in CSS custom properties, ready to implement)
 - [ ] CSV/JSON search export
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles

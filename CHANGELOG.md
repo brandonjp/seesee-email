@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Mobile UX, theme system foundation, and UI polish (Phase 2.1):
+  - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute on `<html>` — current mint palette becomes the default theme; future themes only need a new `[data-theme="name"]` CSS block
+  - Tailwind config now uses CSS variable-based colors (`accent`, `paper`) instead of hardcoded hex values
+  - Renamed all `mint` Tailwind classes to `accent` across all templates for theme-agnostic styling
+  - Theme state stored in `localStorage('seesee-theme')` via Alpine.js, ready for future settings page selector
+  - Active/tap feedback on all interactive elements (`active:` Tailwind classes alongside every `hover:` class) for touch device responsiveness
+  - CSS active states for table rows, buttons, and links (scale transform, background color change)
+  - Enlarged touch targets on icon-only buttons (`p-2 -m-2` padding pattern) for 44px minimum tap area
+  - Copy-to-clipboard buttons on email addresses (From, To, CC, BCC, Reply-To) in email detail view
+  - Copy-to-clipboard buttons on all code snippets (integration tabs in app detail, onboarding steps in dashboard)
+  - `copyCodeBlock()` JS helper for code block copy buttons
+  - Code copy buttons: always visible on touch devices, hover-to-reveal on pointer devices via `@media (hover: hover)`
+  - Active filter count badge on filter toggle button in emails list (shows count when filters active but panel collapsed)
+  - Responsive metadata labels in email detail (`w-24 sm:w-40` instead of fixed `w-40`)
+  - `aria-label` attributes on all icon-only buttons (sidebar close, hamburger menu, toast dismiss, modal close, copy, rotate key, delete)
+
+### Changed
+- Version bump: 0.14.0-dev → 0.15.0-dev
+
+### Added
 - Data export per recipient — GDPR right of access (Phase 3.0):
   - `GET /api/v1/export?recipient=user@example.com` — export all emails associated with a recipient address (admin auth required)
   - Searches across `to_addresses`, `cc_addresses`, and `bcc_addresses` fields (case-insensitive)

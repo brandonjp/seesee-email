@@ -685,8 +685,8 @@ curl -X POST https://seesee.example.com/api/v1/log \
 - [ ] Notification alerts (e.g., "App X hasn't sent email in 24 hours")
 - [ ] WordPress plugin with settings page (code snippet in examples/ is sufficient for now)
 - [ ] STARTTLS support for SMTP ingest
-- [ ] Search-and-delete (find all emails for a specific address and purge them — supports GDPR right to erasure)
-- [ ] Data export per recipient (supports GDPR right of access / data portability)
+- [x] Search-and-delete (find all emails for a specific address and purge them — supports GDPR right to erasure)
+- [x] Data export per recipient (supports GDPR right of access / data portability)
 
 ---
 

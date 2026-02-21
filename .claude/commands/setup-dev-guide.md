@@ -216,10 +216,10 @@ See `ROADMAP.md` for detailed phase breakdown.
 - Integration snippets in app detail (pre-filled with credentials)
 
 #### Phase 3.0 — Future 🔮
-- Graduated body degradation (full → text → preview over time)
-- Provider webhook receivers (Resend, SendGrid status callbacks)
-- Search-and-delete (GDPR right to erasure)
-- Data export per recipient
+- ✅ Graduated body degradation (full → text → preview over time)
+- ✅ Provider webhook receivers (Resend, SendGrid status callbacks)
+- ✅ Search-and-delete (GDPR right to erasure)
+- ✅ Data export per recipient (GDPR right of access)
 - CSV/JSON search export
 - Prometheus metrics
 - Multi-user auth with roles

@@ -9,7 +9,7 @@
         <div class="flex gap-2">
             <div class="flex-1 relative">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" name="q" value="{{ q }}" placeholder="Search emails..."
+                <input type="search" name="q" value="{{ q }}" placeholder="Search emails..."
                        class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-3 py-2 text-sm shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
             </div>
             <button type="button" @click="filtersOpen = !filtersOpen"
@@ -97,11 +97,27 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Subject</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
+                            <a href="/emails?sort=subject&order={{ 'asc' if sort == 'subject' and order == 'desc' else 'desc' }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                               class="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
+                                Subject
+                                {% if sort == 'subject' %}
+                                <svg class="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ 'M5 15l7-7 7 7' if order == 'asc' else 'M19 9l-7 7-7-7' }}"/></svg>
+                                {% endif %}
+                            </a>
+                        </th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">From</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">To</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">Date</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                            <a href="/emails?sort=logged_at&order={{ 'asc' if sort == 'logged_at' and order == 'desc' else 'desc' }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                               class="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
+                                Date
+                                {% if sort == 'logged_at' %}
+                                <svg class="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ 'M5 15l7-7 7 7' if order == 'asc' else 'M19 9l-7 7-7-7' }}"/></svg>
+                                {% endif %}
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -110,10 +126,14 @@
                         data-href="/emails/{{ email.id }}"
                         onclick="window.location='/emails/{{ email.id }}'">
                         <td class="px-4 py-3">
-                            <div class="font-medium truncate max-w-xs">{{ email.subject }}</div>
+                            <div class="font-medium truncate max-w-xs" title="{{ email.subject }}">{{ email.subject }}</div>
                         </td>
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-xs hidden md:table-cell">{{ email.from_address }}</td>
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-xs hidden lg:table-cell">{{ email.to_addresses | join(', ') }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">
+                            <div class="truncate max-w-xs" title="{{ email.from_address }}">{{ email.from_address }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">
+                            <div class="truncate max-w-xs" title="{{ email.to_addresses | join(', ') }}">{{ email.to_addresses | join(', ') }}</div>
+                        </td>
                         <td class="px-4 py-3">
                             {% if email.status == 'sent' %}
                             <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">sent</span>
@@ -142,21 +162,21 @@
             </p>
             <div class="flex gap-1">
                 {% if page > 1 %}
-                <a href="/emails?page={{ page - 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                <a href="/emails?page={{ page - 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&sort={{ sort }}&order={{ order }}&per_page={{ per_page }}"
                    class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Prev</a>
                 {% endif %}
                 {% for p in range(1, pages + 1) %}
                     {% if p == page %}
                     <span class="rounded-lg bg-accent px-3 py-1 text-sm font-medium text-gray-900">{{ p }}</span>
                     {% elif p <= 3 or p > pages - 2 or (p >= page - 1 and p <= page + 1) %}
-                    <a href="/emails?page={{ p }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                    <a href="/emails?page={{ p }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&sort={{ sort }}&order={{ order }}&per_page={{ per_page }}"
                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">{{ p }}</a>
                     {% elif p == 4 or p == pages - 2 %}
                     <span class="px-1 py-1 text-sm text-gray-400">...</span>
                     {% endif %}
                 {% endfor %}
                 {% if page < pages %}
-                <a href="/emails?page={{ page + 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&per_page={{ per_page }}"
+                <a href="/emails?page={{ page + 1 }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&sort={{ sort }}&order={{ order }}&per_page={{ per_page }}"
                    class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Next</a>
                 {% endif %}
             </div>

@@ -98,9 +98,9 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form method="post" action="/apps" class="space-y-4">
+            <form method="post" action="/apps" class="space-y-4" x-data="{ submitting: false }" @submit="submitting = true">
                 <div>
-                    <label class="block text-sm font-medium mb-1">App Name</label>
+                    <label class="block text-sm font-medium mb-1">App Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" required placeholder="My Application"
                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
@@ -116,8 +116,14 @@
                 <div class="flex gap-3 justify-end">
                     <button type="button" @click="showAddForm = false"
                             class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
-                    <button type="submit"
-                            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">Create App</button>
+                    <button type="submit" :disabled="submitting"
+                            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!submitting">Create App</span>
+                        <span x-show="submitting" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Creating...
+                        </span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -178,12 +184,12 @@
                         data-href="/apps/{{ app.id }}"
                         onclick="window.location='/apps/{{ app.id }}'">
                         <td class="px-4 py-3 font-medium">
-                            <a href="/apps/{{ app.id }}" class="hover:text-accent active:text-accent transition-colors">{{ app.name }}</a>
+                            <a href="/apps/{{ app.id }}" class="hover:text-accent active:text-accent transition-colors" title="{{ app.name }}">{{ app.name }}</a>
                         </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{{ app.slug }}</code>
+                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded" title="{{ app.slug }}">{{ app.slug }}</code>
                         </td>
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 capitalize hidden md:table-cell">{{ app.body_storage_mode | replace('_', ' ') }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 capitalize hidden md:table-cell" title="{{ app.body_storage_mode | replace('_', ' ') }}">{{ app.body_storage_mode | replace('_', ' ') }}</td>
                         <td class="px-4 py-3">{{ app.email_count }}</td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap hidden lg:table-cell">
                             {% if app.last_activity_at %}

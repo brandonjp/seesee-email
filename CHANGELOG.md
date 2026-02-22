@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Admin UX audit fixes (12 issues across 7 files):
+  - Clickable sort column headers on email list — Subject and Date columns are links that toggle sort direction, with chevron indicators on the active sort column; sort state preserved across pagination
+  - Copy-to-clipboard buttons on email metadata tab (Provider, Provider Message ID)
+  - Copy-to-clipboard buttons on SMTP settings in app detail (Host, Port, Username, Encryption)
+  - Copy-to-clipboard buttons on HTML Source and Plain Text body tabs in email detail
+  - Email ID display with copy button in email detail header
+  - "View emails" link on app detail Total Emails stat card (links to `/emails?app_id=...`)
+  - Loading/spinner states on login form and app creation form (disables button, shows spinner)
+  - Required field asterisk (`*`) on App Name field in creation modal
+  - `title` tooltips on truncated table cells (Subject, From, To in emails; Name, Slug, Storage in apps)
+  - Search input changed to `type="search"` for native clear button and search keyboard action
+
+### Fixed
+- iOS Safari auto-zoom on form focus — CSS rule enforces 16px minimum font-size on all input/select/textarea elements via `@media screen and (-webkit-min-device-pixel-ratio: 0)`
+- Mobile touch targets below 44px — CSS `@media (pointer: coarse)` rule sets `min-height: 44px` on buttons and interactive elements; sidebar hamburger and close buttons increased from `p-1` to `p-2.5`
+
+### Changed
+- Version bump: 0.15.0-dev → 0.16.0-dev
+
+### Added
 - Mobile UX, theme system foundation, and UI polish (Phase 2.1):
   - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute on `<html>` — current mint palette becomes the default theme; future themes only need a new `[data-theme="name"]` CSS block
   - Tailwind config now uses CSS variable-based colors (`accent`, `paper`) instead of hardcoded hex values

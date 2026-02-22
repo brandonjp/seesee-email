@@ -18,11 +18,11 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                 {% set active_filter_count = (1 if app_id else 0) + (1 if status_filter else 0) + (1 if provider_filter else 0) %}
                 {% if active_filter_count > 0 %}
-                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-[10px] font-bold text-gray-900 flex items-center justify-center">{{ active_filter_count }}</span>
+                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-[10px] font-bold text-accent-contrast flex items-center justify-center">{{ active_filter_count }}</span>
                 {% endif %}
             </button>
             <button type="submit"
-                    class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors">
+                    class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent/90 active:bg-accent/80 transition-colors">
                 Search
             </button>
         </div>
@@ -167,7 +167,7 @@
                 {% endif %}
                 {% for p in range(1, pages + 1) %}
                     {% if p == page %}
-                    <span class="rounded-lg bg-accent px-3 py-1 text-sm font-medium text-gray-900">{{ p }}</span>
+                    <span class="rounded-lg bg-accent px-3 py-1 text-sm font-medium text-accent-contrast">{{ p }}</span>
                     {% elif p <= 3 or p > pages - 2 or (p >= page - 1 and p <= page + 1) %}
                     <a href="/emails?page={{ p }}&q={{ q }}&app_id={{ app_id }}&status={{ status_filter }}&provider={{ provider_filter }}&sort={{ sort }}&order={{ order }}&per_page={{ per_page }}"
                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">{{ p }}</a>

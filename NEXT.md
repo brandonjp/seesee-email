@@ -1,15 +1,17 @@
 # Next Steps — SeeSee
 
-**Version:** 0.17.0-dev
+**Version:** 0.18.0-dev
 **Updated:** 2026-02-22
 
 ## Just Completed
 
-- **Theme selector UI + expanded theme catalog** (Phase 3.0):
-  - 10 color themes: Mint (default), Indigo, Rose, Amber, Nord, Gruvbox, Dracula, Solarized Light, Terminal, Windows 95
-  - Swatch grid picker on Settings page with live preview, active indicator, and localStorage persistence
-  - Win95 theme includes flat corners and beveled borders via scoped CSS overrides
-  - Full palette specs for each theme noted in CSS comments for future expansion beyond `--color-accent` / `--color-paper`
+- **Expanded theme catalog** (Phase 4):
+  - 21 total themes (up from 10): 4 accent, 8 developer, 4 light, 6 retro
+  - New developer themes: Monokai, Tomorrow Night, Rosé Pine, Catppuccin Mocha, Obsidian
+  - New light themes: Paper, Aqua Classic, Blueprint (with CSS grid overlay)
+  - New retro themes: Amber Terminal, VHS (scanlines), Mac OS 9 (beveled borders), Rad (neon glow)
+  - Scoped CSS overrides for Blueprint, VHS, OS 9, and Rad — zero bleed between themes
+  - Theme picker reorganized: Accent → Developer → Light → Retro
   - 272 tests passing
 
 ## Highest Priority Next Task
@@ -27,10 +29,10 @@
 
 ## Current State
 
-- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, and theme selector UI from Phase 3.0
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, and expanded theme catalog
 - 272 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
-- 10-theme color system with swatch picker on Settings page
+- 21-theme color system with swatch picker on Settings page (4 accent, 8 developer, 4 light, 6 retro)
 - Provider webhook receivers for Resend and SendGrid
 - Graduated body degradation (full → text → preview over time)
 - Timezone architecture: UTC storage, configurable display, format-consistent queries

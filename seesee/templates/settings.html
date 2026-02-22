@@ -16,29 +16,36 @@
             Choose a color theme. Your selection is saved in this browser.
         </p>
         <div x-data="{
-            current: $root.getAttribute('data-theme') || 'mint',
+            current: localStorage.getItem('seesee-theme') || 'mint',
             themes: [
-                { key: 'mint',             name: 'Mint (Default)', accent: '#32F5C0', paper: '#F6F1E6' },
-                { key: 'indigo',           name: 'Indigo',         accent: '#6366F1', paper: '#F1F5F9' },
-                { key: 'rose',             name: 'Rose',           accent: '#F43F5E', paper: '#FFF1F2' },
-                { key: 'amber',            name: 'Amber',          accent: '#F59E0B', paper: '#FFFBEB' },
-                { key: 'nord',             name: 'Nord',           accent: '#88C0D0', paper: '#2E3440' },
-                { key: 'gruvbox',          name: 'Gruvbox',        accent: '#8EC07C', paper: '#282828' },
-                { key: 'dracula',          name: 'Dracula',        accent: '#BD93F9', paper: '#282A36' },
-                { key: 'solarized-light',  name: 'Solarized Light',accent: '#268BD2', paper: '#FDF6E3' },
-                { key: 'terminal',         name: 'Terminal',       accent: '#00FF41', paper: '#0A0F0A' },
-                { key: 'win95',            name: 'Windows 95',     accent: '#000080', paper: '#C0C0C0' }
+                { key: 'mint',             name: 'Mint (Default)',  accent: '#32F5C0', paper: '#F6F1E6' },
+                { key: 'indigo',           name: 'Indigo',          accent: '#6366F1', paper: '#F1F5F9' },
+                { key: 'rose',             name: 'Rose',            accent: '#F43F5E', paper: '#FFF1F2' },
+                { key: 'amber',            name: 'Amber',           accent: '#F59E0B', paper: '#FFFBEB' },
+                { key: 'nord',             name: 'Nord',            accent: '#88C0D0', paper: '#2E3440' },
+                { key: 'gruvbox',          name: 'Gruvbox',         accent: '#8EC07C', paper: '#282828' },
+                { key: 'dracula',          name: 'Dracula',         accent: '#BD93F9', paper: '#282A36' },
+                { key: 'monokai',          name: 'Monokai',         accent: '#A6E22E', paper: '#272822' },
+                { key: 'tomorrow-night',   name: 'Tomorrow Night',  accent: '#81A2BE', paper: '#1D1F21' },
+                { key: 'rosepine',         name: 'Rosé Pine',       accent: '#31748F', paper: '#191724' },
+                { key: 'catppuccin',       name: 'Catppuccin',      accent: '#89B4FA', paper: '#1E1E2E' },
+                { key: 'obsidian',         name: 'Obsidian',        accent: '#5E6AD2', paper: '#141414' },
+                { key: 'solarized-light',  name: 'Solarized Light', accent: '#268BD2', paper: '#FDF6E3' },
+                { key: 'paper',            name: 'Paper',           accent: '#3B6E8C', paper: '#FAFAF7' },
+                { key: 'aqua',             name: 'Aqua Classic',    accent: '#0066CC', paper: '#E8E8E8' },
+                { key: 'blueprint',        name: 'Blueprint',       accent: '#00D4FF', paper: '#1A2980' },
+                { key: 'terminal',         name: 'Terminal Green',  accent: '#00FF41', paper: '#0A0F0A' },
+                { key: 'amber-terminal',   name: 'Amber Terminal',  accent: '#FFCC00', paper: '#080400' },
+                { key: 'vhs',              name: 'VHS',             accent: '#CC00FF', paper: '#0A0A14' },
+                { key: 'os9',              name: 'Mac OS 9',        accent: '#6666CC', paper: '#C8C8C8' },
+                { key: 'win95',            name: 'Windows 95',      accent: '#000080', paper: '#C0C0C0' },
+                { key: 'rad',              name: 'Rad',             accent: '#FF006E', paper: '#0D0D0D' }
             ],
             pick(key) {
                 this.current = key;
                 localStorage.setItem('seesee-theme', key);
-                /* Update the root Alpine 'theme' state — drives :data-theme binding on html */
-                let root = document.documentElement;
-                if (root._x_dataStack) {
-                    root._x_dataStack[0].theme = key;
-                } else {
-                    root.setAttribute('data-theme', key);
-                }
+                /* Notify root Alpine component to update :data-theme on <html> */
+                this.$dispatch('theme-change', key);
             }
         }" class="grid grid-cols-3 sm:grid-cols-5 gap-3">
             <template x-for="t in themes" :key="t.key">
@@ -128,7 +135,7 @@
         <div x-data="{ running: false }">
             <button @click="running = true; fetch('/settings/cleanup', { method: 'POST' }).then(r => { running = false; if (r.redirected) window.location = r.url; else window.location = '/settings?cleanup=1'; }).catch(() => { running = false; showToast('Cleanup failed', 'error'); })"
                     :disabled="running"
-                    class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-accent/90 active:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent/90 active:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg x-show="!running" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 <svg x-show="running" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 <span x-show="!running">Run Cleanup Now</span>

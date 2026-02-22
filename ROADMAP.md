@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.17.0-dev
+**Version:** 0.18.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -147,6 +147,7 @@
 - [x] Data export per recipient (GDPR right of access)
 - [x] Admin UX audit — iOS input zoom fix, sortable columns, touch targets, copy buttons, form loading states, tooltips
 - [x] Theme selector UI on settings page — 10 themes (4 accent, 3 developer, 1 light, 2 retro) with swatch grid picker
+- [x] Expanded theme catalog — 21 themes (4 accent, 8 developer, 4 light, 6 retro) with scoped CSS overrides for Blueprint, VHS, OS 9, Rad
 - [ ] CSV/JSON search export
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles

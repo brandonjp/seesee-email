@@ -18,16 +18,28 @@
         <div x-data="{
             current: $root.getAttribute('data-theme') || 'mint',
             themes: [
-                { key: 'mint',             name: 'Mint (Default)', accent: '#32F5C0', paper: '#F6F1E6' },
-                { key: 'indigo',           name: 'Indigo',         accent: '#6366F1', paper: '#F1F5F9' },
-                { key: 'rose',             name: 'Rose',           accent: '#F43F5E', paper: '#FFF1F2' },
-                { key: 'amber',            name: 'Amber',          accent: '#F59E0B', paper: '#FFFBEB' },
-                { key: 'nord',             name: 'Nord',           accent: '#88C0D0', paper: '#2E3440' },
-                { key: 'gruvbox',          name: 'Gruvbox',        accent: '#8EC07C', paper: '#282828' },
-                { key: 'dracula',          name: 'Dracula',        accent: '#BD93F9', paper: '#282A36' },
-                { key: 'solarized-light',  name: 'Solarized Light',accent: '#268BD2', paper: '#FDF6E3' },
-                { key: 'terminal',         name: 'Terminal',       accent: '#00FF41', paper: '#0A0F0A' },
-                { key: 'win95',            name: 'Windows 95',     accent: '#000080', paper: '#C0C0C0' }
+                { key: 'mint',             name: 'Mint (Default)',  accent: '#32F5C0', paper: '#F6F1E6' },
+                { key: 'indigo',           name: 'Indigo',          accent: '#6366F1', paper: '#F1F5F9' },
+                { key: 'rose',             name: 'Rose',            accent: '#F43F5E', paper: '#FFF1F2' },
+                { key: 'amber',            name: 'Amber',           accent: '#F59E0B', paper: '#FFFBEB' },
+                { key: 'nord',             name: 'Nord',            accent: '#88C0D0', paper: '#2E3440' },
+                { key: 'gruvbox',          name: 'Gruvbox',         accent: '#8EC07C', paper: '#282828' },
+                { key: 'dracula',          name: 'Dracula',         accent: '#BD93F9', paper: '#282A36' },
+                { key: 'monokai',          name: 'Monokai',         accent: '#A6E22E', paper: '#272822' },
+                { key: 'tomorrow-night',   name: 'Tomorrow Night',  accent: '#81A2BE', paper: '#1D1F21' },
+                { key: 'rosepine',         name: 'Rosé Pine',       accent: '#31748F', paper: '#191724' },
+                { key: 'catppuccin',       name: 'Catppuccin',      accent: '#89B4FA', paper: '#1E1E2E' },
+                { key: 'obsidian',         name: 'Obsidian',        accent: '#5E6AD2', paper: '#141414' },
+                { key: 'solarized-light',  name: 'Solarized Light', accent: '#268BD2', paper: '#FDF6E3' },
+                { key: 'paper',            name: 'Paper',           accent: '#3B6E8C', paper: '#FAFAF7' },
+                { key: 'aqua',             name: 'Aqua Classic',    accent: '#0066CC', paper: '#E8E8E8' },
+                { key: 'blueprint',        name: 'Blueprint',       accent: '#00D4FF', paper: '#1A2980' },
+                { key: 'terminal',         name: 'Terminal Green',  accent: '#00FF41', paper: '#0A0F0A' },
+                { key: 'amber-terminal',   name: 'Amber Terminal',  accent: '#FFCC00', paper: '#080400' },
+                { key: 'vhs',              name: 'VHS',             accent: '#CC00FF', paper: '#0A0A14' },
+                { key: 'os9',              name: 'Mac OS 9',        accent: '#6666CC', paper: '#C8C8C8' },
+                { key: 'win95',            name: 'Windows 95',      accent: '#000080', paper: '#C0C0C0' },
+                { key: 'rad',              name: 'Rad',             accent: '#FF006E', paper: '#0D0D0D' }
             ],
             pick(key) {
                 this.current = key;

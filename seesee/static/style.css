@@ -44,6 +44,55 @@
     --color-paper: 40 40 40;          /* #282828 — dark bg */
 }
 
+/* Dracula — Dark purple with vivid pink accents.
+   Full palette ref: bg #282A36, surface #343746, border #44475A,
+   text #F8F8F2/#BFBFCF, success #50FA7B, warning #F1FA8C, danger #FF5555 */
+[data-theme="dracula"] {
+    --color-accent: 189 147 249;      /* #BD93F9 — dracula purple */
+    --color-paper: 40 42 54;          /* #282A36 — dracula bg */
+}
+
+/* Monokai — Warm charcoal, vivid accents. The original "fun" developer theme.
+   Full palette ref: bg #272822, surface #2D2E27, border #3E3D32,
+   text #F8F8F2/#CFCFC2/#75715E, success #A6E22E, warning #E6DB74, danger #F92672 */
+[data-theme="monokai"] {
+    --color-accent: 166 226 46;       /* #A6E22E — monokai green */
+    --color-paper: 39 40 34;          /* #272822 — charcoal */
+}
+
+/* Tomorrow Night — Cool neutral dark. Balanced, easy to live with all day.
+   Full palette ref: bg #1D1F21, surface #282A2E, border #373B41,
+   text #C5C8C6/#969896/#707270, success #B5BD68, warning #F0C674, danger #CC6666 */
+[data-theme="tomorrow-night"] {
+    --color-accent: 129 162 190;      /* #81A2BE — tomorrow blue */
+    --color-paper: 29 31 33;          /* #1D1F21 — dark neutral */
+}
+
+/* Rosé Pine — Soft, warm dark mauve. Fast-growing developer favorite.
+   Full palette ref: bg #191724, surface #1F1D2E, border #403D52,
+   text #E0DEF4/#908CAA/#6E6A86, success #31748F, warning #F6C177, danger #EB6F92 */
+[data-theme="rosepine"] {
+    --color-accent: 49 116 143;       /* #31748F — pine teal */
+    --color-paper: 25 23 36;          /* #191724 — dark mauve */
+}
+
+/* Catppuccin Mocha — Pastel dark. The most popular modern developer theme.
+   Full palette ref: bg #1E1E2E, surface #181825, border #45475A,
+   text #CDD6F4/#BAC2DE/#7F849C, success #A6E3A1, warning #F9E2AF, danger #F38BA8 */
+[data-theme="catppuccin"] {
+    --color-accent: 137 180 250;      /* #89B4FA — catppuccin blue */
+    --color-paper: 30 30 46;          /* #1E1E2E — mocha base */
+}
+
+/* Obsidian — Deep neutral gray. The "serious tool" theme.
+   Full palette ref: bg #141414, surface #1C1C1C, border #2E2E2E,
+   text #EBEBEB/#A0A0A0/#616161, success #4CAF82, warning #D4A017, danger #E05C5C */
+[data-theme="obsidian"] {
+    --color-accent: 94 106 210;       /* #5E6AD2 — indigo */
+    --color-paper: 20 20 20;          /* #141414 — deep gray */
+}
+
+/* Light themes */
 /* Solarized Light — Warm parchment. Best daytime option.
    Full palette ref: bg #FDF6E3, surface #EEE8D5, border #D3C9B8,
    text #586E75/#657B83, success #859900, warning #B58900, danger #DC322F */
@@ -52,12 +101,39 @@
     --color-paper: 253 246 227;       /* #FDF6E3 — solarized base3 */
 }
 
-/* Dracula — Dark purple with vivid pink accents.
-   Full palette ref: bg #282A36, surface #343746, border #44475A,
-   text #F8F8F2/#BFBFCF, success #50FA7B, warning #F1FA8C, danger #FF5555 */
-[data-theme="dracula"] {
-    --color-accent: 189 147 249;      /* #BD93F9 — dracula purple */
-    --color-paper: 40 42 54;          /* #282A36 — dracula bg */
+/* Paper — Warm off-white. Like a high-quality notebook.
+   Full palette ref: bg #FAFAF7, surface #F2F2EE, border #D4D4CE,
+   text #1A1A16/#4A4A44/#8A8A84, success #3A7D44, warning #B5620A, danger #C0392B */
+[data-theme="paper"] {
+    --color-accent: 59 110 140;       /* #3B6E8C — ink blue */
+    --color-paper: 250 250 247;       /* #FAFAF7 — warm off-white */
+}
+
+/* Aqua Classic — Early Mac OS X. Brushed aluminum, candy blue.
+   Full palette ref: bg #E8E8E8, surface #F4F4F4, border #C0C0C0,
+   text #1A1A1A/#555555/#999999, success #339933, warning #CC8800, danger #CC2200,
+   sidebar #D0D8E8 (classic translucent blue-gray) */
+[data-theme="aqua"] {
+    --color-accent: 0 102 204;        /* #0066CC — system blue */
+    --color-paper: 232 232 232;       /* #E8E8E8 — brushed aluminum */
+}
+
+/* Blueprint — Engineering drawing. Cobalt blue field, white ink.
+   Full palette ref: bg #1A2980, surface #1E3494, border #3555C0,
+   text #FFFFFF/#B8C8F8/#7890E0, success #00E676, warning #FFEA00, danger #FF1744 */
+[data-theme="blueprint"] {
+    --color-accent: 0 212 255;        /* #00D4FF — cyan */
+    --color-paper: 26 41 128;         /* #1A2980 — cobalt blue */
+}
+
+/* Blueprint special override — subtle grid background */
+[data-theme="blueprint"] body,
+[data-theme="blueprint"] .app-bg {
+    background-image: repeating-linear-gradient(
+        0deg, transparent, transparent 19px, rgba(255,255,255,0.05) 19px, rgba(255,255,255,0.05) 20px
+    ), repeating-linear-gradient(
+        90deg, transparent, transparent 19px, rgba(255,255,255,0.05) 19px, rgba(255,255,255,0.05) 20px
+    );
 }
 
 /* Retro themes */
@@ -68,6 +144,52 @@
 [data-theme="terminal"] {
     --color-accent: 0 255 65;         /* #00FF41 — phosphor green */
     --color-paper: 10 15 10;          /* #0A0F0A — near-black green */
+}
+
+/* Amber Terminal — Phosphor amber CRT variant. Warmer than green terminal.
+   Full palette ref: bg #080400, surface #0F0800, border #2A1800,
+   text #FFB000/#CC8C00/#885C00, success #FFCC00, warning #FF8800, danger #FF4400 */
+[data-theme="amber-terminal"] {
+    --color-accent: 255 204 0;        /* #FFCC00 — bright amber */
+    --color-paper: 8 4 0;             /* #080400 — near-black warm */
+}
+
+/* VHS — Late 80s home video. Magnetic tape and tracking issues.
+   Full palette ref: bg #0A0A14, surface #10101E, border #2A1A3A,
+   text #E8E0F0/#A080C0/#604080, success #00FF88, warning #FFCC00, danger #FF2244 */
+[data-theme="vhs"] {
+    --color-accent: 204 0 255;        /* #CC00FF — magenta-purple */
+    --color-paper: 10 10 20;          /* #0A0A14 — deep dark blue */
+}
+
+/* VHS special override — scanline texture */
+[data-theme="vhs"] body,
+[data-theme="vhs"] .app-bg {
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.15) 2px,
+        rgba(0, 0, 0, 0.15) 4px
+    );
+}
+
+/* Mac OS 9 — Platinum gray. Pre-Aqua Apple.
+   Full palette ref: bg #C8C8C8, surface #D4D0C8 (classic platinum), border #B0ACA4,
+   text #000000/#444444/#888888, success #008000, warning #CC8800, danger #CC0000,
+   code bg #F0EDE8 */
+[data-theme="os9"] {
+    --color-accent: 102 102 204;      /* #6666CC — soft purple highlight */
+    --color-paper: 200 200 200;       /* #C8C8C8 — platinum gray */
+}
+
+/* OS 9 special overrides — classic beveled borders */
+[data-theme="os9"] .card,
+[data-theme="os9"] .panel,
+[data-theme="os9"] button,
+[data-theme="os9"] .btn {
+    border: 1px solid #888888;
+    box-shadow: inset -1px -1px 0 #888888, inset 1px 1px 0 #FFFFFF;
 }
 
 /* Windows 95 — Teal desktop, silver panels, navy title bars.
@@ -85,6 +207,25 @@
 [data-theme="win95"] .panel { border: 2px outset #FFFFFF; }
 [data-theme="win95"] button,
 [data-theme="win95"] .btn { border: 2px outset #FFFFFF; }
+
+/* Rad — 90s neon. Saved by the Bell, Lisa Frank. Strong visual identity.
+   Full palette ref: bg #0D0D0D, surface #141414, border #FF006E (hot pink),
+   text #FFFFFF/#CCCCCC/#888888, success #00F5FF, warning #FFED00, danger #FF006E */
+[data-theme="rad"] {
+    --color-accent: 255 0 110;        /* #FF006E — hot pink */
+    --color-paper: 13 13 13;          /* #0D0D0D — black */
+}
+
+/* Rad special overrides — neon glow on cards and active nav */
+[data-theme="rad"] .card,
+[data-theme="rad"] .panel {
+    border-color: var(--color-border);
+    box-shadow: 0 0 8px rgba(255, 0, 110, 0.3);
+}
+[data-theme="rad"] .nav-item.active,
+[data-theme="rad"] .sidebar-active {
+    box-shadow: 0 0 6px rgba(255, 0, 110, 0.6);
+}
 
 /* ------------------------------------------------------------------ */
 /* Prevent iOS Safari auto-zoom on input focus (requires >=16px)       */

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Expanded theme catalog — 11 new themes added (Phase 4), bringing total to 21:
+  - Developer: Monokai, Tomorrow Night, Rosé Pine, Catppuccin Mocha, Obsidian
+  - Light: Paper, Aqua Classic, Blueprint (with subtle CSS grid background overlay)
+  - Retro: Amber Terminal, VHS (with scanline texture), Mac OS 9 (with beveled borders), Rad (with neon glow effects)
+  - Special CSS overrides scoped to `[data-theme]` for Blueprint (grid), VHS (scanlines), OS 9 (beveled borders), Rad (neon glow)
+  - Theme picker reorganized into logical groups: Accent (4), Developer (8), Light (4), Retro (6)
+  - All themes WCAG AA compliant for body text contrast
+
+### Changed
+- Version bump: 0.17.0-dev → 0.18.0-dev
+
+### Added
 - Theme selector UI on settings page with 10 color themes (Phase 3.0):
   - Theme picker grid with two-tone color swatches, active checkmark indicator, and instant live preview
   - 4 accent themes: Mint (default), Indigo, Rose, Amber

@@ -13,20 +13,78 @@
     --color-paper: 246 241 230;       /* #F6F1E6 — warm paper */
 }
 
-/* Future themes — uncomment or add new blocks to enable:
+/* Accent themes */
 [data-theme="indigo"] {
-    --color-accent: 99 102 241;
-    --color-paper: 241 245 249;
+    --color-accent: 99 102 241;       /* #6366F1 — indigo */
+    --color-paper: 241 245 249;       /* #F1F5F9 — cool gray */
 }
 [data-theme="rose"] {
-    --color-accent: 244 63 94;
-    --color-paper: 255 241 242;
+    --color-accent: 244 63 94;        /* #F43F5E — rose */
+    --color-paper: 255 241 242;       /* #FFF1F2 — blush */
 }
 [data-theme="amber"] {
-    --color-accent: 245 158 11;
-    --color-paper: 255 251 235;
+    --color-accent: 245 158 11;       /* #F59E0B — amber */
+    --color-paper: 255 251 235;       /* #FFFBEB — cream */
 }
-*/
+
+/* Developer themes */
+/* Nord — Cool arctic. Muted, soft, professional.
+   Full palette ref: bg #2E3440, surface #3B4252, border #4C566A,
+   text #ECEFF4/#D8DEE9, success #A3BE8C, warning #EBCB8B, danger #BF616A */
+[data-theme="nord"] {
+    --color-accent: 136 192 208;      /* #88C0D0 — frost teal */
+    --color-paper: 46 52 64;          /* #2E3440 — polar night */
+}
+
+/* Gruvbox Dark — Warm earthy retro. High contrast, cozy.
+   Full palette ref: bg #282828, surface #3C3836, border #665C54,
+   text #EBDBB2/#D5C4A1, success #B8BB26, warning #FABD2F, danger #FB4934 */
+[data-theme="gruvbox"] {
+    --color-accent: 142 192 124;      /* #8EC07C — gruvbox green */
+    --color-paper: 40 40 40;          /* #282828 — dark bg */
+}
+
+/* Solarized Light — Warm parchment. Best daytime option.
+   Full palette ref: bg #FDF6E3, surface #EEE8D5, border #D3C9B8,
+   text #586E75/#657B83, success #859900, warning #B58900, danger #DC322F */
+[data-theme="solarized-light"] {
+    --color-accent: 38 139 210;       /* #268BD2 — solarized blue */
+    --color-paper: 253 246 227;       /* #FDF6E3 — solarized base3 */
+}
+
+/* Dracula — Dark purple with vivid pink accents.
+   Full palette ref: bg #282A36, surface #343746, border #44475A,
+   text #F8F8F2/#BFBFCF, success #50FA7B, warning #F1FA8C, danger #FF5555 */
+[data-theme="dracula"] {
+    --color-accent: 189 147 249;      /* #BD93F9 — dracula purple */
+    --color-paper: 40 42 54;          /* #282A36 — dracula bg */
+}
+
+/* Retro themes */
+/* Terminal Green — Classic green phosphor CRT.
+   Full palette ref: bg #0A0F0A, surface #0D140D, border #1A2E1A,
+   text #00CC41/#009933, success #00FF41, warning #CCFF00, danger #FF3300
+   Font note: monospace font stack would enhance this theme (future enhancement) */
+[data-theme="terminal"] {
+    --color-accent: 0 255 65;         /* #00FF41 — phosphor green */
+    --color-paper: 10 15 10;          /* #0A0F0A — near-black green */
+}
+
+/* Windows 95 — Teal desktop, silver panels, navy title bars.
+   Full palette ref: bg #008080 (teal), surface #C0C0C0 (silver), border #808080,
+   text #000000/#444444, success #008000, warning #808000, danger #800000,
+   sidebar #000080 (navy) bg, #FFFFFF text, #FFFF00 active */
+[data-theme="win95"] {
+    --color-accent: 0 0 128;          /* #000080 — navy */
+    --color-paper: 192 192 192;       /* #C0C0C0 — silver */
+}
+
+/* Win95 special overrides — flat corners + beveled borders */
+[data-theme="win95"] * { border-radius: 0 !important; }
+[data-theme="win95"] .card,
+[data-theme="win95"] .panel { border: 2px outset #FFFFFF; }
+[data-theme="win95"] button,
+[data-theme="win95"] .btn { border: 2px outset #FFFFFF; }
 
 /* ------------------------------------------------------------------ */
 /* Prevent iOS Safari auto-zoom on input focus (requires >=16px)       */

@@ -1,23 +1,23 @@
 # Next Steps — SeeSee
 
-**Version:** 0.16.0-dev
-**Updated:** 2026-02-21
+**Version:** 0.17.0-dev
+**Updated:** 2026-02-22
 
 ## Just Completed
 
-- **Admin UX audit — 12 fixes across 7 files** (Phase 3.0):
-  - Critical: iOS Safari auto-zoom fix (16px min on inputs), clickable sort column headers with indicators
-  - Moderate: 44px touch targets on coarse-pointer devices, copy buttons on metadata/SMTP settings, title tooltips on truncated cells, loading states on login + app creation
-  - Minor: `type="search"` on search input, required field asterisk, email ID display + copy, "View emails" link on app detail, copy buttons on body tabs
+- **Theme selector UI + expanded theme catalog** (Phase 3.0):
+  - 10 color themes: Mint (default), Indigo, Rose, Amber, Nord, Gruvbox, Dracula, Solarized Light, Terminal, Windows 95
+  - Swatch grid picker on Settings page with live preview, active indicator, and localStorage persistence
+  - Win95 theme includes flat corners and beveled borders via scoped CSS overrides
+  - Full palette specs for each theme noted in CSS comments for future expansion beyond `--color-accent` / `--color-paper`
   - 272 tests passing
 
 ## Highest Priority Next Task
 
-- **Theme selector UI** on settings page — dropdown that sets `data-theme` and persists to `localStorage`. The CSS variable infrastructure is already in place; just needs the UI component and a few theme color palettes defined in `style.css`.
+- **CSV/JSON search export** — add export buttons to the email search page that download filtered results as CSV or JSON files.
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
-- CSV/JSON search export
 - Prometheus metrics endpoint
 - Multi-user auth with roles
 - WordPress plugin with settings page
@@ -27,10 +27,10 @@
 
 ## Current State
 
-- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, and admin UX audit from Phase 3.0
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, and theme selector UI from Phase 3.0
 - 272 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
-- CSS custom properties theme system ready for multiple themes
+- 10-theme color system with swatch picker on Settings page
 - Provider webhook receivers for Resend and SendGrid
 - Graduated body degradation (full → text → preview over time)
 - Timezone architecture: UTC storage, configurable display, format-consistent queries

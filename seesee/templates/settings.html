@@ -9,6 +9,62 @@
         Restart the server after changing any <code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">SEESEE_*</code> variable.
     </p>
 
+    <!-- Appearance / Theme -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Appearance</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Choose a color theme. Your selection is saved in this browser.
+        </p>
+        <div x-data="{
+            current: $root.getAttribute('data-theme') || 'mint',
+            themes: [
+                { key: 'mint',             name: 'Mint (Default)', accent: '#32F5C0', paper: '#F6F1E6' },
+                { key: 'indigo',           name: 'Indigo',         accent: '#6366F1', paper: '#F1F5F9' },
+                { key: 'rose',             name: 'Rose',           accent: '#F43F5E', paper: '#FFF1F2' },
+                { key: 'amber',            name: 'Amber',          accent: '#F59E0B', paper: '#FFFBEB' },
+                { key: 'nord',             name: 'Nord',           accent: '#88C0D0', paper: '#2E3440' },
+                { key: 'gruvbox',          name: 'Gruvbox',        accent: '#8EC07C', paper: '#282828' },
+                { key: 'dracula',          name: 'Dracula',        accent: '#BD93F9', paper: '#282A36' },
+                { key: 'solarized-light',  name: 'Solarized Light',accent: '#268BD2', paper: '#FDF6E3' },
+                { key: 'terminal',         name: 'Terminal',       accent: '#00FF41', paper: '#0A0F0A' },
+                { key: 'win95',            name: 'Windows 95',     accent: '#000080', paper: '#C0C0C0' }
+            ],
+            pick(key) {
+                this.current = key;
+                localStorage.setItem('seesee-theme', key);
+                /* Update the root Alpine 'theme' state — drives :data-theme binding on html */
+                let root = document.documentElement;
+                if (root._x_dataStack) {
+                    root._x_dataStack[0].theme = key;
+                } else {
+                    root.setAttribute('data-theme', key);
+                }
+            }
+        }" class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+            <template x-for="t in themes" :key="t.key">
+                <button @click="pick(t.key)"
+                        :title="t.name"
+                        class="group flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer min-w-[64px]"
+                        :class="current === t.key
+                            ? 'border-accent bg-accent/10 ring-2 ring-accent/30'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'">
+                    <!-- Color swatch: two-tone circle (paper bg + accent accent) -->
+                    <span class="relative w-10 h-10 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600 shrink-0"
+                          :style="'background: linear-gradient(135deg, ' + t.paper + ' 50%, ' + t.accent + ' 50%)'">
+                        <!-- Checkmark overlay when selected -->
+                        <span x-show="current === t.key"
+                              class="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <svg class="w-5 h-5 text-white drop-shadow" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </span>
+                    </span>
+                    <span class="text-xs font-medium text-center leading-tight"
+                          :class="current === t.key ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'"
+                          x-text="t.name"></span>
+                </button>
+            </template>
+        </div>
+    </div>
+
     <!-- Retention Configuration -->
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Retention Configuration</h2>

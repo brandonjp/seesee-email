@@ -29,12 +29,28 @@ function showToast(message, type) {
 // ---------------------------------------------------------------------------
 // Click-to-copy helper
 // ---------------------------------------------------------------------------
+function _copyFallback(text) {
+    // Fallback for non-secure contexts where navigator.clipboard is unavailable
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+    } finally {
+        document.body.removeChild(ta);
+    }
+}
+
 function copyToClipboard(text, buttonEl) {
-    navigator.clipboard.writeText(text).then(function() {
+    function onSuccess() {
         showToast('Copied to clipboard');
         if (buttonEl) {
-            const icon = buttonEl.querySelector('.copy-icon');
-            const check = buttonEl.querySelector('.check-icon');
+            var icon = buttonEl.querySelector('.copy-icon');
+            var check = buttonEl.querySelector('.check-icon');
             if (icon && check) {
                 icon.classList.add('hidden');
                 check.classList.remove('hidden');
@@ -44,7 +60,17 @@ function copyToClipboard(text, buttonEl) {
                 }, 1500);
             }
         }
-    });
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+            try { _copyFallback(text); onSuccess(); }
+            catch (e) { showToast('Failed to copy', 'error'); }
+        });
+    } else {
+        try { _copyFallback(text); onSuccess(); }
+        catch (e) { showToast('Failed to copy', 'error'); }
+    }
 }
 
 // ---------------------------------------------------------------------------

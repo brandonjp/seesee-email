@@ -16,7 +16,7 @@
             Choose a color theme. Your selection is saved in this browser.
         </p>
         <div x-data="{
-            current: $root.getAttribute('data-theme') || 'mint',
+            current: localStorage.getItem('seesee-theme') || 'mint',
             themes: [
                 { key: 'mint',             name: 'Mint (Default)',  accent: '#32F5C0', paper: '#F6F1E6' },
                 { key: 'indigo',           name: 'Indigo',          accent: '#6366F1', paper: '#F1F5F9' },
@@ -44,13 +44,8 @@
             pick(key) {
                 this.current = key;
                 localStorage.setItem('seesee-theme', key);
-                /* Update the root Alpine 'theme' state — drives :data-theme binding on html */
-                let root = document.documentElement;
-                if (root._x_dataStack) {
-                    root._x_dataStack[0].theme = key;
-                } else {
-                    root.setAttribute('data-theme', key);
-                }
+                /* Notify root Alpine component to update :data-theme on <html> */
+                this.$dispatch('theme-change', key);
             }
         }" class="grid grid-cols-3 sm:grid-cols-5 gap-3">
             <template x-for="t in themes" :key="t.key">

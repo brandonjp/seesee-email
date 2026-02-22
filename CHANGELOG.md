@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Theme picker reorganized into logical groups: Accent (4), Developer (8), Light (4), Retro (6)
   - All themes WCAG AA compliant for body text contrast
 
+### Fixed
+- Theme picker not applying selected theme — `$root.getAttribute('data-theme')` returned null (Alpine's `$root` scopes to current component, not `<html>`); replaced with `localStorage` read and `$dispatch` event for cross-component communication
+- Accent-background buttons (Add App, Search, Login, etc.) invisible on dark-accent themes (Win95, Obsidian, Indigo, Rose, VHS, Rad, etc.) — added `--color-accent-contrast` CSS variable per theme, replaced hardcoded `text-gray-900` with `text-accent-contrast` on all solid `bg-accent` elements
+
 ### Changed
 - Version bump: 0.17.0-dev → 0.18.0-dev
 

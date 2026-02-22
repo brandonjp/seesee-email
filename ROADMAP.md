@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.16.0-dev
+**Version:** 0.17.0-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -146,7 +146,7 @@
 - [x] Search-and-delete (GDPR right to erasure)
 - [x] Data export per recipient (GDPR right of access)
 - [x] Admin UX audit — iOS input zoom fix, sortable columns, touch targets, copy buttons, form loading states, tooltips
-- [ ] Theme selector UI on settings page (themes stored in CSS custom properties, ready to implement)
+- [x] Theme selector UI on settings page — 10 themes (4 accent, 3 developer, 1 light, 2 retro) with swatch grid picker
 - [ ] CSV/JSON search export
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles

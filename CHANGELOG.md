@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Theme selector UI on settings page with 10 color themes (Phase 3.0):
+  - Theme picker grid with two-tone color swatches, active checkmark indicator, and instant live preview
+  - 4 accent themes: Mint (default), Indigo, Rose, Amber
+  - 3 developer themes: Nord, Gruvbox, Dracula
+  - 1 light theme: Solarized Light
+  - 2 retro themes: Terminal (green phosphor CRT), Windows 95 (teal/silver/navy with flat corners and beveled borders)
+  - Each theme defines `--color-accent` and `--color-paper` CSS custom properties; full palette specs noted in comments for future expansion
+  - Win95 theme includes scoped overrides: `border-radius: 0 !important` and outset borders on cards/buttons
+  - Hooks into existing Alpine.js theme state and `localStorage('seesee-theme')` persistence
+  - Responsive grid (3 columns mobile, 5 columns desktop) with 44px+ touch targets
+
+### Changed
+- Version bump: 0.16.0-dev → 0.17.0-dev
+
+### Added
 - Admin UX audit fixes (12 issues across 7 files):
   - Clickable sort column headers on email list — Subject and Date columns are links that toggle sort direction, with chevron indicators on the active sort column; sort state preserved across pagination
   - Copy-to-clipboard buttons on email metadata tab (Provider, Provider Message ID)

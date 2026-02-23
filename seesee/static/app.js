@@ -46,6 +46,10 @@ function _copyFallback(text) {
 }
 
 function copyToClipboard(text, buttonEl) {
+    // Defensive normalization: credential fields should never include
+    // surrounding whitespace, and trimming avoids accidental padded copies.
+    var normalizedText = (typeof text === 'string') ? text.trim() : String(text ?? '');
+
     function onSuccess() {
         showToast('Copied to clipboard');
         if (buttonEl) {
@@ -63,12 +67,12 @@ function copyToClipboard(text, buttonEl) {
     }
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
-            try { _copyFallback(text); onSuccess(); }
+        navigator.clipboard.writeText(normalizedText).then(onSuccess).catch(function() {
+            try { _copyFallback(normalizedText); onSuccess(); }
             catch (e) { showToast('Failed to copy', 'error'); }
         });
     } else {
-        try { _copyFallback(text); onSuccess(); }
+        try { _copyFallback(normalizedText); onSuccess(); }
         catch (e) { showToast('Failed to copy', 'error'); }
     }
 }

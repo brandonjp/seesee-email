@@ -422,6 +422,7 @@ async def app_list(
             "created_credentials": created_credentials,
             "rotated_key": rotated_key,
             "deleted_app": deleted_app,
+            "base_url": settings.base_url,
         },
     )
     if flash:

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- "Copy all as ENV vars" button on app credentials alert (post-creation) and SMTP Settings tab in app detail — copies `MAIL_SEESEE_API_KEY`, `MAIL_SEESEE_SMTP_PASSWORD`, `MAIL_SEESEE_SMTP_USERNAME`, and `MAIL_SEESEE_URL` as a ready-to-paste `.env` block
+
 - Expanded theme catalog — 11 new themes added (Phase 4), bringing total to 21:
   - Developer: Monokai, Tomorrow Night, Rosé Pine, Catppuccin Mocha, Obsidian
   - Light: Paper, Aqua Classic, Blueprint (with subtle CSS grid background overlay)

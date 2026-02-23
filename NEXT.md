@@ -1,9 +1,15 @@
 # Next Steps — SeeSee
 
 **Version:** 0.18.0-dev
-**Updated:** 2026-02-22
+**Updated:** 2026-02-23
 
 ## Just Completed
+
+- **"Copy all as ENV vars" button** on app credentials:
+  - Post-creation alert in `/apps` — copies real values (API key, SMTP password, username, URL)
+  - SMTP Settings tab in `/apps/{id}` — copies with `ss_YOUR_API_KEY` placeholder (credentials not re-shown after creation)
+  - Format: `MAIL_SEESEE_API_KEY`, `MAIL_SEESEE_SMTP_PASSWORD`, `MAIL_SEESEE_SMTP_USERNAME`, `MAIL_SEESEE_URL`
+  - Also passes `base_url` to the apps list template context (was missing)
 
 - **Expanded theme catalog** (Phase 4):
   - 21 total themes (up from 10): 4 accent, 8 developer, 4 light, 6 retro
@@ -29,7 +35,7 @@
 
 ## Current State
 
-- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, and expanded theme catalog
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, and copy-all-as-ENV-vars on app credentials
 - 272 tests passing
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - 21-theme color system with swatch picker on Settings page (4 accent, 8 developer, 4 light, 6 retro)

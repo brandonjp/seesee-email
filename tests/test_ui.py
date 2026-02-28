@@ -60,6 +60,18 @@ async def test_login_invalid_username(client: AsyncClient) -> None:
     assert "Invalid username or password" in resp.text
 
 
+async def test_login_username_case_insensitive(client: AsyncClient) -> None:
+    """POST /login accepts username regardless of case."""
+    for variant in ["Admin", "ADMIN", "aDmIn"]:
+        resp = await client.post(
+            "/login",
+            data={"username": variant, "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303, f"Expected 303 for username '{variant}', got {resp.status_code}"
+        assert SESSION_COOKIE_NAME in resp.cookies
+
+
 async def test_logout_clears_cookie(client: AsyncClient) -> None:
     """POST /logout clears the session cookie and redirects to login."""
     resp = await client.post("/logout", follow_redirects=False)

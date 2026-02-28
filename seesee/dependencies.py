@@ -75,8 +75,8 @@ async def require_admin(
         )
 
     username_correct = secrets.compare_digest(
-        credentials.username.encode("utf-8"),
-        settings.admin_username.encode("utf-8"),
+        credentials.username.lower().encode("utf-8"),
+        settings.admin_username.lower().encode("utf-8"),
     )
     password_correct = secrets.compare_digest(
         credentials.password.encode("utf-8"),

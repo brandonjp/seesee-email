@@ -45,6 +45,21 @@ async def test_create_app_wrong_credentials(client):
 
 
 @pytest.mark.asyncio
+async def test_create_app_admin_username_case_insensitive(client):
+    """POST /api/v1/apps accepts admin username regardless of case."""
+    for variant in ["Admin", "ADMIN", "aDmIn"]:
+        creds = base64.b64encode(f"{variant}:testpassword".encode()).decode()
+        response = await client.post(
+            "/api/v1/apps",
+            json={"name": f"App from {variant}"},
+            headers={"Authorization": f"Basic {creds}"},
+        )
+        assert response.status_code == 201, (
+            f"Expected 201 for username '{variant}', got {response.status_code}"
+        )
+
+
+@pytest.mark.asyncio
 async def test_create_app_slug_collision(client, admin_auth_header):
     """Creating two apps with the same name produces different slugs."""
     app1 = await create_test_app(client, admin_auth_header, name="My App")

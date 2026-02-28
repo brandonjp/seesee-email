@@ -102,8 +102,8 @@ async def login_submit(
         )
 
     username_ok = secrets.compare_digest(
-        username.encode("utf-8"),
-        settings.admin_username.encode("utf-8"),
+        username.lower().encode("utf-8"),
+        settings.admin_username.lower().encode("utf-8"),
     )
     password_ok = secrets.compare_digest(
         password.encode("utf-8"),

@@ -34,7 +34,8 @@
   line-height: 1.2;
 }
 
-.hero .tagline {
+.hero .tagline,
+.hero .copy {
   font-size: 1.1rem;
   max-width: none !important;
 }

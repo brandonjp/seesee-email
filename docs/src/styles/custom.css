@@ -36,6 +36,7 @@
 
 .hero .tagline {
   font-size: 1.1rem;
+  max-width: none !important;
 }
 
 /* Tighter font sizes — Starlight defaults run large */

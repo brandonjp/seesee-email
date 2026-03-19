@@ -3,7 +3,7 @@ title: Contributing
 description: Development setup, code style, testing, and git workflow for SeeSee contributors.
 ---
 
-SeeSee is open source and welcomes contributions. This guide covers how to set up a development environment and the project's coding standards.
+SeeSee is open source and contributions are welcome — whether that's a bug fix, a new integration example, or just fixing a typo. This guide covers how to set up a development environment and the project's coding standards.
 
 ## Development setup
 
@@ -19,7 +19,8 @@ SeeSee is open source and welcomes contributions. This guide covers how to set u
 git clone https://github.com/brandonjp/seesee-email.git
 cd seesee-email
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # bash / zsh
+# source .venv/bin/activate.fish  # fish
 pip install -e ".[dev]"
 ```
 
@@ -32,6 +33,13 @@ python -m seesee
 # With debug logging
 SEESEE_ADMIN_PASSWORD=dev SEESEE_LOG_LEVEL=debug python -m seesee
 ```
+
+:::tip[Fish shell users]
+Fish doesn't support inline `VAR=value command` syntax. Use `env` instead:
+```fish
+env SEESEE_ADMIN_PASSWORD=dev SEESEE_LOG_LEVEL=debug python -m seesee
+```
+:::
 
 ### Run tests
 

@@ -8,7 +8,8 @@ SeeSee is early-stage software — contributions are welcome!
 git clone https://github.com/brandonjp/seesee-email.git
 cd seesee-email
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # bash / zsh
+# source .venv/bin/activate.fish  # fish
 pip install -e ".[dev]"
 ```
 

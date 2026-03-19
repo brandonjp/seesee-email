@@ -3,7 +3,7 @@ title: Privacy & Compliance
 description: What SeeSee stores, retention policies, and GDPR considerations.
 ---
 
-SeeSee is self-hosted — your email data stays on your server. This page explains what data is stored, how to control it, and what to consider for privacy compliance.
+SeeSee is self-hosted — your email data stays on your server. This page covers what data is stored, how to control it, and how SeeSee supports GDPR compliance.
 
 ## What SeeSee stores
 

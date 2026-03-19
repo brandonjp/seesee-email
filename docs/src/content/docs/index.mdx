@@ -20,9 +20,9 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 
 ## Why SeeSee?
 
-You run multiple apps — WordPress sites, Python services, Node.js APIs — each sending email through different providers. When something goes wrong, you're digging through provider dashboards, server logs, and inboxes.
+You run multiple apps — WordPress site, a couple Python services, maybe a Node.js API, all sending email through different providers. When something goes wrong, you're digging through various dashboards, server logs, and inboxes.
 
-**SeeSee gives you one place to see every email your apps sent.** Point your apps at SeeSee via REST API or SMTP, and every outgoing email gets logged, searchable, and browsable.
+**SeeSee gives you one place to see every email your apps sent.** Point your apps at SeeSee via REST API or SMTP, and every outgoing email gets logged, searchable, and browsable ...all without trying to do anything more than that. 
 
 ```bash
 # One container. That's it.
@@ -87,10 +87,10 @@ Brandon, put a screenshot here showing the dashboard full of emails. If you're r
        ▼                    ▼                    ▼
 ┌─────────────────────────────────────────────────────────┐
 │                        SeeSee                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐  │
-│  │  FastAPI     │  │  SMTP       │  │  Retention     │  │
-│  │  REST API    │  │  Ingest     │  │  Scheduler     │  │
-│  └──────┬──────┘  └──────┬──────┘  └────────┬───────┘  │
+│  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐   │
+│  │  FastAPI    │  │  SMTP       │  │  Retention     │   │
+│  │  REST API   │  │  Ingest     │  │  Scheduler     │   │
+│  └──────┬──────┘  └──────┬──────┘  └────────┬───────┘   │
 │         │                │                   │          │
 │         ▼                ▼                   ▼          │
 │  ┌─────────────────────────────────────────────────┐    │
@@ -100,7 +100,7 @@ Brandon, put a screenshot here showing the dashboard full of emails. If you're r
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │           Web UI (Jinja2 + Tailwind)            │    │
-│  │   Dashboard · Email List · Detail · App Mgmt   │    │
+│  │   Dashboard · Email List · Detail · App Mgmt    │    │
 │  └─────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
 ```

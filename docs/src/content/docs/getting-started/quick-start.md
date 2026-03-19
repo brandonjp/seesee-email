@@ -3,6 +3,8 @@ title: Quick Start
 description: Get SeeSee running and log your first email in under a minute.
 ---
 
+You can go from zero to seeing your first logged email in about 60 seconds.
+
 ## Prerequisites
 
 - Docker installed on your server or local machine
@@ -84,7 +86,7 @@ curl -X POST http://localhost:8080/api/v1/apps \
   -d '{"name": "My Website"}'
 ```
 
-The response includes your API key (`ss_...`) and SMTP credentials. Save them somewhere safe.
+The response includes your API key (`ss_...`) and SMTP credentials. Save them somewhere safe — you won't see the key again.
 
 ## Log your first email
 
@@ -127,10 +129,6 @@ Or open the **Emails** page in the Web UI to see your logged email with subject,
 
 :::note[Screenshot coming soon]
 Brandon, put a screenshot here showing the email list with a few logged emails. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
-:::
-
-:::note[Screenshot coming soon]
-Brandon, put a screenshot here showing the email detail view with the HTML preview tab open. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
 :::
 
 ## Next steps

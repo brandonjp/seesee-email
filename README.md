@@ -107,7 +107,8 @@ Python 3.12+ / FastAPI / SQLite FTS5 / Jinja2 + Tailwind CSS + Alpine.js / Docke
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # bash / zsh
+# source .venv/bin/activate.fish  # fish
 pip install -e ".[dev]"
 pytest
 ```

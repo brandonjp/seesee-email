@@ -7,17 +7,13 @@ SeeSee supports two ingest methods: **REST API** and **SMTP**. Each app you crea
 
 For REST API integration, your app sends a POST request to `/api/v1/log` after sending email. For SMTP integration, you point your app's SMTP settings at SeeSee and it captures messages automatically.
 
-:::note[Screenshot coming soon]
-Brandon, put a screenshot here showing the app detail page with the integration snippets and "Copy ENV vars" button. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
-:::
-
 ## cURL
 
 The simplest way to test — log an email with a single command:
 
 ```bash
-SEESEE_URL="https://seesee.example.com"
-SEESEE_KEY="ss_your_api_key_here"
+SEESEE_URL="https://seesee.example.com"   # fish: set SEESEE_URL "https://seesee.example.com"
+SEESEE_KEY="ss_your_api_key_here"          # fish: set SEESEE_KEY "ss_your_api_key_here"
 
 curl -X POST "${SEESEE_URL}/api/v1/log" \
   -H "Authorization: Bearer ${SEESEE_KEY}" \

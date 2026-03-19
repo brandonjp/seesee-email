@@ -126,7 +126,11 @@ curl http://localhost:8080/api/v1/emails \
 Or open the **Emails** page in the Web UI to see your logged email with subject, recipients, status, and a preview of the body.
 
 :::note[Screenshot coming soon]
-Brandon, put a screenshot here showing the email list with a few logged emails. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues).
+Brandon, put a screenshot here showing the email list with a few logged emails. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
+:::
+
+:::note[Screenshot coming soon]
+Brandon, put a screenshot here showing the email detail view with the HTML preview tab open. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
 :::
 
 ## Next steps

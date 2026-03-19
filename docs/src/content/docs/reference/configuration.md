@@ -94,6 +94,10 @@ For production deployments, always configure webhook secrets to prevent unauthor
 |----------|------|---------|-------------|
 | `SEESEE_LOG_LEVEL` | string | `info` | Log level: `debug`, `info`, `warning`, `error`, `critical` |
 
+:::note[Screenshot coming soon]
+Brandon, put a screenshot here showing the theme selector grid on the settings page — all 21 themes look great and people should see them. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
+:::
+
 ## Example `.env` file
 
 ```bash

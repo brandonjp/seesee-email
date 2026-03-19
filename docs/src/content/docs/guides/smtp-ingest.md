@@ -46,6 +46,10 @@ curl -X POST http://localhost:8080/api/v1/apps \
 
 Save the `smtp_username` and `smtp_password` from the response — they're shown once.
 
+:::note[Screenshot coming soon]
+Brandon, put a screenshot here showing the app detail page with SMTP credentials and the copy-to-clipboard buttons. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
+:::
+
 ### 3. Configure your app's SMTP settings
 
 Point your application at SeeSee:

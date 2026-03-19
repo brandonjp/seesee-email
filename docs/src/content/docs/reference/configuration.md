@@ -42,6 +42,8 @@ The database directory must be writable. In Docker, mount a volume at `/data` fo
 
 ## Retention
 
+![Settings page showing retention configuration and storage usage](../../../assets/screenshots/settings-retention.png)
+
 Retention rules control automatic cleanup. The most restrictive rule wins.
 
 | Variable | Type | Default | Description |

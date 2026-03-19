@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Version bump: 0.18.0-dev → 0.18.1-dev
+- Replaced "SS" favicon text with "See" to avoid unintended abbreviation associations
+
+### Added
+- Screenshots in documentation: login, dashboard onboarding, settings, app creation modal, keyboard shortcuts
+- Screenshot placeholders for missing images (email list with data, email detail, hero screenshot)
+- GitHub issue templates (bug report, feature request) with structured YAML forms
+- GitHub pull request template with testing checklist
+- SECURITY.md with vulnerability disclosure process
+- CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
+- Bulk delete endpoint (DELETE /api/v1/emails) documented in API reference
+- Delete app endpoint (DELETE /api/v1/apps/{app_id}) documented in API reference
+- Per-app degradation fields (retention_degrade_to_text_days, retention_degrade_to_preview_days) documented for create/update app endpoints
+- Provider Webhooks, GDPR Ready, 21 Themes, and Keyboard Shortcuts feature cards on landing page
+- Improved docs site CSS: screenshot styling, focus states, smooth scrolling, responsive images
+
+### Fixed
+- Health endpoint response in docs showed `"healthy"` instead of actual `"ok"` status value
+- Health endpoint version in docs showed `"0.6.0-dev"` instead of current version
+- Contributing page missing routes (export.py, webhooks.py, admin.py) from project structure
+- Privacy page contradictory "No CDN" claim corrected (Tailwind/Alpine load from CDN)
+
 ### Added
 - "Copy all as ENV vars" button on app credentials alert (post-creation) and SMTP Settings tab in app detail — copies `MAIL_SEESEE_API_KEY`, `MAIL_SEESEE_SMTP_PASSWORD`, `MAIL_SEESEE_SMTP_USERNAME`, and `MAIL_SEESEE_URL` as a ready-to-paste `.env` block
 

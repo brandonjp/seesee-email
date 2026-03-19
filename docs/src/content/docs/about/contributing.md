@@ -84,9 +84,12 @@ seesee-email/
 │   ├── smtp_server.py       # aiosmtpd handler, MIME parsing
 │   ├── routes/
 │   │   ├── ingest.py        # POST /api/v1/log, /api/v1/log/batch
-│   │   ├── emails.py        # GET /api/v1/emails, /{id}, /{id}/preview
+│   │   ├── emails.py        # GET/DELETE /api/v1/emails, /{id}, /{id}/preview
 │   │   ├── apps.py          # App CRUD + key rotation
 │   │   ├── stats.py         # GET /api/v1/stats
+│   │   ├── export.py        # GET /api/v1/export (GDPR data export)
+│   │   ├── webhooks.py      # POST /api/v1/webhooks/{provider}
+│   │   ├── admin.py         # POST /api/v1/admin/cleanup, debug/persistence
 │   │   └── ui.py            # Web UI page routes
 │   ├── templates/           # Jinja2 HTML templates
 │   └── static/              # CSS, JS, favicon

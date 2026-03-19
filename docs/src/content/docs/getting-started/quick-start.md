@@ -58,16 +58,22 @@ Log in with:
 - **Username:** `admin` (default, configurable via `SEESEE_ADMIN_USERNAME`)
 - **Password:** the value you set for `SEESEE_ADMIN_PASSWORD`
 
-You'll see the dashboard — it's empty until you log your first email.
+![SeeSee login screen](../../../assets/screenshots/login-dark.png)
+
+You'll see the dashboard with onboarding steps to guide you through setup.
+
+![SeeSee dashboard with onboarding steps](../../../assets/screenshots/dashboard-onboarding.png)
 
 ## Create an app
 
 Apps represent the services that send email through SeeSee. Each app gets its own API key and SMTP credentials.
 
 1. Navigate to **Apps** in the sidebar
-2. Click **Add App**
-3. Enter a name (e.g., "My Website")
+2. Click **Create your first app**
+3. Enter a name and choose a body storage mode
 4. Copy the API key shown — **it's only displayed once**
+
+![Creating a new app in SeeSee](../../../assets/screenshots/app-create-modal.png)
 
 Or create one via the API:
 
@@ -118,6 +124,8 @@ curl http://localhost:8080/api/v1/emails \
 ```
 
 Or open the **Emails** page in the Web UI to see your logged email with subject, recipients, status, and a preview of the body.
+
+{/* <!-- BRANDON: Add screenshot of the Emails list page with at least one email visible --> */}
 
 ## Next steps
 

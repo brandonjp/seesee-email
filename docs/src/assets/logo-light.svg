@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" width="120" height="32">
   <rect x="2" y="7" width="28" height="18" rx="2" fill="none" stroke="#0a5c44" stroke-width="2"/>
   <polyline points="2,7 16,18 30,7" fill="none" stroke="#0a5c44" stroke-width="2"/>
   <circle cx="24" cy="10" r="5" fill="#0fa87a"/>
+  <text x="40" y="23" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="20">
+    <tspan fill="#0fa87a">See</tspan><tspan fill="#1f2937">See</tspan>
+  </text>
 </svg>

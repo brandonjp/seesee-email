@@ -131,6 +131,21 @@ Or open the **Emails** page in the Web UI to see your logged email with subject,
 Brandon, put a screenshot here showing the email list with a few logged emails. If you're reading this, feel free to [remind him](https://github.com/brandonjp/seesee-email/issues) — and send a screenshot along if you have one!
 :::
 
+## Keyboard shortcuts
+
+SeeSee has keyboard shortcuts for navigating the email list without touching your mouse. Press `?` anywhere in the app to see them.
+
+![Keyboard shortcuts modal](../../../assets/screenshots/keyboard-shortcuts.png)
+
+| Key | Action |
+|-----|--------|
+| `/` | Focus search |
+| `j` | Next email |
+| `k` | Previous email |
+| `Enter` | Open selected email |
+| `Esc` | Close / deselect |
+| `?` | Show shortcuts |
+
 ## Next steps
 
 - [Configuration Reference](/reference/configuration/) — customize ports, retention, and more

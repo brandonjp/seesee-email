@@ -6,14 +6,15 @@
   --sl-color-accent: #32f5c0;
   --sl-color-accent-high: #b0fce5;
 
-  --sl-color-white: #f6f1e6;
-  --sl-color-gray-1: #eee9db;
-  --sl-color-gray-2: #c4bfb3;
-  --sl-color-gray-3: #8a857b;
-  --sl-color-gray-4: #56524a;
-  --sl-color-gray-5: #38352f;
-  --sl-color-gray-6: #252320;
-  --sl-color-black: #181614;
+  /* Cool neutral grays — matched to the app's Tailwind palette */
+  --sl-color-white: #f3f4f6;
+  --sl-color-gray-1: #e5e7eb;
+  --sl-color-gray-2: #9ca3af;
+  --sl-color-gray-3: #6b7280;
+  --sl-color-gray-4: #4b5563;
+  --sl-color-gray-5: #374151;
+  --sl-color-gray-6: #1f2937;
+  --sl-color-black: #111827;
 }
 
 :root[data-theme="light"] {
@@ -25,6 +26,19 @@
 /* Hero section customization */
 .hero {
   --sl-color-text-accent: var(--sl-color-accent);
+}
+
+/* Tighter font sizes — Starlight defaults run large */
+:root {
+  --sl-text-h1: var(--sl-text-3xl);
+  --sl-text-h2: var(--sl-text-2xl);
+  --sl-text-h3: var(--sl-text-xl);
+  --sl-text-h4: var(--sl-text-lg);
+  --sl-text-body: var(--sl-text-sm);
+}
+
+.sl-markdown-content {
+  font-size: var(--sl-text-sm);
 }
 
 /* Screenshot and image styling */

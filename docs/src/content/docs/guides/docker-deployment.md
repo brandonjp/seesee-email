@@ -79,8 +79,8 @@ SeeSee exposes a health endpoint at `GET /api/v1/health` that returns:
 
 ```json
 {
-  "status": "healthy",
-  "version": "0.6.0-dev",
+  "status": "ok",
+  "version": "0.18.0",
   "database": "ok"
 }
 ```

@@ -55,8 +55,8 @@ curl http://localhost:8080/api/v1/health
 
 ```json
 {
-  "status": "healthy",
-  "version": "0.6.0-dev",
+  "status": "ok",
+  "version": "0.18.0",
   "database": "ok"
 }
 ```
@@ -91,6 +91,8 @@ curl -X POST http://localhost:8080/api/v1/apps \
 | `body_storage_mode` | string | no | `full` | How to store email bodies: `full`, `text_only`, or `preview` |
 | `retention_max_count` | int | no | — | Per-app email count limit (overrides global) |
 | `retention_max_age_days` | int | no | — | Per-app max age in days (overrides global) |
+| `retention_degrade_to_text_days` | int | no | — | Strip HTML after N days, 0 = never (overrides global) |
+| `retention_degrade_to_preview_days` | int | no | — | Strip text after N days, 0 = never (overrides global) |
 
 **Response (201):**
 
@@ -164,6 +166,8 @@ curl -X PATCH http://localhost:8080/api/v1/apps/1 \
 | `body_storage_mode` | string | `full`, `text_only`, or `preview` |
 | `retention_max_count` | int | Per-app email count limit |
 | `retention_max_age_days` | int | Per-app max age in days |
+| `retention_degrade_to_text_days` | int | Strip HTML after N days (0 = never) |
+| `retention_degrade_to_preview_days` | int | Strip text after N days (0 = never) |
 
 ### Rotate API key
 
@@ -182,6 +186,25 @@ curl -X POST http://localhost:8080/api/v1/apps/1/rotate-key \
 {
   "api_key": "ss_new_key_here...",
   "message": "API key rotated successfully"
+}
+```
+
+### Delete app
+
+#### `DELETE /api/v1/apps/{app_id}`
+
+Permanently delete an app and all its emails. Requires admin Basic Auth.
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/apps/1 \
+  -u admin:your-password
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "App deleted"
 }
 ```
 
@@ -324,6 +347,32 @@ curl -X DELETE http://localhost:8080/api/v1/emails/42 \
   "message": "Email deleted"
 }
 ```
+
+### Bulk delete emails
+
+#### `DELETE /api/v1/emails`
+
+Delete all emails matching search criteria. At least one filter is required to prevent accidental deletion of all data. Requires admin Basic Auth.
+
+```bash
+curl -X DELETE "http://localhost:8080/api/v1/emails?app_id=1&status=bounced" \
+  -u admin:your-password
+```
+
+**Query parameters:** Same filters as `GET /api/v1/emails` — `q`, `app_id`, `status`, `provider`, `date_from`, `date_to`.
+
+**Response (200):**
+
+```json
+{
+  "deleted": 15,
+  "message": "Deleted 15 emails"
+}
+```
+
+:::caution
+This permanently deletes all matching emails. Use the query parameters carefully — at least one filter must be provided.
+:::
 
 ### Purge all emails for an app
 

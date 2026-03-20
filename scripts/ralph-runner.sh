@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Ralph — Plan Orchestrator (v2.1)
+# Ralph — Plan Orchestrator (v3.0)
 # =============================================================================
 #
 # Generic implement → review → fix loop for any chunked plan document.
@@ -15,12 +15,12 @@
 #   - [ ] Verify step one
 #
 # Usage:
-#   bash scripts/run-ralph.sh <plan-file>
-#   bash scripts/run-ralph.sh <plan-file> --dry-run
-#   bash scripts/run-ralph.sh <plan-file> --review-only 2
-#   bash scripts/run-ralph.sh <plan-file> --branch feature/my-branch
-#   bash scripts/run-ralph.sh <plan-file> --impl-model haiku --review-model sonnet
-#   bash scripts/run-ralph.sh <plan-file> --reset
+#   bash scripts/ralph-runner.sh <plan-file>
+#   bash scripts/ralph-runner.sh <plan-file> --dry-run
+#   bash scripts/ralph-runner.sh <plan-file> --review-only 2
+#   bash scripts/ralph-runner.sh <plan-file> --branch feature/my-branch
+#   bash scripts/ralph-runner.sh <plan-file> --impl-model haiku --review-model sonnet
+#   bash scripts/ralph-runner.sh <plan-file> --reset
 #
 # Resume: Just re-run the exact same command. Ralph tracks progress
 #         automatically and picks up where it left off.
@@ -41,6 +41,43 @@ log_success() { echo -e "${GREEN}✔${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}⚠${RESET} $*"; }
 log_error()   { echo -e "${RED}✘${RESET} $*"; }
 log_step()    { echo -e "\n${BOLD}${MAGENTA}━━━ $* ━━━${RESET}\n"; }
+
+# ---------------------------------------------------------------------------
+# Timing helpers
+# ---------------------------------------------------------------------------
+RALPH_START_TIME=$(date +%s)
+
+format_duration() {
+    local seconds="$1"
+    local hrs=$(( seconds / 3600 ))
+    local mins=$(( (seconds % 3600) / 60 ))
+    local secs=$(( seconds % 60 ))
+    if (( hrs > 0 )); then
+        printf "%dh %dm %ds" "$hrs" "$mins" "$secs"
+    elif (( mins > 0 )); then
+        printf "%dm %ds" "$mins" "$secs"
+    else
+        printf "%ds" "$secs"
+    fi
+}
+
+elapsed_since_start() {
+    local now
+    now=$(date +%s)
+    format_duration $(( now - RALPH_START_TIME ))
+}
+
+# ---------------------------------------------------------------------------
+# Graceful Ctrl+C handling
+# ---------------------------------------------------------------------------
+cleanup() {
+    echo ""
+    log_warn "Interrupted (Ctrl+C). Progress has been saved."
+    log_info "Elapsed: $(elapsed_since_start)"
+    log_info "Resume by re-running the same command."
+    exit 130
+}
+trap cleanup SIGINT SIGTERM
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -95,7 +132,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -h|--help)
             cat <<'HELPEOF'
-Usage: run-ralph.sh <plan-file> [OPTIONS]
+Usage: ralph-runner.sh <plan-file> [OPTIONS]
 
 Arguments:
   <plan-file>           Path to a markdown plan with "## Chunk N: Title" headers
@@ -115,6 +152,10 @@ Resume:
   Ralph auto-saves progress after each chunk. To resume after an
   interruption, just re-run the exact same command — it picks up
   where it left off automatically. No need to specify --start-from.
+
+Abort:
+  Press Ctrl+C at any time to abort gracefully. Progress is saved
+  automatically — just re-run the same command to resume.
 
 Plan file format:
   The plan must use "## Chunk N: Title" headers for each chunk, and
@@ -318,12 +359,17 @@ run_claude() {
     local output_file
     output_file=$(mktemp)
 
+    local phase_start
+    phase_start=$(date +%s)
     log_info "Running claude --model ${model}..."
 
     set +e
     claude --model "$model" -p --dangerously-skip-permissions "$prompt" 2>&1 | tee "$output_file"
     local exit_code=${PIPESTATUS[0]}
     set -e
+
+    local phase_elapsed=$(( $(date +%s) - phase_start ))
+    log_info "Claude call completed in $(format_duration $phase_elapsed)"
 
     LAST_OUTPUT_FILE="$output_file"
     return "$exit_code"
@@ -474,6 +520,8 @@ process_chunk() {
     local chunk_num="$1"
     local title
     title=$(chunk_title "$chunk_num")
+    local chunk_start
+    chunk_start=$(date +%s)
 
     log_step "Processing Chunk ${chunk_num}/${TOTAL_CHUNKS}: ${title}"
 
@@ -483,7 +531,8 @@ process_chunk() {
     # Review
     if run_review "$chunk_num"; then
         mark_chunk_done "$chunk_num"
-        log_success "Chunk ${chunk_num} complete!"
+        local chunk_elapsed=$(( $(date +%s) - chunk_start ))
+        log_success "Chunk ${chunk_num} complete! ($(format_duration $chunk_elapsed))"
         return 0
     fi
 
@@ -495,7 +544,8 @@ process_chunk() {
 
         if run_review "$chunk_num"; then
             mark_chunk_done "$chunk_num"
-            log_success "Chunk ${chunk_num} complete after ${attempt} fix(es)!"
+            local chunk_elapsed=$(( $(date +%s) - chunk_start ))
+            log_success "Chunk ${chunk_num} complete after ${attempt} fix(es)! ($(format_duration $chunk_elapsed))"
             return 0
         fi
 
@@ -503,7 +553,8 @@ process_chunk() {
     done
 
     # Max retries exhausted
-    log_error "Chunk ${chunk_num} failed after ${MAX_FIX_RETRIES} fix attempts."
+    local chunk_elapsed=$(( $(date +%s) - chunk_start ))
+    log_error "Chunk ${chunk_num} failed after ${MAX_FIX_RETRIES} fix attempts. ($(format_duration $chunk_elapsed))"
     local action
     action=$(prompt_action "Chunk ${chunk_num} review still failing. What do you want to do?")
     case "$action" in
@@ -515,7 +566,7 @@ process_chunk() {
             mark_chunk_skipped "$chunk_num"
             ;;
         quit)
-            log_info "Exiting. Just re-run the same command to resume."
+            log_info "Exiting. Elapsed: $(elapsed_since_start). Just re-run the same command to resume."
             exit 0
             ;;
     esac
@@ -530,7 +581,7 @@ cd "$REPO_DIR"
 PLAN_TITLE=$(grep -m1 '^# ' "$PLAN_FILE" | sed 's/^# //' || basename "$PLAN_FILE" .md)
 
 echo -e "\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}${CYAN}║  Ralph Orchestrator v2.1                                 ║${RESET}"
+echo -e "${BOLD}${CYAN}║  Ralph Orchestrator v3.0                                 ║${RESET}"
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════╝${RESET}\n"
 
 log_info "Plan: ${PLAN_TITLE}"
@@ -539,6 +590,7 @@ log_info "Repo: ${REPO_DIR}"
 log_info "Branch: ${FEATURE_BRANCH}"
 log_info "Models: impl=${IMPL_MODEL}, review=${REVIEW_MODEL}"
 log_info "Chunks: ${TOTAL_CHUNKS}"
+log_info "Abort: Ctrl+C to stop gracefully (progress is saved)"
 
 # Show chunk status
 completed=$(get_completed_count)
@@ -636,6 +688,7 @@ done
 # Summary
 echo ""
 log_success "Plan execution complete!"
+log_info "Total elapsed: $(elapsed_since_start)"
 echo ""
 
 skipped_count=0

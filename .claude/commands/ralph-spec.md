@@ -1,6 +1,6 @@
 # /ralph-spec — Write a Ralph Implementation Spec
 
-You are writing a structured implementation spec for use with the **Ralph orchestrator** (`scripts/run-ralph.sh`). Ralph automates an implement → review → fix loop using the Claude CLI, where a fast model (Sonnet) implements each chunk and a stronger model (Opus) reviews it.
+You are writing a structured implementation spec for use with the **Ralph orchestrator** (`scripts/ralph-runner.sh`). Ralph automates an implement → review → fix loop using the Claude CLI, where a fast model (Sonnet) implements each chunk and a stronger model (Opus) reviews it.
 
 **Your job is to produce a spec document. You do NOT execute the plan.**
 
@@ -12,9 +12,9 @@ These are absolute rules. Violating any of them produces a broken, unusable spec
 
 ### STOP after writing the spec file.
 - Your job ends when the spec `.md` file is written and validated.
-- Do NOT execute the spec. Do NOT run `run-ralph.sh`. Do NOT spawn subagents to implement chunks.
+- Do NOT execute the spec. Do NOT run `ralph-runner.sh`. Do NOT spawn subagents to implement chunks.
 - Do NOT offer to "go ahead and implement this." Write the document and stop.
-- The human will run the spec themselves using `run-ralph.sh`.
+- The human will run the spec themselves using `ralph-runner.sh`.
 
 ### ONE spec file. Always.
 - Every spec MUST be a single `.md` file. Never split work across multiple files (no `plan-2a.md`, `plan-2b.md`, etc.).
@@ -22,7 +22,7 @@ These are absolute rules. Violating any of them produces a broken, unusable spec
 - If the user asks for something that seems like it needs multiple specs, put it all in one file with clear chunk boundaries.
 
 ### Never create wrapper scripts.
-- `run-ralph.sh` is the only orchestrator. Never create secondary shell scripts like `run-all.sh`, `execute-plans.sh`, `orchestrate.sh`, etc.
+- `ralph-runner.sh` is the only orchestrator. Never create secondary shell scripts like `run-all.sh`, `execute-plans.sh`, `orchestrate.sh`, etc.
 - All work goes in one spec file, run by one script.
 
 ### NO meta-planning.
@@ -51,13 +51,19 @@ These are absolute rules. Violating any of them produces a broken, unusable spec
 - Never instruct the user to pass `--start-from`. That flag exists only as a manual override.
 - The correct instruction is always: "Just run the same command again."
 
+### Plan files and state files MUST be committed.
+- Plan files (`docs/plan-*.md`) and state files (`*.ralph-state`) must be tracked in git.
+- These files MUST NOT be listed in `.gitignore`. If they are, remove the ignore rule.
+- Committing state files allows other developers or Claude sessions to resume from where the plan left off if Ralph is interrupted mid-cycle.
+- When all chunks pass, Ralph automatically cleans up: removes the state file and archives the plan to `docs/archive/`.
+
 ---
 
 ## 0. Evaluate: Spec or Inline?
 
 Before writing a spec, assess whether the Ralph orchestrator is actually the right tool:
 
-**Use `run-ralph.sh` (write a spec) when:**
+**Use `ralph-runner.sh` (write a spec) when:**
 - The work has 4+ logical chunks
 - Multiple files across different areas of the codebase
 - Work benefits from Sonnet implementing + Opus reviewing
@@ -79,7 +85,7 @@ Before writing the spec, read these files:
 - `CLAUDE.md` — Project conventions, architecture, key patterns
 - `README.md` — Project overview
 - Any existing specs in `docs/archive/plan-*.md` for format reference
-- `scripts/run-ralph.sh` — Understand how Ralph parses and executes specs
+- `scripts/ralph-runner.sh` — Understand how Ralph parses and executes specs
 
 ## 2. Gather Requirements
 
@@ -215,22 +221,22 @@ After the spec, provide these instructions:
 
 ```bash
 # Preview what will run
-bash scripts/run-ralph.sh docs/plan-<n>.md --dry-run
+bash scripts/ralph-runner.sh docs/plan-<n>.md --dry-run
 
 # Execute the spec (or resume if interrupted — just re-run this same command)
-bash scripts/run-ralph.sh docs/plan-<n>.md
+bash scripts/ralph-runner.sh docs/plan-<n>.md
 
 # Re-run just the review for a specific chunk
-bash scripts/run-ralph.sh docs/plan-<n>.md --review-only 2
+bash scripts/ralph-runner.sh docs/plan-<n>.md --review-only 2
 
 # Start completely fresh (clears all progress)
-bash scripts/run-ralph.sh docs/plan-<n>.md --reset
+bash scripts/ralph-runner.sh docs/plan-<n>.md --reset
 
 # Use different models
-bash scripts/run-ralph.sh docs/plan-<n>.md --impl-model haiku --review-model sonnet
+bash scripts/ralph-runner.sh docs/plan-<n>.md --impl-model haiku --review-model sonnet
 
 # Use a custom branch name
-bash scripts/run-ralph.sh docs/plan-<n>.md --branch feature/my-branch
+bash scripts/ralph-runner.sh docs/plan-<n>.md --branch feature/my-branch
 ```
 
 **Post-completion:** When all chunks pass, Ralph automatically:

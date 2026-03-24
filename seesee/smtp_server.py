@@ -91,7 +91,11 @@ class SmtpAuthenticator:
                 logger.warning("SMTP AUTH failed: unknown username %r", username)
                 return AuthResult(success=False, handled=False)
 
-            if not verify_secret(password, app_row["smtp_password"]):
+            # Accept either the API key or legacy SMTP password
+            if not (
+                verify_secret(password, app_row["api_key"])
+                or verify_secret(password, app_row["smtp_password"])
+            ):
                 logger.warning("SMTP AUTH failed: wrong password for %r", username)
                 return AuthResult(success=False, handled=False)
 

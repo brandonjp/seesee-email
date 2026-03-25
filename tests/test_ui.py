@@ -334,7 +334,6 @@ async def test_apps_create_via_form(client: AsyncClient) -> None:
     creds = flash["created_credentials"]
     assert creds["api_key"].startswith("ss_")
     assert creds["smtp_username"]
-    assert creds["smtp_password"]
 
 
 async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> None:

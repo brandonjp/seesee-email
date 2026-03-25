@@ -211,10 +211,10 @@ class TestSmtpAuthenticator:
 
     @pytest.mark.asyncio
     async def test_auth_success(self, client, admin_auth_header):
-        """Valid SMTP credentials authenticate successfully."""
+        """Valid SMTP credentials authenticate successfully (API key as password)."""
         app_data = await create_test_app(client, admin_auth_header)
         smtp_username = app_data["smtp_username"]
-        smtp_password = app_data["smtp_password"]
+        api_key = app_data["api_key"]
 
         authenticator = SmtpAuthenticator()
         server = MagicMock()
@@ -223,7 +223,7 @@ class TestSmtpAuthenticator:
 
         auth_data = MagicMock()
         auth_data.login = smtp_username.encode()
-        auth_data.password = smtp_password.encode()
+        auth_data.password = api_key.encode()
 
         result = await authenticator(server, session, envelope, "LOGIN", auth_data)
 

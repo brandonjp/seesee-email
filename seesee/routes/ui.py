@@ -461,7 +461,6 @@ async def create_app_ui(
     api_key_hash = hash_secret(api_key)
 
     smtp_username = slug
-    smtp_password_hash = hash_secret(api_key)  # API key doubles as SMTP password
 
     now_iso = utc_now_iso()
 
@@ -476,7 +475,7 @@ async def create_app_ui(
             api_key_hash,
             key_prefix,
             smtp_username,
-            smtp_password_hash,
+            api_key_hash,
             body_storage_mode,
             now_iso,
         ),
@@ -512,11 +511,10 @@ async def rotate_key_ui(
     new_key = generate_api_key()
     new_prefix = new_key[len(API_KEY_PREFIX) : len(API_KEY_PREFIX) + 8]
     new_hash = hash_secret(new_key)
-    new_smtp_hash = hash_secret(new_key)  # API key doubles as SMTP password
 
     await db.execute(
         "UPDATE apps SET api_key = ?, key_prefix = ?, smtp_password = ? WHERE id = ?",
-        (new_hash, new_prefix, new_smtp_hash, app_id),
+        (new_hash, new_prefix, new_hash, app_id),
     )
     await db.commit()
 

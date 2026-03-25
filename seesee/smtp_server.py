@@ -69,7 +69,7 @@ class SmtpAuthenticator:
         mechanism: str,
         auth_data: LoginPassword,
     ) -> AuthResult:
-        """Validate LOGIN/PLAIN credentials against app smtp_username + smtp_password."""
+        """Validate LOGIN/PLAIN credentials against app smtp_username + API key."""
         username = (
             auth_data.login.decode() if isinstance(auth_data.login, bytes) else auth_data.login
         )
@@ -91,7 +91,7 @@ class SmtpAuthenticator:
                 logger.warning("SMTP AUTH failed: unknown username %r", username)
                 return AuthResult(success=False, handled=False)
 
-            if not verify_secret(password, app_row["smtp_password"]):
+            if not verify_secret(password, app_row["api_key"]):
                 logger.warning("SMTP AUTH failed: wrong password for %r", username)
                 return AuthResult(success=False, handled=False)
 

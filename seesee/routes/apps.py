@@ -8,7 +8,6 @@ from seesee.auth import (
     API_KEY_PREFIX,
     generate_api_key,
     generate_slug,
-    generate_smtp_password,
     hash_secret,
 )
 from seesee.database import get_db
@@ -61,8 +60,6 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
     api_key_hash = hash_secret(api_key)
 
     smtp_username = slug
-    smtp_password = generate_smtp_password()
-    smtp_password_hash = hash_secret(smtp_password)
 
     now = utc_now()
     now_iso = utc_now_iso()
@@ -80,7 +77,7 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
             api_key_hash,
             key_prefix,
             smtp_username,
-            smtp_password_hash,
+            api_key_hash,
             request.body_storage_mode,
             request.retention_max_count,
             request.retention_max_age_days,
@@ -104,7 +101,6 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
         last_activity_at=None,
         api_key=api_key,
         smtp_username=smtp_username,
-        smtp_password=smtp_password,
     )
 
 
@@ -238,8 +234,8 @@ async def rotate_key(app_id: str) -> KeyRotateResponse:
     new_hash = hash_secret(new_key)
 
     await db.execute(
-        "UPDATE apps SET api_key = ?, key_prefix = ? WHERE id = ?",
-        (new_hash, new_prefix, app_id),
+        "UPDATE apps SET api_key = ?, key_prefix = ?, smtp_password = ? WHERE id = ?",
+        (new_hash, new_prefix, new_hash, app_id),
     )
     await db.commit()
 

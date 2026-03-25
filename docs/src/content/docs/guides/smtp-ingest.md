@@ -44,7 +44,7 @@ curl -X POST http://localhost:8080/api/v1/apps \
   -d '{"name": "My App"}'
 ```
 
-Save the `smtp_username` and `smtp_password` from the response — they're shown once.
+Save the `api_key` and `smtp_username` from the response — they're shown once. Your API key is also your SMTP password.
 
 ### 3. Configure your app's SMTP settings
 
@@ -55,7 +55,7 @@ Point your application at SeeSee:
 | **SMTP Host** | Your SeeSee server IP or hostname |
 | **SMTP Port** | `2525` |
 | **Username** | `smtp_username` from app creation |
-| **Password** | `smtp_password` from app creation |
+| **Password** | Your API key |
 | **Encryption** | None (for internal/local use) |
 | **Auth** | Required (LOGIN or PLAIN) |
 
@@ -67,7 +67,7 @@ Point your application at SeeSee:
 Host:     seesee.example.com
 Port:     2525
 Username: my-app
-Password: (smtp password from app creation)
+Password: (your API key)
 Auth:     LOGIN or PLAIN
 TLS:      None (use a reverse proxy for TLS)
 ```
@@ -84,7 +84,7 @@ msg["From"] = "app@example.com"
 msg["To"] = "user@example.com"
 
 with smtplib.SMTP("seesee.example.com", 2525) as server:
-    server.login("my-app", "smtp-password-here")
+    server.login("my-app", "ss_your_api_key_here")
     server.send_message(msg)
 ```
 
@@ -100,7 +100,7 @@ $mail->isSMTP();
 $mail->Host       = 'seesee.example.com';
 $mail->SMTPAuth   = true;
 $mail->Username   = 'my-app';
-$mail->Password   = 'smtp-password-here';
+$mail->Password   = 'ss_your_api_key_here';
 $mail->Port       = 2525;
 $mail->SMTPSecure = false;
 $mail->SMTPAutoTLS = false;
@@ -125,7 +125,7 @@ const transporter = nodemailer.createTransport({
   secure: false,
   auth: {
     user: "my-app",
-    pass: "smtp-password-here",
+    pass: "ss_your_api_key_here",
   },
 });
 
@@ -149,8 +149,8 @@ await transporter.sendMail({
 
 ### Authentication failed
 
-- SMTP credentials are per-app — make sure you're using the right app's credentials
-- Credentials are shown only once at app creation. If lost, create a new app
+- SMTP uses your app's API key as the password — make sure you're using the right app's key
+- The API key is shown only once at app creation. If lost, rotate the key from the app detail page
 - SeeSee supports LOGIN and PLAIN auth mechanisms
 
 ### Emails not appearing

@@ -113,7 +113,7 @@ Point any SMTP client at SeeSee:
 - **Host:** `localhost` (or your server IP)
 - **Port:** `2525`
 - **Username:** the SMTP username from app creation
-- **Password:** the SMTP password from app creation
+- **Password:** your API key
 - **TLS:** not required (for local/internal use)
 
 ## Verify it works

@@ -107,13 +107,12 @@ curl -X POST http://localhost:8080/api/v1/apps \
   "last_activity_at": null,
   "created_at": "2025-01-15T10:30:00Z",
   "api_key": "ss_abc123...",
-  "smtp_username": "my-website",
-  "smtp_password": "xyz789..."
+  "smtp_username": "my-website"
 }
 ```
 
 :::caution
-The `api_key` and `smtp_password` are only returned on creation. Store them securely — they cannot be retrieved later.
+The `api_key` is only returned on creation. Store it securely — it cannot be retrieved later. Your API key is also your SMTP password.
 :::
 
 ### List apps

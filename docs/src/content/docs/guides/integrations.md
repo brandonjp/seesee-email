@@ -3,7 +3,7 @@ title: Integrations
 description: Connect your apps to SeeSee with PHP, Python, Node.js, WordPress, and cURL.
 ---
 
-SeeSee supports two ingest methods: **REST API** and **SMTP**. Each app you create gets both an API key (for REST) and SMTP credentials.
+SeeSee supports two ingest methods: **REST API** and **SMTP**. Each app you create gets an API key that works for both REST and SMTP authentication.
 
 For REST API integration, your app sends a POST request to `/api/v1/log` after sending email. For SMTP integration, you point your app's SMTP settings at SeeSee and it captures messages automatically.
 
@@ -84,7 +84,7 @@ msg["From"] = "app@example.com"
 msg["To"] = "user@example.com"
 
 with smtplib.SMTP("seesee.example.com", 2525) as server:
-    server.login("my-app", "smtp-password-here")
+    server.login("my-app", "ss_your_api_key_here")
     server.send_message(msg)
 ```
 
@@ -146,7 +146,7 @@ const transporter = nodemailer.createTransport({
   secure: false,
   auth: {
     user: "my-app",
-    pass: "smtp-password-here",
+    pass: "ss_your_api_key_here",
   },
 });
 
@@ -238,7 +238,7 @@ Instead of the REST API hook, you can use a WordPress SMTP plugin (e.g., WP Mail
 | SMTP Host | `seesee.example.com` |
 | SMTP Port | `2525` |
 | Username | SMTP username from app creation |
-| Password | SMTP password from app creation |
+| Password | Your API key |
 | Encryption | None |
 
 SeeSee captures a copy of every email sent via SMTP. Your app should also send the email through its normal provider for actual delivery.

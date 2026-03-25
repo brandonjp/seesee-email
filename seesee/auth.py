@@ -31,10 +31,6 @@ def verify_secret(plaintext: str, hashed: str) -> bool:
     return bcrypt.checkpw(plaintext.encode(), hashed.encode())
 
 
-def generate_smtp_password() -> str:
-    """Generate a random SMTP password."""
-    return secrets.token_urlsafe(API_KEY_LENGTH)
-
 
 def get_session_serializer(secret_key: str) -> URLSafeTimedSerializer:
     """Create a timed serializer for session cookies."""

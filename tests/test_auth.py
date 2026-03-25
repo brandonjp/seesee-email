@@ -4,7 +4,6 @@ from seesee.auth import (
     API_KEY_PREFIX,
     generate_api_key,
     generate_slug,
-    generate_smtp_password,
     hash_secret,
     verify_secret,
 )
@@ -40,11 +39,6 @@ def test_verify_wrong_secret():
     hashed = hash_secret("correct_secret")
     assert not verify_secret("wrong_secret", hashed)
 
-
-def test_smtp_password_generation():
-    """Generated SMTP passwords are non-empty and sufficiently long."""
-    password = generate_smtp_password()
-    assert len(password) > 20
 
 
 def test_slug_simple():

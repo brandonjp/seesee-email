@@ -17,7 +17,6 @@ async def test_create_app_returns_credentials(client, admin_auth_header):
     assert app_data["slug"] == "booklink-fyi"
     assert app_data["api_key"].startswith("ss_")
     assert app_data["smtp_username"] == "booklink-fyi"
-    assert len(app_data["smtp_password"]) > 20
     assert app_data["body_storage_mode"] == "full"
     assert "created_at" in app_data
 

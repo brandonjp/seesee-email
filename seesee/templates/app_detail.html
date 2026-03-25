@@ -8,7 +8,7 @@
     <a href="/apps" class="mt-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">&larr; Back to apps</a>
 </div>
 {% else %}
-<div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false, confirmDelete: false }">
+<div class="space-y-4" x-data="{ tab: 'curl', confirmRotate: false, confirmPurge: false, confirmDelete: false, editingName: false, newName: '{{ app.name | replace("'", "\\'") }}' }">
     <!-- Back link -->
     <a href="/apps" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 active:text-gray-900 dark:hover:text-white dark:active:text-white transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -40,7 +40,24 @@
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex flex-wrap items-start gap-3 justify-between">
             <div class="min-w-0">
-                <h1 class="text-xl font-bold break-words">{{ app.name }}</h1>
+                <div class="flex items-center gap-2">
+                    <h1 x-show="!editingName" class="text-xl font-bold break-words">{{ app.name }}</h1>
+                    <button x-show="!editingName" @click="editingName = true; $nextTick(() => $refs.nameInput.focus())"
+                            class="p-1 text-gray-400 hover:text-accent active:text-accent transition-colors rounded" aria-label="Edit name" title="Edit name">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    </button>
+                    <form x-show="editingName" x-cloak action="/apps/{{ app.id }}/rename" method="post" class="flex items-center gap-2" @keydown.escape="editingName = false">
+                        <input x-ref="nameInput" type="text" name="name" x-model="newName" required
+                               class="text-xl font-bold bg-transparent border-b-2 border-accent focus:outline-none px-0 py-0 w-auto min-w-[200px]">
+                        <button type="submit" class="p-1 text-accent hover:text-accent/80 transition-colors" aria-label="Save" title="Save">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </button>
+                        <button type="button" @click="editingName = false; newName = '{{ app.name | replace("'", "\\'") }}'"
+                                class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="Cancel" title="Cancel">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </form>
+                </div>
                 <div class="mt-2 flex flex-wrap items-center gap-2">
                     <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{{ app.slug }}</code>
                     <span class="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent capitalize">{{ app.body_storage_mode | replace('_', ' ') }}</span>
@@ -234,7 +251,7 @@ echo $response;</code></pre>
                     </div>
                     <div class="flex gap-3 items-center">
                         <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Password</span>
-                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">ss_YOUR_API_KEY</code>
+                        <span class="text-xs text-gray-400 dark:text-gray-500 italic">Use your API key</span>
                     </div>
                     <div class="flex gap-3 items-center">
                         <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Encryption</span>
@@ -245,7 +262,7 @@ echo $response;</code></pre>
                         </button>
                     </div>
                     <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <button onclick="copyToClipboard('MAIL_SEESEE_API_KEY=ss_YOUR_API_KEY\nMAIL_SEESEE_SMTP_PASSWORD=ss_YOUR_API_KEY\nMAIL_SEESEE_SMTP_USERNAME={{ app.slug }}\nMAIL_SEESEE_URL={{ base_url }}', this)"
+                        <button onclick="copyToClipboard('MAIL_SEESEE_API_KEY=ss_YOUR_API_KEY\nMAIL_SEESEE_URL={{ base_url }}\nMAIL_SEESEE_SMTP_HOST={{ smtp_host }}\nMAIL_SEESEE_SMTP_PORT={{ smtp_port }}\nMAIL_SEESEE_SMTP_USERNAME={{ app.slug }}\nMAIL_SEESEE_SMTP_ENCRYPTION=STARTTLS', this)"
                                 class="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 active:text-accent/70 transition-colors"
                                 aria-label="Copy all as ENV vars" title="Copy all as ENV vars">
                             <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>

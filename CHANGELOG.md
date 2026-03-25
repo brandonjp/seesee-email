@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Version bump: 0.18.1-dev → 0.18.2-dev
+- Unified API key and SMTP password — the API key is now the only credential (used for both API and SMTP auth)
+- "Copy all as ENV vars" now includes SMTP_HOST, SMTP_PORT, and SMTP_ENCRYPTION
+- SMTP authenticator validates against the API key directly
+- Key rotation updates SMTP credentials automatically
+
+### Added
+- Inline app name editing on app detail page (pencil icon next to the name)
+- POST /apps/{app_id}/rename UI endpoint for renaming apps
+
+### Removed
+- Separate SMTP password — replaced by API key
+- `generate_smtp_password()` utility
+- `smtp_password` field from `AppCreateResponse` API model
+
+### Previously
 - Version bump: 0.18.0-dev → 0.18.1-dev
 - Replaced "SS" favicon text with "See" to avoid unintended abbreviation associations
 

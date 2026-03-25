@@ -18,7 +18,6 @@ from seesee.auth import (
     create_session_token,
     generate_api_key,
     generate_slug,
-    generate_smtp_password,
     hash_secret,
 )
 from seesee.config import settings
@@ -423,6 +422,7 @@ async def app_list(
             "rotated_key": rotated_key,
             "deleted_app": deleted_app,
             "base_url": settings.base_url,
+            "smtp_port": settings.smtp_port,
         },
     )
     if flash:
@@ -461,8 +461,6 @@ async def create_app_ui(
     api_key_hash = hash_secret(api_key)
 
     smtp_username = slug
-    smtp_password = generate_smtp_password()
-    smtp_password_hash = hash_secret(smtp_password)
 
     now_iso = utc_now_iso()
 
@@ -477,7 +475,7 @@ async def create_app_ui(
             api_key_hash,
             key_prefix,
             smtp_username,
-            smtp_password_hash,
+            api_key_hash,
             body_storage_mode,
             now_iso,
         ),
@@ -492,7 +490,6 @@ async def create_app_ui(
             "created_credentials": {
                 "api_key": api_key,
                 "smtp_username": smtp_username,
-                "smtp_password": smtp_password,
             }
         },
     )
@@ -516,8 +513,8 @@ async def rotate_key_ui(
     new_hash = hash_secret(new_key)
 
     await db.execute(
-        "UPDATE apps SET api_key = ?, key_prefix = ? WHERE id = ?",
-        (new_hash, new_prefix, app_id),
+        "UPDATE apps SET api_key = ?, key_prefix = ?, smtp_password = ? WHERE id = ?",
+        (new_hash, new_prefix, new_hash, app_id),
     )
     await db.commit()
 
@@ -593,6 +590,29 @@ async def app_detail(
     if flash:
         response.delete_cookie(FLASH_COOKIE_NAME)
     return response
+
+
+@router.post("/apps/{app_id}/rename")
+async def rename_app_ui(
+    app_id: str,
+    user: str = Depends(require_session),
+    name: str = Form(...),
+) -> RedirectResponse:
+    """Rename an app via the web UI."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        return RedirectResponse(url="/apps", status_code=303)
+
+    name = name.strip()
+    if not name:
+        return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+
+    await db.execute("UPDATE apps SET name = ? WHERE id = ?", (name, app_id))
+    await db.commit()
+
+    return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
 
 
 @router.post("/apps/{app_id}/purge")

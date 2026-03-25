@@ -172,7 +172,6 @@ class AppCreateResponse(AppResponse):
 
     api_key: str
     smtp_username: str
-    smtp_password: str
 
 
 class KeyRotateResponse(BaseModel):

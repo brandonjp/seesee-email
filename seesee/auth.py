@@ -31,7 +31,6 @@ def verify_secret(plaintext: str, hashed: str) -> bool:
     return bcrypt.checkpw(plaintext.encode(), hashed.encode())
 
 
-
 def get_session_serializer(secret_key: str) -> URLSafeTimedSerializer:
     """Create a timed serializer for session cookies."""
     return URLSafeTimedSerializer(secret_key, salt="seesee-session")

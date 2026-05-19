@@ -5,7 +5,7 @@ from itsdangerous import URLSafeTimedSerializer
 
 from seesee.auth import SESSION_COOKIE_NAME, create_session_token
 from seesee.config import settings
-from seesee.routes.ui import FLASH_COOKIE_NAME
+from seesee.routes.ui import FLASH_COOKIE_NAME, _build_env_vars
 
 
 def _get_session_cookie(username: str = "admin") -> str:
@@ -68,7 +68,9 @@ async def test_login_username_case_insensitive(client: AsyncClient) -> None:
             data={"username": variant, "password": "testpassword"},
             follow_redirects=False,
         )
-        assert resp.status_code == 303, f"Expected 303 for username '{variant}', got {resp.status_code}"
+        assert resp.status_code == 303, (
+            f"Expected 303 for username '{variant}', got {resp.status_code}"
+        )
         assert SESSION_COOKIE_NAME in resp.cookies
 
 
@@ -357,3 +359,76 @@ async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> 
     flash = _read_flash(resp)
     assert flash is not None
     assert flash["rotated_key"].startswith("ss_")
+
+
+# ---------------------------------------------------------------------------
+# Integration ENV vars
+# ---------------------------------------------------------------------------
+
+
+def test_build_env_vars_includes_all_sections() -> None:
+    """_build_env_vars produces the full var block with section comments."""
+    env = _build_env_vars(
+        app_id="abc-123",
+        slug="my-app",
+        api_key="ss_realkey",
+        base_url="https://seesee.example.com",
+        smtp_port=2525,
+    )
+    assert "# SeeSee API" in env
+    assert "# SMTP connection" in env
+    assert "# App identity" in env
+    assert "MAIL_SEESEE_API_KEY=ss_realkey" in env
+    assert "MAIL_SEESEE_SMTP_HOST=seesee.example.com" in env
+    assert "MAIL_SEESEE_SMTP_PORT=2525" in env
+    assert "MAIL_SEESEE_SMTP_USERNAME=my-app" in env
+    assert "MAIL_SEESEE_SMTP_PASSWORD=ss_realkey" in env
+    assert "MAIL_SEESEE_SMTP_ENCRYPTION=null" in env
+    assert "MAIL_SEESEE_URL=https://seesee.example.com" in env
+    assert "MAIL_SEESEE_APP_ID=abc-123" in env
+    assert "MAIL_SEESEE_APP_URL=https://seesee.example.com/apps/abc-123" in env
+    assert "MAIL_SEESEE_LOG_URL=https://seesee.example.com/emails?app_id=abc-123" in env
+
+
+async def test_apps_create_flash_includes_env_vars(client: AsyncClient) -> None:
+    """The post-creation flash carries a complete ENV block with the real key."""
+    token = _get_session_cookie()
+    resp = await client.post(
+        "/apps",
+        data={"name": "Env Block App", "body_storage_mode": "full"},
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    flash = _read_flash(resp)
+    assert flash is not None
+    creds = flash["created_credentials"]
+    env = creds["env_vars"]
+    # Location 1 uses the real key for both API key and SMTP password
+    assert f"MAIL_SEESEE_API_KEY={creds['api_key']}" in env
+    assert f"MAIL_SEESEE_SMTP_PASSWORD={creds['api_key']}" in env
+    assert "MAIL_SEESEE_APP_ID=" in env
+    assert "MAIL_SEESEE_APP_URL=" in env
+    assert "MAIL_SEESEE_LOG_URL=" in env
+    assert "MAIL_SEESEE_SMTP_ENCRYPTION=null" in env
+
+
+async def test_app_detail_smtp_tab_env_vars(client: AsyncClient, admin_auth_header: dict) -> None:
+    """App detail SMTP tab offers the full ENV block with the API key placeholder."""
+    app_resp = await client.post(
+        "/api/v1/apps",
+        json={"name": "Detail Env App"},
+        headers=admin_auth_header,
+    )
+    app_id = app_resp.json()["id"]
+
+    token = _get_session_cookie()
+    resp = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    # env_vars is rendered via the |tojson filter — credentials not re-shown,
+    # so both key and password use the placeholder.
+    assert "MAIL_SEESEE_API_KEY=ss_YOUR_API_KEY" in resp.text
+    assert "MAIL_SEESEE_SMTP_PASSWORD=ss_YOUR_API_KEY" in resp.text
+    assert f"MAIL_SEESEE_APP_ID={app_id}" in resp.text
+    assert "MAIL_SEESEE_APP_URL=" in resp.text
+    assert "MAIL_SEESEE_LOG_URL=" in resp.text
+    assert "MAIL_SEESEE_SMTP_ENCRYPTION=null" in resp.text

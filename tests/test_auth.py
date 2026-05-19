@@ -40,7 +40,6 @@ def test_verify_wrong_secret():
     assert not verify_secret("wrong_secret", hashed)
 
 
-
 def test_slug_simple():
     """Simple name produces lowercase hyphenated slug."""
     assert generate_slug("BookLink.fyi") == "booklink-fyi"

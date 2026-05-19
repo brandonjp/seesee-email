@@ -44,6 +44,53 @@ def _get_templates() -> Jinja2Templates:
     return _templates
 
 
+# ---------------------------------------------------------------------------
+# Integration ENV vars
+# ---------------------------------------------------------------------------
+
+# The SMTP ingest server (aiosmtpd) does not speak TLS — TLS is terminated by a
+# reverse proxy. "null" tells the consuming mail client to use no encryption;
+# the SMTP Settings tab shows this as "none".
+SMTP_ENCRYPTION = "null"
+API_KEY_PLACEHOLDER = "ss_YOUR_API_KEY"
+
+
+def _smtp_host(base_url: str, smtp_port: int) -> str:
+    """Derive the SMTP hostname from base_url, stripping the scheme and SMTP port."""
+    host = base_url.replace("http://", "").replace("https://", "")
+    return host.replace(f":{smtp_port}", "")
+
+
+def _build_env_vars(app_id: str, slug: str, api_key: str, base_url: str, smtp_port: int) -> str:
+    """Build the full .env block for integrating an app with SeeSee.
+
+    api_key is the real key right after creation, or API_KEY_PLACEHOLDER once the
+    credential is no longer shown. Easier for a developer to delete unused lines
+    than to hunt down values that were never copied.
+    """
+    return "\n".join(
+        [
+            "# SeeSee API",
+            f"MAIL_SEESEE_API_KEY={api_key}",
+            "",
+            "# SMTP connection",
+            f"MAIL_SEESEE_SMTP_HOST={_smtp_host(base_url, smtp_port)}",
+            f"MAIL_SEESEE_SMTP_PORT={smtp_port}",
+            f"MAIL_SEESEE_SMTP_USERNAME={slug}",
+            f"MAIL_SEESEE_SMTP_PASSWORD={api_key}",
+            f"MAIL_SEESEE_SMTP_ENCRYPTION={SMTP_ENCRYPTION}",
+            "",
+            "# Base URL",
+            f"MAIL_SEESEE_URL={base_url}",
+            "",
+            "# App identity (for linking into external dashboards / building log URLs)",
+            f"MAIL_SEESEE_APP_ID={app_id}",
+            f"MAIL_SEESEE_APP_URL={base_url}/apps/{app_id}",
+            f"MAIL_SEESEE_LOG_URL={base_url}/emails?app_id={app_id}",
+        ]
+    )
+
+
 def _get_secret_key() -> str:
     """Get the secret key, falling back to admin_password if not configured."""
     return settings.secret_key or settings.admin_password
@@ -421,8 +468,6 @@ async def app_list(
             "created_credentials": created_credentials,
             "rotated_key": rotated_key,
             "deleted_app": deleted_app,
-            "base_url": settings.base_url,
-            "smtp_port": settings.smtp_port,
         },
     )
     if flash:
@@ -490,6 +535,9 @@ async def create_app_ui(
             "created_credentials": {
                 "api_key": api_key,
                 "smtp_username": smtp_username,
+                "env_vars": _build_env_vars(
+                    app_id, slug, api_key, settings.base_url, settings.smtp_port
+                ),
             }
         },
     )
@@ -584,6 +632,14 @@ async def app_detail(
             "app": app,
             "base_url": settings.base_url,
             "smtp_port": settings.smtp_port,
+            "smtp_host": _smtp_host(settings.base_url, settings.smtp_port),
+            "env_vars": _build_env_vars(
+                app["id"],
+                app["slug"],
+                API_KEY_PLACEHOLDER,
+                settings.base_url,
+                settings.smtp_port,
+            ),
             "rotated_key": rotated_key,
         },
     )

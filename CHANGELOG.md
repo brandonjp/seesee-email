@@ -8,11 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Version bump: 0.18.1-dev → 0.18.2-dev
+- Version bump: 0.18.2-dev → 0.18.4-dev
+- "Copy all as ENV vars" now copies the complete block: SMTP_PASSWORD plus app identity vars (APP_ID, APP_URL, LOG_URL), grouped under section comments — both the post-creation alert and the SMTP Settings tab produce the identical layout
+- ENV var block is built server-side from a single source, so SMTP host/port/encryption can no longer drift between the two copy locations
 - Unified API key and SMTP password — the API key is now the only credential (used for both API and SMTP auth)
 - "Copy all as ENV vars" now includes SMTP_HOST, SMTP_PORT, and SMTP_ENCRYPTION
 - SMTP authenticator validates against the API key directly
 - Key rotation updates SMTP credentials automatically
+
+### Fixed
+- `MAIL_SEESEE_SMTP_ENCRYPTION` in the copied ENV block now emits `null` (no encryption) instead of `STARTTLS` — the SMTP ingest server (aiosmtpd) does not speak TLS; TLS is terminated by a reverse proxy, so a copied `STARTTLS` value would have caused client connection failures
+- Version numbers were out of sync across `pyproject.toml` (0.18.1-dev), `seesee/__init__.py` (0.18.2-dev), and docs — all realigned to 0.18.4-dev
 
 ### Added
 - Inline app name editing on app detail page (pencil icon next to the name)

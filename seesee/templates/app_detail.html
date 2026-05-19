@@ -224,7 +224,6 @@ echo $response;</code></pre>
             <!-- SMTP Settings tab -->
             <div x-show="tab === 'smtp'" style="display: none;">
                 <div class="grid gap-3 text-sm">
-                    {% set smtp_host = base_url | replace('http://', '') | replace('https://', '') | replace(':' ~ smtp_port|string, '') %}
                     <div class="flex gap-3 items-center">
                         <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Host</span>
                         <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{{ smtp_host }}</code>
@@ -255,14 +254,11 @@ echo $response;</code></pre>
                     </div>
                     <div class="flex gap-3 items-center">
                         <span class="text-gray-500 dark:text-gray-400 w-28 shrink-0">Encryption</span>
-                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">STARTTLS</code>
-                        <button onclick="copyToClipboard('STARTTLS', this)" class="p-1.5 -m-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy" title="Copy">
-                            <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        </button>
+                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">none</code>
+                        <span class="text-xs text-gray-400 dark:text-gray-500 italic">TLS termination handled by reverse proxy</span>
                     </div>
                     <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <button onclick="copyToClipboard('MAIL_SEESEE_API_KEY=ss_YOUR_API_KEY\nMAIL_SEESEE_URL={{ base_url }}\nMAIL_SEESEE_SMTP_HOST={{ smtp_host }}\nMAIL_SEESEE_SMTP_PORT={{ smtp_port }}\nMAIL_SEESEE_SMTP_USERNAME={{ app.slug }}\nMAIL_SEESEE_SMTP_ENCRYPTION=STARTTLS', this)"
+                        <button onclick='copyToClipboard({{ env_vars | tojson }}, this)'
                                 class="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 active:text-accent/70 transition-colors"
                                 aria-label="Copy all as ENV vars" title="Copy all as ENV vars">
                             <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>

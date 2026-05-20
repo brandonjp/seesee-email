@@ -1,7 +1,7 @@
 """FastAPI dependency functions for authentication and database access."""
 
 import secrets
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import (
@@ -22,7 +22,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_app(
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> dict:
     """Validate API key and return the authenticated app row.
 

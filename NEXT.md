@@ -1,9 +1,15 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.2-dev
-**Updated:** 2026-05-19
+**Version:** 0.19.3-dev
+**Updated:** 2026-05-20
 
 ## Just Completed
+
+- **Review fix: ruff `UP045` on `get_current_app`** (v0.19.3-dev):
+  - The 401 fix annotated `credentials` as `Optional[HTTPAuthorizationCredentials]`; the project's ruff config enables `UP` rules so this failed `ruff check` — switched to `HTTPAuthorizationCredentials | None`
+
+- **Return 401 (not 403) when the `Authorization` header is missing** (v0.19.2-dev):
+  - `HTTPBearer` set to `auto_error=False`; `get_current_app` raises an explicit 401 with `WWW-Authenticate: Bearer` when credentials are absent
 
 - **Code review fixes for edit-app-settings** (v0.19.1-dev):
   - Consolidated `VALID_BODY_STORAGE_MODES` into `seesee/helpers.py` — was duplicated inline in three places (`apps.py` constant, `create_app_ui`, `update_app_settings_ui`); all now import the single source

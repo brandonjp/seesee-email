@@ -1,9 +1,14 @@
 # Next Steps — SeeSee
 
-**Version:** 0.18.4-dev
+**Version:** 0.19.0-dev
 **Updated:** 2026-05-19
 
 ## Just Completed
+
+- **Edit app settings from the detail page** (v0.19.0-dev):
+  - New "Settings" card on `/apps/{id}` with a view/edit toggle for `body_storage_mode` and the four retention overrides
+  - New `POST /apps/{app_id}/settings` UI handler; empty retention fields clear the override to the system default
+  - Detail GET now fetches all four retention columns; edit form shows global defaults as placeholder hints
 
 - **"Copy ENV Vars" — complete block, both locations** (v0.18.4-dev):
   - Both copy locations now emit the full var block: API key, full SMTP connection (host/port/username/password/encryption), base URL, and app identity vars (`MAIL_SEESEE_APP_ID`, `MAIL_SEESEE_APP_URL`, `MAIL_SEESEE_LOG_URL`)

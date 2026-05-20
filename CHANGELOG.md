@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
+
 ### Changed
+- Version bump: 0.18.4-dev → 0.19.0-dev
 - Version bump: 0.18.2-dev → 0.18.4-dev
 - "Copy all as ENV vars" now copies the complete block: SMTP_PASSWORD plus app identity vars (APP_ID, APP_URL, LOG_URL), grouped under section comments — both the post-creation alert and the SMTP Settings tab produce the identical layout
 - ENV var block is built server-side from a single source, so SMTP host/port/encryption can no longer drift between the two copy locations

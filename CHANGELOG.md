@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent; all 281 tests pass
+
+### Changed
+- Version bump: 0.19.1-dev → 0.19.2-dev
+
 ### Added
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 

@@ -1,7 +1,7 @@
 """FastAPI dependency functions for authentication and database access."""
 
 import secrets
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import (
@@ -18,17 +18,23 @@ from seesee.database import get_db
 # ---------------------------------------------------------------------------
 # Bearer token scheme for API key auth
 # ---------------------------------------------------------------------------
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_app(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
 ) -> dict:
     """Validate API key and return the authenticated app row.
 
     Extracts the Bearer token, looks up by key_prefix for O(1) lookup,
     then verifies the full key against the bcrypt hash.
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     if not token.startswith(API_KEY_PREFIX):
         raise HTTPException(

@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.19.1-dev
+**Version:** 0.19.2-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---

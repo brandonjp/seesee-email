@@ -507,6 +507,38 @@ async def test_apps_update_settings_rejects_negative_retention(
     assert updated["retention_max_count"] == 100  # unchanged
 
 
+async def test_app_detail_settings_card(client: AsyncClient, admin_auth_header: dict) -> None:
+    """Detail page renders the Settings card; set retention values round-trip."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Card App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "preview",
+            "retention_max_count": "111",
+            "retention_max_age_days": "22",
+            "retention_degrade_to_text_days": "7",
+            "retention_degrade_to_preview_days": "14",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+
+    resp = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    assert f'action="/apps/{app_id}/settings"' in resp.text
+    assert 'name="body_storage_mode"' in resp.text
+    assert 'name="retention_max_count"' in resp.text
+    assert 'name="retention_degrade_to_preview_days"' in resp.text
+    # The degrade-field values prove the detail SELECT fetches all four columns.
+    assert 'value="7"' in resp.text
+    assert 'value="14"' in resp.text
+
+
 # ---------------------------------------------------------------------------
 # Integration ENV vars
 # ---------------------------------------------------------------------------

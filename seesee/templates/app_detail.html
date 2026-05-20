@@ -271,6 +271,98 @@ echo $response;</code></pre>
         </div>
     </div>
 
+    <!-- Settings -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5"
+         x-data="{ editingSettings: false }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Settings</h2>
+            <button x-show="!editingSettings" @click="editingSettings = true"
+                    class="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent/80 active:text-accent/70 transition-colors"
+                    aria-label="Edit settings" title="Edit settings">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                Edit
+            </button>
+        </div>
+
+        <!-- Read mode -->
+        <dl x-show="!editingSettings" class="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Storage mode</dt>
+                <dd class="mt-0.5 font-medium capitalize">{{ app.body_storage_mode | replace('_', ' ') }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Max emails kept</dt>
+                <dd class="mt-0.5 font-medium">{% if app.retention_max_count is not none %}{{ app.retention_max_count }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Max age (days)</dt>
+                <dd class="mt-0.5 font-medium">{% if app.retention_max_age_days is not none %}{{ app.retention_max_age_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Strip HTML to text after (days)</dt>
+                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_text_days is not none %}{{ app.retention_degrade_to_text_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Reduce to preview after (days)</dt>
+                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_preview_days is not none %}{{ app.retention_degrade_to_preview_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+            </div>
+        </dl>
+
+        <!-- Edit mode -->
+        <form x-show="editingSettings" x-cloak action="/apps/{{ app.id }}/settings" method="post"
+              class="space-y-4" @keydown.escape="editingSettings = false">
+            <div>
+                <label class="block text-sm font-medium mb-1">Storage mode</label>
+                <select name="body_storage_mode"
+                        class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                    <option value="full" {% if app.body_storage_mode == 'full' %}selected{% endif %}>Full (HTML + Text)</option>
+                    <option value="text_only" {% if app.body_storage_mode == 'text_only' %}selected{% endif %}>Text Only</option>
+                    <option value="preview" {% if app.body_storage_mode == 'preview' %}selected{% endif %}>Preview Only</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Applies to future emails only — won't change emails already stored.</p>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Max emails kept</label>
+                    <input type="number" min="0" step="1" name="retention_max_count"
+                           value="{{ app.retention_max_count if app.retention_max_count is not none else '' }}"
+                           placeholder="Default: {{ retention_defaults.max_count }}"
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Max age (days)</label>
+                    <input type="number" min="0" step="1" name="retention_max_age_days"
+                           value="{{ app.retention_max_age_days if app.retention_max_age_days is not none else '' }}"
+                           placeholder="Default: {{ retention_defaults.max_age_days }}"
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Strip HTML to text after (days)</label>
+                    <input type="number" min="0" step="1" name="retention_degrade_to_text_days"
+                           value="{{ app.retention_degrade_to_text_days if app.retention_degrade_to_text_days is not none else '' }}"
+                           placeholder="Default: {{ 'off' if retention_defaults.degrade_to_text_days == 0 else retention_defaults.degrade_to_text_days }}"
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Reduce to preview after (days)</label>
+                    <input type="number" min="0" step="1" name="retention_degrade_to_preview_days"
+                           value="{{ app.retention_degrade_to_preview_days if app.retention_degrade_to_preview_days is not none else '' }}"
+                           placeholder="Default: {{ 'off' if retention_defaults.degrade_to_preview_days == 0 else retention_defaults.degrade_to_preview_days }}"
+                           class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Leave a field blank to use the system default.</p>
+
+            <div class="flex gap-3 justify-end">
+                <button type="button" @click="editingSettings = false"
+                        class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
+                <button type="submit"
+                        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent/90 active:bg-accent/80 transition-colors">Save Settings</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Actions -->
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Actions</h2>

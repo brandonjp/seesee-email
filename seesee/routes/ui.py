@@ -588,7 +588,9 @@ async def app_detail(
 
     cursor = await db.execute(
         "SELECT id, name, slug, body_storage_mode, retention_max_count, "
-        "retention_max_age_days, created_at, last_activity_at FROM apps WHERE id = ?",
+        "retention_max_age_days, retention_degrade_to_text_days, "
+        "retention_degrade_to_preview_days, created_at, last_activity_at "
+        "FROM apps WHERE id = ?",
         (app_id,),
     )
     app = await cursor.fetchone()
@@ -641,6 +643,12 @@ async def app_detail(
                 settings.smtp_port,
             ),
             "rotated_key": rotated_key,
+            "retention_defaults": {
+                "max_count": settings.retention_max_count,
+                "max_age_days": settings.retention_max_age_days,
+                "degrade_to_text_days": settings.retention_degrade_to_text_days,
+                "degrade_to_preview_days": settings.retention_degrade_to_preview_days,
+            },
         },
     )
     if flash:

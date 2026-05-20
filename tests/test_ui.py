@@ -361,6 +361,152 @@ async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> 
     assert flash["rotated_key"].startswith("ss_")
 
 
+async def test_apps_update_settings(client: AsyncClient, admin_auth_header: dict) -> None:
+    """POST /apps/{id}/settings updates storage mode and retention values."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Settings App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    resp = await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "preview",
+            "retention_max_count": "250",
+            "retention_max_age_days": "30",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/apps/{app_id}"
+
+    listed = await client.get("/api/v1/apps", headers=admin_auth_header)
+    updated = next(a for a in listed.json() if a["id"] == app_id)
+    assert updated["body_storage_mode"] == "preview"
+    assert updated["retention_max_count"] == 250
+    assert updated["retention_max_age_days"] == 30
+
+
+async def test_apps_update_settings_clears_retention(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """Submitting empty retention fields clears the overrides to null."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Clear App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    # First set overrides
+    await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "500",
+            "retention_max_age_days": "45",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    # Then clear them
+    resp = await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "",
+            "retention_max_age_days": "",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    listed = await client.get("/api/v1/apps", headers=admin_auth_header)
+    updated = next(a for a in listed.json() if a["id"] == app_id)
+    assert updated["retention_max_count"] is None
+    assert updated["retention_max_age_days"] is None
+
+
+async def test_apps_update_settings_rejects_invalid_mode(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """An invalid body_storage_mode is rejected — no DB change."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Bad Mode App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    resp = await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "bogus",
+            "retention_max_count": "",
+            "retention_max_age_days": "",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    listed = await client.get("/api/v1/apps", headers=admin_auth_header)
+    updated = next(a for a in listed.json() if a["id"] == app_id)
+    assert updated["body_storage_mode"] == "full"  # unchanged from creation default
+
+
+async def test_apps_update_settings_rejects_negative_retention(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """A negative retention value is rejected — prior value is left intact."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Neg App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    # Set a known value first
+    await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "100",
+            "retention_max_age_days": "",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    # Negative value must be rejected
+    resp = await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "-5",
+            "retention_max_age_days": "",
+            "retention_degrade_to_text_days": "",
+            "retention_degrade_to_preview_days": "",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    listed = await client.get("/api/v1/apps", headers=admin_auth_header)
+    updated = next(a for a in listed.json() if a["id"] == app_id)
+    assert updated["retention_max_count"] == 100  # unchanged
+
+
 # ---------------------------------------------------------------------------
 # Integration ENV vars
 # ---------------------------------------------------------------------------

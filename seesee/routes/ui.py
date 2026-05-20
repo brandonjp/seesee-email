@@ -671,6 +671,68 @@ async def rename_app_ui(
     return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
 
 
+@router.post("/apps/{app_id}/settings")
+async def update_app_settings_ui(
+    app_id: str,
+    user: str = Depends(require_session),
+    body_storage_mode: str = Form(...),
+    retention_max_count: str = Form(""),
+    retention_max_age_days: str = Form(""),
+    retention_degrade_to_text_days: str = Form(""),
+    retention_degrade_to_preview_days: str = Form(""),
+) -> RedirectResponse:
+    """Update an app's storage mode and retention overrides via the web UI."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        return RedirectResponse(url="/apps", status_code=303)
+
+    # The <select> only emits valid modes; reject anything else as a
+    # defense-in-depth safety net (no write).
+    valid_modes = {"full", "text_only", "preview"}
+    if body_storage_mode not in valid_modes:
+        return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+
+    # Empty string clears the override (NULL); otherwise a non-negative integer.
+    # type="number" min="0" guards this client-side.
+    retention: dict[str, int | None] = {}
+    for field, raw in (
+        ("retention_max_count", retention_max_count),
+        ("retention_max_age_days", retention_max_age_days),
+        ("retention_degrade_to_text_days", retention_degrade_to_text_days),
+        ("retention_degrade_to_preview_days", retention_degrade_to_preview_days),
+    ):
+        stripped = raw.strip()
+        if stripped == "":
+            retention[field] = None
+            continue
+        try:
+            parsed = int(stripped)
+        except ValueError:
+            return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+        if parsed < 0:
+            return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+        retention[field] = parsed
+
+    await db.execute(
+        "UPDATE apps SET body_storage_mode = ?, retention_max_count = ?, "
+        "retention_max_age_days = ?, retention_degrade_to_text_days = ?, "
+        "retention_degrade_to_preview_days = ? WHERE id = ?",
+        (
+            body_storage_mode,
+            retention["retention_max_count"],
+            retention["retention_max_age_days"],
+            retention["retention_degrade_to_text_days"],
+            retention["retention_degrade_to_preview_days"],
+            app_id,
+        ),
+    )
+    await db.commit()
+
+    return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+
+
 @router.post("/apps/{app_id}/purge")
 async def purge_app_emails_ui(
     app_id: str,

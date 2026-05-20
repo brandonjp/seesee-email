@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
 ### Changed
+- Version bump: 0.19.0-dev → 0.19.1-dev
 - Version bump: 0.18.4-dev → 0.19.0-dev
 - Version bump: 0.18.2-dev → 0.18.4-dev
 - "Copy all as ENV vars" now copies the complete block: SMTP_PASSWORD plus app identity vars (APP_ID, APP_URL, LOG_URL), grouped under section comments — both the post-creation alert and the SMTP Settings tab produce the identical layout
@@ -21,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Key rotation updates SMTP credentials automatically
 
 ### Fixed
+- Consolidated the `VALID_BODY_STORAGE_MODES` constant into `seesee/helpers.py` — the app-create and app-settings UI handlers now validate against a single source instead of three duplicated inline copies that could silently drift apart
+- App detail edit forms (Settings, rename) no longer briefly flash open before Alpine.js initializes — added the missing `[x-cloak]` CSS rule to `base.html`
 - `MAIL_SEESEE_SMTP_ENCRYPTION` in the copied ENV block now emits `null` (no encryption) instead of `STARTTLS` — the SMTP ingest server (aiosmtpd) does not speak TLS; TLS is terminated by a reverse proxy, so a copied `STARTTLS` value would have caused client connection failures
 - Version numbers were out of sync across `pyproject.toml` (0.18.1-dev), `seesee/__init__.py` (0.18.2-dev), and docs — all realigned to 0.18.4-dev
 

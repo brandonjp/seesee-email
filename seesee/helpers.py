@@ -5,6 +5,8 @@ Used by both the REST API ingest and SMTP ingest paths.
 
 import re
 
+VALID_BODY_STORAGE_MODES = {"full", "text_only", "preview"}
+
 
 def apply_body_storage_mode(
     body_html: str | None,

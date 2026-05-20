@@ -23,6 +23,7 @@ from seesee.auth import (
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.dependencies import require_session
+from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.retention import run_cleanup
 from seesee.timezone import utc_cutoff_iso, utc_now_iso
 
@@ -485,8 +486,7 @@ async def create_app_ui(
     """Create a new app via the web UI form."""
     db = await get_db()
 
-    valid_modes = {"full", "text_only", "preview"}
-    if body_storage_mode not in valid_modes:
+    if body_storage_mode not in VALID_BODY_STORAGE_MODES:
         body_storage_mode = "full"
 
     # Generate slug with collision handling
@@ -698,8 +698,7 @@ async def update_app_settings_ui(
 
     # The <select> only emits valid modes; reject anything else as a
     # defense-in-depth safety net (no write).
-    valid_modes = {"full", "text_only", "preview"}
-    if body_storage_mode not in valid_modes:
+    if body_storage_mode not in VALID_BODY_STORAGE_MODES:
         return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
 
     # Empty string clears the override (NULL); otherwise a non-negative integer.

@@ -12,6 +12,7 @@ from seesee.auth import (
 )
 from seesee.database import get_db
 from seesee.dependencies import require_admin
+from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.models import (
     AppCreateRequest,
     AppCreateResponse,
@@ -22,8 +23,6 @@ from seesee.models import (
 from seesee.timezone import utc_now, utc_now_iso
 
 router = APIRouter(prefix="/api/v1", tags=["apps"])
-
-VALID_BODY_STORAGE_MODES = {"full", "text_only", "preview"}
 
 
 @router.post(

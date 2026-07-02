@@ -1,3 +1,3 @@
 """SeeSee — Lightweight, self-hosted sent email log aggregator."""
 
-__version__ = "0.19.10-dev"
+__version__ = "0.19.11-dev"

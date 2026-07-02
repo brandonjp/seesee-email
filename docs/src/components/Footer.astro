@@ -1,0 +1,41 @@
+---
+// Custom Starlight footer: renders the built-in footer, then appends the
+// current SeeSee version. The version is injected at build time from
+// pyproject.toml via `import.meta.env.SEESEE_VERSION` (see astro.config.mjs),
+// so it always matches the app release without manual updates here.
+import Default from "@astrojs/starlight/components/Footer.astro";
+
+const version = import.meta.env.SEESEE_VERSION;
+---
+
+<Default />
+
+{
+  version && (
+    <p class="ss-version">
+      <a
+        href="https://github.com/brandonjp/seesee-email/releases"
+        target="_blank"
+        rel="noopener"
+      >
+        SeeSee v{version}
+      </a>
+    </p>
+  )
+}
+
+<style>
+  .ss-version {
+    margin: 1rem auto 0;
+    text-align: center;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .ss-version a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .ss-version a:hover {
+    color: var(--sl-color-accent);
+  }
+</style>

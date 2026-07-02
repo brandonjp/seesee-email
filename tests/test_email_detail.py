@@ -166,9 +166,7 @@ async def test_preview_email_with_basic_auth_still_works(client, admin_auth_head
     app_data = await create_test_app(client, admin_auth_header)
     logged = await _log_email(client, app_data["api_key"])
 
-    response = await client.get(
-        f"/api/v1/emails/{logged['id']}/preview", headers=admin_auth_header
-    )
+    response = await client.get(f"/api/v1/emails/{logged['id']}/preview", headers=admin_auth_header)
     assert response.status_code == 200
     assert "<h1>Hello</h1><p>World</p>" in response.text
 

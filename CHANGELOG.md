@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
 ### Fixed
+- CI test failures under Starlette 1.x that blocked Docker image publishing since March — all `TemplateResponse` calls now use the modern `TemplateResponse(request, name, context)` signature; the old `(name, {"request": ...})` form was removed in Starlette 1.0 and crashed every UI page render with `TypeError: unhashable type: 'dict'` (v0.19.5-dev)
 - Retention overrides of `0` submitted via the settings UI are now stored as "system default" (NULL) — the retention engine already treated `0` and unset identically, but the read view displayed a literal `0`, implying it did something; legacy `0` values stored via the API also render as "System default" now
 - `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent
 - `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge

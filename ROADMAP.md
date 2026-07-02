@@ -1,6 +1,6 @@
 # SeeSee Development Roadmap
 
-**Version:** 0.19.3-dev
+**Version:** 0.19.4-dev
 **Status Legend:** ✅ Complete | 🚧 In Progress | 📋 Planned | 🔮 Future
 
 ---
@@ -148,7 +148,10 @@
 - [x] Admin UX audit — iOS input zoom fix, sortable columns, touch targets, copy buttons, form loading states, tooltips
 - [x] Theme selector UI on settings page — 10 themes (4 accent, 3 developer, 1 light, 2 retro) with swatch grid picker
 - [x] Expanded theme catalog — 21 themes (4 accent, 8 developer, 4 light, 6 retro) with scoped CSS overrides for Blueprint, VHS, OS 9, Rad
+- [x] Edit app settings from the detail page — storage mode + the four retention overrides ("Settings" card)
 - [ ] CSV/JSON search export
+- [ ] Per-app "disable degradation" override — needs a design decision: the retention engine treats a per-app `0`/NULL as "inherit global", so an app cannot opt out of a globally enabled degradation schedule (see NEXT.md Known Issues)
+- [ ] CSRF protection for session-authenticated UI form POSTs (settings, rename, purge, key rotation) — acceptable for single-admin self-hosted use today; required before multi-user auth lands
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles
 - [ ] WordPress plugin with settings page

@@ -1,9 +1,15 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.3-dev
-**Updated:** 2026-05-20
+**Version:** 0.19.4-dev
+**Updated:** 2026-07-01
 
 ## Just Completed
+
+- **Pre-release review polish for edit-app-settings** (v0.19.4-dev):
+  - Retention overrides of `0` submitted via the Settings card are now stored as NULL — the retention engine already treated `0` and unset identically, but the read view showed a literal `0`; legacy API-stored `0` values also render as "System default" now (resolves the "retention value of 0 displays literally" known issue)
+  - Settings card helper text now explains override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins (`_effective_limit` clamps with `min(app, global)`, so an override can never *extend* retention past the global cap)
+  - Consolidated the stacked per-bump CHANGELOG headings under `[Unreleased]` into one Added/Fixed/Changed set for the 0.19.x work
+  - Added the two open follow-ups (per-app degradation disable, CSRF) to ROADMAP Phase 3.0 so they're visible outside this file
 
 - **Review fix: ruff `UP045` on `get_current_app`** (v0.19.3-dev):
   - The 401 fix annotated `credentials` as `Optional[HTTPAuthorizationCredentials]`; the project's ruff config enables `UP` rules so this failed `ruff check` — switched to `HTTPAuthorizationCredentials | None`
@@ -54,13 +60,16 @@ Add export buttons to the email search page that download the current filtered r
 
 ## Known Issues
 
-- **Per-app degradation cannot be disabled when a global default is set.** `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, entering `0` in the app's Settings card does **not** turn degradation off for that app — it falls back to the global. The new Settings UI surfaces these fields but inherits this limitation. Needs a design decision (e.g. a sentinel value or a separate "disabled" state) before it can be made to work as a user would expect.
-- **Retention value of `0` displays literally.** Storing `0` in a retention field (vs. leaving it blank) is functionally identical to "System default" — `_effective_limit`/`_effective_degrade_days` treat `<= 0` as unset — but the read view shows `0` rather than "System default". Minor UX quirk; current behavior matches the feature spec.
-- **No CSRF protection on UI form POSTs.** `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but worth revisiting if multi-user auth lands.
+- **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
+- **No CSRF protection on UI form POSTs.** (Also on ROADMAP Phase 3.0.) `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but must be addressed before multi-user auth lands.
+
+## Resolved (previously listed here)
+
+- ~~**Retention value of `0` displays literally.**~~ Fixed in v0.19.4-dev: the settings UI stores `0` as NULL, and the read view treats `0` (e.g. legacy API-stored values) as "System default".
 
 ## Current State
 
-- 281 tests passing (0 failures)
+- 282 tests passing (0 failures)
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, and complete copy-all-as-ENV-vars on app credentials
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - 21-theme color system with swatch picker on Settings page (4 accent, 8 developer, 4 light, 6 retro)

@@ -7,24 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
-
-### Changed
-- Version bump: 0.19.2-dev → 0.19.3-dev
-
-### Fixed
-- `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent; all 281 tests pass
-
-### Changed
-- Version bump: 0.19.1-dev → 0.19.2-dev
-
 ### Added
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
+### Fixed
+- Retention overrides of `0` submitted via the settings UI are now stored as "system default" (NULL) — the retention engine already treated `0` and unset identically, but the read view displayed a literal `0`, implying it did something; legacy `0` values stored via the API also render as "System default" now
+- `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent
+- `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
+
 ### Changed
-- Version bump: 0.19.0-dev → 0.19.1-dev
-- Version bump: 0.18.4-dev → 0.19.0-dev
+- Settings card helper text now spells out the override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins
+- Version bumps: 0.18.4-dev → 0.19.4-dev (edit-app-settings feature + review fixes)
+
+### Changed
 - Version bump: 0.18.2-dev → 0.18.4-dev
 - "Copy all as ENV vars" now copies the complete block: SMTP_PASSWORD plus app identity vars (APP_ID, APP_URL, LOG_URL), grouped under section comments — both the post-creation alert and the SMTP Settings tab produce the identical layout
 - ENV var block is built server-side from a single source, so SMTP host/port/encryption can no longer drift between the two copy locations

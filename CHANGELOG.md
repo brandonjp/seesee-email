@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
 
 ### Changed
+- CI: the docs deploy workflow now also triggers on changes to its own workflow file and supports manual `workflow_dispatch` runs (useful for redeploying to pick up a version bump made outside `docs/`)
 - CI: bumped first-party GitHub Actions off the deprecated Node 20 runtime — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (and the docs build now uses Node 22), `actions/upload-pages-artifact` v3→v4, `actions/deploy-pages` v4→v5. Docker and `setup-python` actions left as-is (not affected)
 - Docs homepage hero now leads with a clearly-labeled **"Read the Docs"** button plus a **"Quick Start"** shortcut, replacing the ambiguous single "Get Started" action that didn't read as a link into the docs
 - Settings card helper text now spells out the override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins

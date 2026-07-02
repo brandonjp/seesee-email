@@ -2,6 +2,8 @@
 
 import pytest
 
+from seesee.auth import SESSION_COOKIE_NAME, create_session_token
+from seesee.config import settings
 from tests.conftest import create_test_app
 
 FULL_EMAIL = {
@@ -139,5 +141,49 @@ async def test_preview_email_not_found(client, admin_auth_header):
 @pytest.mark.asyncio
 async def test_preview_email_requires_admin(client):
     """GET /api/v1/emails/{id}/preview without auth returns 401."""
+    response = await client.get("/api/v1/emails/some-id/preview")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_preview_email_with_session_cookie(client, admin_auth_header):
+    """GET /api/v1/emails/{id}/preview with a valid session cookie returns 200 HTML."""
+    app_data = await create_test_app(client, admin_auth_header)
+    logged = await _log_email(client, app_data["api_key"])
+
+    token = create_session_token("admin", settings.secret_key or settings.admin_password)
+    client.cookies.set(SESSION_COOKIE_NAME, token)
+
+    response = await client.get(f"/api/v1/emails/{logged['id']}/preview")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "<h1>Hello</h1><p>World</p>" in response.text
+
+
+@pytest.mark.asyncio
+async def test_preview_email_with_basic_auth_still_works(client, admin_auth_header):
+    """GET /api/v1/emails/{id}/preview still accepts HTTP Basic admin auth."""
+    app_data = await create_test_app(client, admin_auth_header)
+    logged = await _log_email(client, app_data["api_key"])
+
+    response = await client.get(
+        f"/api/v1/emails/{logged['id']}/preview", headers=admin_auth_header
+    )
+    assert response.status_code == 200
+    assert "<h1>Hello</h1><p>World</p>" in response.text
+
+
+@pytest.mark.asyncio
+async def test_preview_email_anonymous_returns_401_not_basic_prompt(client):
+    """GET /api/v1/emails/{id}/preview with no credentials returns 401, not a Basic challenge loop."""
+    response = await client.get("/api/v1/emails/some-id/preview")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_preview_email_invalid_session_cookie_returns_401(client):
+    """An invalid/expired session cookie returns 401, not a 303 redirect."""
+    client.cookies.set(SESSION_COOKIE_NAME, "not-a-valid-token")
+
     response = await client.get("/api/v1/emails/some-id/preview")
     assert response.status_code == 401

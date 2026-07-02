@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Sidebar brand now shows the running app version (e.g. `v0.19.5-dev`) beside the "email" label, sourced from `seesee.__version__` via a new `app_version` Jinja2 global available to all templates
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
 ### Fixed

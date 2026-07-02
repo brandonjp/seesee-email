@@ -74,6 +74,9 @@ if _templates_dir.is_dir():
 
     templates.env.filters["display_dt"] = format_for_display
 
+    # Expose the app version to all templates (e.g. sidebar brand).
+    templates.env.globals["app_version"] = __version__
+
 # Register route modules
 app.include_router(ingest.router)
 app.include_router(apps.router)

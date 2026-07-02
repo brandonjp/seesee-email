@@ -292,19 +292,19 @@ echo $response;</code></pre>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Max emails kept</dt>
-                <dd class="mt-0.5 font-medium">{% if app.retention_max_count is not none %}{{ app.retention_max_count }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+                <dd class="mt-0.5 font-medium">{% if app.retention_max_count %}{{ app.retention_max_count }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Max age (days)</dt>
-                <dd class="mt-0.5 font-medium">{% if app.retention_max_age_days is not none %}{{ app.retention_max_age_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+                <dd class="mt-0.5 font-medium">{% if app.retention_max_age_days %}{{ app.retention_max_age_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Strip HTML to text after (days)</dt>
-                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_text_days is not none %}{{ app.retention_degrade_to_text_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_text_days %}{{ app.retention_degrade_to_text_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Reduce to preview after (days)</dt>
-                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_preview_days is not none %}{{ app.retention_degrade_to_preview_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
+                <dd class="mt-0.5 font-medium">{% if app.retention_degrade_to_preview_days %}{{ app.retention_degrade_to_preview_days }}{% else %}<span class="text-gray-400 dark:text-gray-500">System default</span>{% endif %}</dd>
             </div>
         </dl>
 
@@ -326,33 +326,33 @@ echo $response;</code></pre>
                 <div>
                     <label class="block text-sm font-medium mb-1">Max emails kept</label>
                     <input type="number" min="0" step="1" name="retention_max_count"
-                           value="{{ app.retention_max_count if app.retention_max_count is not none else '' }}"
+                           value="{{ app.retention_max_count if app.retention_max_count else '' }}"
                            placeholder="Default: {{ retention_defaults.max_count }}"
                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Max age (days)</label>
                     <input type="number" min="0" step="1" name="retention_max_age_days"
-                           value="{{ app.retention_max_age_days if app.retention_max_age_days is not none else '' }}"
+                           value="{{ app.retention_max_age_days if app.retention_max_age_days else '' }}"
                            placeholder="Default: {{ retention_defaults.max_age_days }}"
                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Strip HTML to text after (days)</label>
                     <input type="number" min="0" step="1" name="retention_degrade_to_text_days"
-                           value="{{ app.retention_degrade_to_text_days if app.retention_degrade_to_text_days is not none else '' }}"
+                           value="{{ app.retention_degrade_to_text_days if app.retention_degrade_to_text_days else '' }}"
                            placeholder="Default: {{ 'off' if retention_defaults.degrade_to_text_days == 0 else retention_defaults.degrade_to_text_days }}"
                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Reduce to preview after (days)</label>
                     <input type="number" min="0" step="1" name="retention_degrade_to_preview_days"
-                           value="{{ app.retention_degrade_to_preview_days if app.retention_degrade_to_preview_days is not none else '' }}"
+                           value="{{ app.retention_degrade_to_preview_days if app.retention_degrade_to_preview_days else '' }}"
                            placeholder="Default: {{ 'off' if retention_defaults.degrade_to_preview_days == 0 else retention_defaults.degrade_to_preview_days }}"
                            class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
                 </div>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Leave a field blank to use the system default.</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Leave a field blank (or enter 0) to use the system default. When an override and a system default are both set, the stricter (smaller) value wins.</p>
 
             <div class="flex gap-3 justify-end">
                 <button type="button" @click="editingSettings = false"

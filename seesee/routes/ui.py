@@ -720,7 +720,10 @@ async def update_app_settings_ui(
             return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
         if parsed < 0:
             return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
-        retention[field] = parsed
+        # The retention engine treats 0 the same as unset (_effective_limit /
+        # _effective_degrade_days ignore values <= 0), so store NULL to keep
+        # the read view honest ("System default" instead of a literal 0).
+        retention[field] = parsed if parsed > 0 else None
 
     await db.execute(
         "UPDATE apps SET body_storage_mode = ?, retention_max_count = ?, "

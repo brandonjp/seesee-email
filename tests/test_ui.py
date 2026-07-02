@@ -507,6 +507,55 @@ async def test_apps_update_settings_rejects_negative_retention(
     assert updated["retention_max_count"] == 100  # unchanged
 
 
+async def test_apps_update_settings_zero_means_system_default(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """A retention value of 0 is stored as NULL — the engine treats them identically."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Zero App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    token = _get_session_cookie()
+
+    # Set real overrides first so the coercion has something to clear
+    await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "100",
+            "retention_max_age_days": "30",
+            "retention_degrade_to_text_days": "7",
+            "retention_degrade_to_preview_days": "14",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    resp = await client.post(
+        f"/apps/{app_id}/settings",
+        data={
+            "body_storage_mode": "full",
+            "retention_max_count": "0",
+            "retention_max_age_days": "0",
+            "retention_degrade_to_text_days": "0",
+            "retention_degrade_to_preview_days": "0",
+        },
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    listed = await client.get("/api/v1/apps", headers=admin_auth_header)
+    updated = next(a for a in listed.json() if a["id"] == app_id)
+    assert updated["retention_max_count"] is None
+    assert updated["retention_max_age_days"] is None
+    assert updated["retention_degrade_to_text_days"] is None
+    assert updated["retention_degrade_to_preview_days"] is None
+
+    # Read view shows "System default", not a literal 0
+    detail = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert "System default" in detail.text
+
+
 async def test_app_detail_settings_card(client: AsyncClient, admin_auth_header: dict) -> None:
     """Detail page renders the Settings card; set retention values round-trip."""
     app_resp = await client.post(

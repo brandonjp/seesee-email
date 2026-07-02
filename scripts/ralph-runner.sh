@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Ralph — Plan Orchestrator (v3.0)
+# Ralph — Plan Orchestrator (v4.10)
 # =============================================================================
 #
 # Generic implement → review → fix loop for any chunked plan document.
 # Parses chunk headers from the plan file automatically.
+# Supports multiple plan files — processes sequentially on a shared branch.
 # Auto-resumes from where it left off — just re-run the same command.
 #
-# Expected plan format:
+# Expected plan format (accepts "Chunk" or "Task"):
 #   ## Chunk 1: Title Here (optional details)
+#   ## Task 1: Title Here (also works)
 #   - [ ] Step one
 #   - [ ] Step two
 #   ### ✅ Review Checkpoint — Chunk 1
 #   - [ ] Verify step one
 #
 # Usage:
-#   bash scripts/ralph-runner.sh <plan-file>
+#   bash scripts/ralph-runner.sh <plan-file> [<plan-file2> ...]
+#   bash scripts/ralph-runner.sh docs/plan-a.md docs/plan-b.md docs/plan-c.md
 #   bash scripts/ralph-runner.sh <plan-file> --dry-run
 #   bash scripts/ralph-runner.sh <plan-file> --review-only 2
 #   bash scripts/ralph-runner.sh <plan-file> --branch feature/my-branch
@@ -36,11 +39,12 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; MAGENTA='\033[0;35m'; CYAN='\033[0;36m'
 BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 
-log_info()    { echo -e "${BLUE}▸${RESET} $*"; }
-log_success() { echo -e "${GREEN}✔${RESET} $*"; }
-log_warn()    { echo -e "${YELLOW}⚠${RESET} $*"; }
-log_error()   { echo -e "${RED}✘${RESET} $*"; }
-log_step()    { echo -e "\n${BOLD}${MAGENTA}━━━ $* ━━━${RESET}\n"; }
+timestamp()   { date +%H:%M:%S; }
+log_info()    { echo -e "${DIM}$(timestamp)${RESET} ${BLUE}▸${RESET} $*"; }
+log_success() { echo -e "${DIM}$(timestamp)${RESET} ${GREEN}✔${RESET} $*"; }
+log_warn()    { echo -e "${DIM}$(timestamp)${RESET} ${YELLOW}⚠${RESET} $*"; }
+log_error()   { echo -e "${DIM}$(timestamp)${RESET} ${RED}✘${RESET} $*"; }
+log_step()    { echo -e "\n${DIM}$(date +%Y-%m-%d) $(timestamp)${RESET} ${BOLD}${MAGENTA}━━━ $* ━━━${RESET}\n"; }
 
 # ---------------------------------------------------------------------------
 # Timing helpers
@@ -70,7 +74,16 @@ elapsed_since_start() {
 # ---------------------------------------------------------------------------
 # Graceful Ctrl+C handling
 # ---------------------------------------------------------------------------
+CLAUDE_PID=""
+
 cleanup() {
+    # Kill the claude/timeout process first so the pipeline exits immediately
+    if [[ -n "$CLAUDE_PID" ]] && kill -0 "$CLAUDE_PID" 2>/dev/null; then
+        kill -TERM "$CLAUDE_PID" 2>/dev/null
+        wait "$CLAUDE_PID" 2>/dev/null || true
+    fi
+    CLAUDE_PID=""
+    stop_heartbeat 2>/dev/null || true
     echo ""
     log_warn "Interrupted (Ctrl+C). Progress has been saved."
     log_info "Elapsed: $(elapsed_since_start)"
@@ -85,12 +98,13 @@ trap cleanup SIGINT SIGTERM
 IMPL_MODEL="sonnet"
 REVIEW_MODEL="opus"
 MAX_FIX_RETRIES=2
+MAX_TRANSIENT_RETRIES=2   # Auto-retries on transient Claude API/network errors
+CHUNK_TIMEOUT="45m"   # Max time per claude call
 REVIEW_ONLY=0
 DRY_RUN=false
 FEATURE_BRANCH=""
 DO_RESET=false
 START_FROM=0
-
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
@@ -126,27 +140,44 @@ while [[ $# -gt 0 ]]; do
             MAX_FIX_RETRIES="$2"
             shift 2
             ;;
+        --chunk-timeout)
+            CHUNK_TIMEOUT="$2"
+            shift 2
+            ;;
         --reset)
             DO_RESET=true
             shift
             ;;
         -h|--help)
             cat <<'HELPEOF'
-Usage: ralph-runner.sh <plan-file> [OPTIONS]
+Usage: ralph-runner.sh <plan-file> [<plan-file2> ...] [OPTIONS]
 
 Arguments:
-  <plan-file>           Path to a markdown plan with "## Chunk N: Title" headers
+  <plan-file>           Path(s) to markdown plan(s) with "## Chunk N:" or "## Task N:" headers
+                        Multiple plan files are processed sequentially on a shared branch
 
 Options:
   --branch NAME         Feature branch name (default: derived from plan filename)
-  --start-from N        Force start at chunk N (overrides saved progress)
-  --review-only N       Re-run just the review for chunk N
+                        With multiple plans: all share this branch if specified,
+                        otherwise a shared branch is derived from plan filenames
+  --start-from N        Force start at chunk N (single plan only)
+  --review-only N       Re-run just the review for chunk N (single plan only)
   --impl-model MODEL    Model for implementation (default: sonnet)
   --review-model MODEL  Model for review (default: opus)
   --max-retries N       Max fix attempts per chunk (default: 2)
+  --chunk-timeout DUR   Max time per claude call, e.g. 30m, 1h (default: 45m)
   --dry-run             Show what would execute without running
   --reset               Clear saved progress and start from the beginning
   -h, --help            Show this help
+
+Multi-plan:
+  Pass multiple plan files to process them sequentially on a shared
+  branch. Each plan builds on the previous plan's output, so changes
+  accumulate. The shared branch is derived from plan filenames unless
+  overridden with --branch.
+
+  Example:
+    bash scripts/ralph-runner.sh docs/plan-a.md docs/plan-b.md docs/plan-c.md
 
 Resume:
   Ralph auto-saves progress after each chunk. To resume after an
@@ -158,7 +189,7 @@ Abort:
   automatically — just re-run the same command to resume.
 
 Plan file format:
-  The plan must use "## Chunk N: Title" headers for each chunk, and
+  The plan must use "## Chunk N: Title" or "## Task N: Title" headers, and
   "### ✅ Review Checkpoint — Chunk N" headers for review checklists.
   Steps should use "- [ ]" checkboxes.
 HELPEOF
@@ -175,27 +206,53 @@ HELPEOF
     esac
 done
 
-# Plan file is the first positional argument
-if [[ ${#POSITIONAL_ARGS[@]} -lt 1 ]]; then
+# ---------------------------------------------------------------------------
+# Plan file collection and validation
+# ---------------------------------------------------------------------------
+PLAN_FILES=("${POSITIONAL_ARGS[@]}")
+
+if [[ ${#PLAN_FILES[@]} -lt 1 ]]; then
     log_error "Missing required argument: <plan-file>"
-    echo "Usage: $0 <plan-file> [OPTIONS]"
+    echo "Usage: $0 <plan-file> [<plan-file2> ...] [OPTIONS]"
     echo "Run '$0 --help' for details."
     exit 1
 fi
 
-PLAN_FILE="${POSITIONAL_ARGS[0]}"
-
-# ---------------------------------------------------------------------------
-# Resolve paths
-# ---------------------------------------------------------------------------
-if [[ ! "$PLAN_FILE" = /* ]]; then
-    PLAN_FILE="$(pwd)/$PLAN_FILE"
+# Flags that only work with a single plan file
+if [[ ${#PLAN_FILES[@]} -gt 1 ]]; then
+    if [[ "$REVIEW_ONLY" -gt 0 ]]; then
+        log_error "--review-only is not supported with multiple plan files"
+        exit 1
+    fi
+    if [[ "$START_FROM" -gt 0 ]]; then
+        log_error "--start-from is not supported with multiple plan files"
+        exit 1
+    fi
 fi
 
-if [[ ! -f "$PLAN_FILE" ]]; then
-    log_error "Plan file not found: $PLAN_FILE"
-    exit 1
-fi
+# Save --branch value for multi-plan use (empty = derive shared branch)
+SHARED_BRANCH="$FEATURE_BRANCH"
+
+# Resolve and validate all plan file paths upfront
+declare -a RESOLVED_PLAN_FILES=()
+for _pf in "${PLAN_FILES[@]}"; do
+    [[ "$_pf" = /* ]] || _pf="$(pwd)/$_pf"
+    if [[ ! -f "$_pf" ]]; then
+        # Check archive location (completed plans get moved there)
+        _archive_candidate="$(dirname "$_pf")/archive/$(basename "$_pf")"
+        if [[ -f "$_archive_candidate" ]]; then
+            log_info "Plan already archived: $(basename "$_pf") — using archived copy"
+            _pf="$_archive_candidate"
+        else
+            log_error "Plan file not found: $_pf"
+            log_error "  (also checked: $_archive_candidate)"
+            exit 1
+        fi
+    fi
+    RESOLVED_PLAN_FILES+=("$_pf")
+done
+
+PLANS_TOTAL=${#RESOLVED_PLAN_FILES[@]}
 
 # Detect repo root from git
 REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null || true)
@@ -206,47 +263,90 @@ fi
 
 PROJECT_NAME=$(basename "$REPO_DIR")
 
-# State file lives next to the plan file
-STATE_FILE="${PLAN_FILE}.ralph-state"
-
-# ---------------------------------------------------------------------------
-# Parse chunks from plan file
-# ---------------------------------------------------------------------------
+# Declare chunk tracking arrays (reset per plan in the main loop)
 declare -a CHUNK_NUMS=()
 declare -A CHUNK_TITLES=()
-
-while IFS= read -r line; do
-    if [[ "$line" =~ ^##\ Chunk\ ([0-9]+):\ (.+)$ ]]; then
-        num="${BASH_REMATCH[1]}"
-        title="${BASH_REMATCH[2]}"
-        title="${title%% \(*}"
-        CHUNK_NUMS+=("$num")
-        CHUNK_TITLES[$num]="$title"
-    fi
-done < "$PLAN_FILE"
-
-TOTAL_CHUNKS=${#CHUNK_NUMS[@]}
-
-if [[ "$TOTAL_CHUNKS" -eq 0 ]]; then
-    log_error "No chunks found in plan file. Expected headers like: ## Chunk 1: Title"
-    exit 1
-fi
-
-# ---------------------------------------------------------------------------
-# Derive feature branch from plan filename if not specified
-# ---------------------------------------------------------------------------
-if [[ -z "$FEATURE_BRANCH" ]]; then
-    plan_basename=$(basename "$PLAN_FILE" .md)
-    plan_basename="${plan_basename#plan-}"
-    FEATURE_BRANCH="feature/${plan_basename}"
-fi
-
+PLAN_FILE=""
+STATE_FILE=""
+TOTAL_CHUNKS=0
+PLAN_TITLE=""
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 chunk_title() {
     local n="$1"
     echo "${CHUNK_TITLES[$n]:-Chunk $n}"
+}
+
+# Parse an explicit branch from a plan doc's "**Branch:** `name`" line (the
+# backticks and surrounding markdown are optional). Prints the branch name, or
+# nothing if the plan declares no branch. Lets a plan own its branch name so the
+# user need not pass --branch (avoids the messy filename-derived default).
+parse_plan_branch() {
+    local pf="$1"
+    [[ -f "$pf" ]] || return 0
+    sed -n -E 's/^[[:space:]]*\*\*Branch:\*\*[[:space:]]*`?([^`[:space:]]+)`?.*/\1/p' "$pf" | head -1
+}
+
+# Derive a concise shared branch name from multiple plan filenames. Strips the
+# leading "plan-" and ".md", finds the longest common leading token run (tokens
+# split on "-"), then appends the first distinguishing token of the first and
+# last plan as a range. Examples:
+#   plan-v2-m0-scaffold.md … plan-v2-m5-enrichment.md  -> feature/v2-m0-m5
+#   plan-m0-scaffold.md     … plan-m5-enrichment.md     -> feature/m0-m5
+#   plan-v2-m1-detection.md (single)                    -> feature/v2-m1-detection
+# Beats the old first-token-per-file join (which produced names like
+# feature/plans-v2-v2-v2-v2-v2-v2 when every plan shared a "v2" prefix).
+derive_shared_branch() {
+    local -a stems=()
+    local pf base
+    for pf in "$@"; do
+        base="$(basename "$pf" .md)"
+        stems+=("${base#plan-}")
+    done
+
+    if [[ ${#stems[@]} -eq 1 ]]; then
+        echo "feature/${stems[0]}"
+        return
+    fi
+
+    # Longest common leading token run across all stems.
+    local -a ftoks
+    IFS='-' read -ra ftoks <<< "${stems[0]}"
+    local prefix_len=${#ftoks[@]} s
+    for s in "${stems[@]}"; do
+        local -a stoks
+        IFS='-' read -ra stoks <<< "$s"
+        local i=0
+        while (( i < prefix_len && i < ${#stoks[@]} )) && [[ "${ftoks[i]}" == "${stoks[i]}" ]]; do
+            i=$(( i + 1 ))
+        done
+        prefix_len=$i
+        (( prefix_len == 0 )) && break
+    done
+
+    # Reassemble the common prefix + first/last distinguishing tokens as a range.
+    local prefix="" j
+    for (( j=0; j<prefix_len; j++ )); do
+        prefix="${prefix:+${prefix}-}${ftoks[j]}"
+    done
+
+    local -a ltoks
+    IFS='-' read -ra ltoks <<< "${stems[${#stems[@]}-1]}"
+    local first_d="${ftoks[prefix_len]:-}"
+    local last_d="${ltoks[prefix_len]:-}"
+
+    local range=""
+    if [[ -n "$first_d" && -n "$last_d" && "$first_d" != "$last_d" ]]; then
+        range="${first_d}-${last_d}"
+    elif [[ -n "$first_d" ]]; then
+        range="$first_d"
+    fi
+
+    local name="$prefix"
+    [[ -n "$range" ]] && name="${name:+${name}-}${range}"
+    [[ -z "$name" ]] && name="plans"
+    echo "feature/${name}"
 }
 
 # ---------------------------------------------------------------------------
@@ -257,17 +357,36 @@ if ! command -v claude &>/dev/null; then
     exit 1
 fi
 
+# We need GNU `timeout` for the `-k` (kill-after) flag used to hard-stop a wedged
+# agent. macOS has no base `timeout`; coreutils installs it as `gtimeout`. Prefer
+# `timeout` when present, fall back to `gtimeout`, and fail loudly if neither.
+if command -v timeout &>/dev/null; then
+    TIMEOUT_CMD="timeout"
+elif command -v gtimeout &>/dev/null; then
+    TIMEOUT_CMD="gtimeout"
+else
+    log_error "Neither 'timeout' nor 'gtimeout' found. Install GNU coreutils (macOS: brew install coreutils)."
+    exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # State management — tracks per-chunk completion
 # ---------------------------------------------------------------------------
-# State file format: one line per completed/skipped chunk
-#   DONE:<chunk_num>
-#   SKIPPED:<chunk_num>
-#   PHASE:<chunk_num>:<phase>   (current in-progress chunk)
-
 reset_state() {
     rm -f "$STATE_FILE"
     log_info "Progress reset. Will start from Chunk ${CHUNK_NUMS[0]}."
+}
+
+# Commit the state file immediately so progress survives any later
+# destructive operation (out-of-scope cleanup, git stash, rm, etc.).
+# Plan/state files are runner-owned — chunk work must never mutate them.
+commit_state_file() {
+    local message="$1"
+    [[ -f "$STATE_FILE" ]] || return 0
+    git add "$STATE_FILE" 2>/dev/null || return 0
+    if ! git diff --cached --quiet -- "$STATE_FILE" 2>/dev/null; then
+        git commit --quiet -m "chore(ralph): ${message}" -- "$STATE_FILE" 2>/dev/null || true
+    fi
 }
 
 mark_chunk_done() {
@@ -277,6 +396,7 @@ mark_chunk_done() {
         mv "${STATE_FILE}.tmp" "$STATE_FILE"
     fi
     echo "DONE:${chunk_num}" >> "$STATE_FILE"
+    commit_state_file "$(basename "$PLAN_FILE" .md) chunk ${chunk_num} done"
 }
 
 mark_chunk_skipped() {
@@ -286,6 +406,7 @@ mark_chunk_skipped() {
         mv "${STATE_FILE}.tmp" "$STATE_FILE"
     fi
     echo "SKIPPED:${chunk_num}" >> "$STATE_FILE"
+    commit_state_file "$(basename "$PLAN_FILE" .md) chunk ${chunk_num} skipped"
 }
 
 save_phase() {
@@ -296,6 +417,7 @@ save_phase() {
         mv "${STATE_FILE}.tmp" "$STATE_FILE"
     fi
     echo "PHASE:${chunk_num}:${phase}" >> "$STATE_FILE"
+    commit_state_file "$(basename "$PLAN_FILE" .md) chunk ${chunk_num} → ${phase}"
 }
 
 is_chunk_done() {
@@ -310,7 +432,9 @@ is_chunk_skipped() {
 
 get_completed_count() {
     if [[ -f "$STATE_FILE" ]]; then
-        grep -c "^DONE:" "$STATE_FILE" 2>/dev/null || echo "0"
+        local count
+        count=$(grep -c "^DONE:" "$STATE_FILE" 2>/dev/null) || true
+        echo "${count:-0}"
     else
         echo "0"
     fi
@@ -327,19 +451,12 @@ find_next_chunk() {
 }
 
 # ---------------------------------------------------------------------------
-# Handle --reset
-# ---------------------------------------------------------------------------
-if $DO_RESET; then
-    reset_state
-fi
-
-# ---------------------------------------------------------------------------
 # User intervention
 # ---------------------------------------------------------------------------
 prompt_action() {
     local context="$1"
-    echo -e "${YELLOW}${BOLD}${context}${RESET}"
-    echo -e "  ${BOLD}r${RESET})etry  ${BOLD}s${RESET})kip  ${BOLD}q${RESET})uit"
+    echo -e "${YELLOW}${BOLD}${context}${RESET}" >&2
+    echo -e "  ${BOLD}r${RESET})etry  ${BOLD}s${RESET})kip  ${BOLD}q${RESET})uit" >&2
     while true; do
         read -rp "Choice [r/s/q]: " choice
         case "$choice" in
@@ -351,6 +468,30 @@ prompt_action() {
 }
 
 # ---------------------------------------------------------------------------
+# Heartbeat — prints elapsed time every 60s so you know it's alive
+# ---------------------------------------------------------------------------
+HEARTBEAT_PID=""
+
+start_heartbeat() {
+    local start_ts="$1"
+    (
+        while true; do
+            sleep 60
+            local elapsed=$(( $(date +%s) - start_ts ))
+            echo -e "${DIM}  ⏱ $(date +%H:%M:%S) — still running… $(format_duration $elapsed)${RESET}" >&2
+        done
+    ) &
+    HEARTBEAT_PID=$!
+}
+
+stop_heartbeat() {
+    if [[ -n "$HEARTBEAT_PID" ]] && kill -0 "$HEARTBEAT_PID" 2>/dev/null; then
+        kill "$HEARTBEAT_PID" 2>/dev/null
+        wait "$HEARTBEAT_PID" 2>/dev/null || true
+    fi
+    HEARTBEAT_PID=""
+}
+# ---------------------------------------------------------------------------
 # Claude CLI wrapper
 # ---------------------------------------------------------------------------
 run_claude() {
@@ -359,16 +500,70 @@ run_claude() {
     local output_file
     output_file=$(mktemp)
 
-    local phase_start
-    phase_start=$(date +%s)
-    log_info "Running claude --model ${model}..."
+    local overall_start
+    overall_start=$(date +%s)
 
-    set +e
-    claude --model "$model" -p --dangerously-skip-permissions "$prompt" 2>&1 | tee "$output_file"
-    local exit_code=${PIPESTATUS[0]}
-    set -e
+    local attempt=0
+    local exit_code=0
+    while :; do
+        local phase_start
+        phase_start=$(date +%s)
+        if (( attempt > 0 )); then
+            log_info "Running claude --model ${model}... (retry ${attempt}/${MAX_TRANSIENT_RETRIES})"
+        else
+            log_info "Running claude --model ${model}..."
+        fi
 
-    local phase_elapsed=$(( $(date +%s) - phase_start ))
+        start_heartbeat "$phase_start"
+
+        set +e
+        # -k 30s: if Claude ignores SIGTERM at the timeout (e.g. wedged on a
+        # stalled stream), SIGKILL it 30s later so a stuck agent can't blow past
+        # the chunk budget the way a bare `timeout` lets it.
+        # Redirect order matters: send stdout to the tee first, THEN point stderr
+        # at it (`2>&1` last). Otherwise stderr keeps the terminal's fd and the
+        # transient-error grep below — which reads $output_file — never sees the
+        # API/network error messages Claude writes to stderr.
+        $TIMEOUT_CMD -k 30s "$CHUNK_TIMEOUT" claude --model "$model" -p --dangerously-skip-permissions "$prompt" > >(tee "$output_file") 2>&1 &
+        CLAUDE_PID=$!
+        wait "$CLAUDE_PID"
+        exit_code=$?
+        CLAUDE_PID=""
+        set -e
+
+        stop_heartbeat
+
+        if [[ "$exit_code" -eq 124 ]]; then
+            log_error "Claude timed out after ${CHUNK_TIMEOUT} — agent did not finish. Use --chunk-timeout to adjust."
+            LAST_OUTPUT_FILE="$output_file"
+            return 1
+        fi
+
+        # 137 = 128 + SIGKILL(9): the `-k 30s` hard-kill fired because the agent
+        # ignored SIGTERM at the timeout. Distinct from a soft timeout (124) and
+        # not a transient API error, so surface it plainly instead of letting it
+        # fall through to the retry/break path with a generic failure.
+        if [[ "$exit_code" -eq 137 ]]; then
+            log_error "Claude was hard-killed (SIGKILL) 30s after the ${CHUNK_TIMEOUT} timeout — agent was wedged. Use --chunk-timeout to adjust."
+            LAST_OUTPUT_FILE="$output_file"
+            return 1
+        fi
+
+        # Auto-retry transient Claude API/network failures (idle stream, overload,
+        # 5xx, dropped connections). These aren't the agent's fault and a fresh
+        # call usually succeeds. A normal completion exits 0 and skips this.
+        if [[ "$exit_code" -ne 0 ]] && (( attempt < MAX_TRANSIENT_RETRIES )) \
+           && grep -qiE "stream idle timeout|api error|overloaded|rate.?limit|internal server error|connection (error|reset|closed)|ETIMEDOUT|ECONNRESET|ENOTFOUND|503|529" "$output_file"; then
+            attempt=$(( attempt + 1 ))
+            log_warn "Transient Claude API error (exit ${exit_code}). Auto-retrying ${attempt}/${MAX_TRANSIENT_RETRIES} in 15s…"
+            sleep 15
+            continue
+        fi
+
+        break
+    done
+
+    local phase_elapsed=$(( $(date +%s) - overall_start ))
     log_info "Claude call completed in $(format_duration $phase_elapsed)"
 
     LAST_OUTPUT_FILE="$output_file"
@@ -400,10 +595,17 @@ IMPORTANT RULES:
 - Create commits as specified in the plan (one commit per chunk)
 - Before committing: run quality checks, verify imports work, run tests
 
+PLAN AND STATE FILES ARE RUNNER-OWNED — DO NOT TOUCH:
+- Never \`git mv\`, \`git rm\`, edit, or commit the plan file (${PLAN_FILE}) or its \`.ralph-state\` sibling
+- Never move plan files to or from \`docs/archive/\` — the runner does this automatically when the plan completes
+- The ONLY edit you may make to the plan file is marking step checkboxes from \`- [ ]\` to \`- [x]\` for steps under YOUR chunk
+- If git status shows the plan or state file as dirty/untracked from a previous run, leave them alone — the runner will reconcile them
+- If you accidentally end up with other dirty files outside your chunk's scope, use \`git restore <file>\` or \`git stash -- <file>\` — never commit them to "clean up"
+
 PLAN FILE: ${PLAN_FILE}
 
-Read the plan file now. Find "## Chunk ${chunk_num}:" and execute every step listed under it.
-Stop when you reach the "### ✅ Review Checkpoint — Chunk ${chunk_num}" section.
+Read the plan file now. Find the section headed "## Chunk ${chunk_num}:" or "## Task ${chunk_num}:" and execute every step listed under it.
+Stop when you reach the review checkpoint section (headed "### ✅ Review Checkpoint — Chunk ${chunk_num}" or similar).
 
 BEFORE COMMITTING — Mandatory verification:
 1. Grep all new imports to confirm the target symbols exist
@@ -411,12 +613,23 @@ BEFORE COMMITTING — Mandatory verification:
 3. Run the project's test suite to verify no test regressions
 4. Only then create the commit
 
+AFTER COMMITTING — Your work is done:
+- Do NOT re-run the test suite after committing. The review pass will handle verification.
+- Do NOT run additional verification commands, linting, or checks after the commit.
+- Do NOT summarize, reflect on, or re-examine your work after committing.
+- Once the commit is created, EXIT IMMEDIATELY. Your chunk is complete.
+
 Make sure you are on the feature branch: ${FEATURE_BRANCH}
 If it doesn't exist yet, create it from main: git checkout -b ${FEATURE_BRANCH}
 PROMPT_EOF
     )
 
-    run_claude "$IMPL_MODEL" "$prompt"
+    if ! run_claude "$IMPL_MODEL" "$prompt"; then
+        log_error "Claude CLI failed during implementation of Chunk ${chunk_num}"
+        rm -f "$LAST_OUTPUT_FILE"
+        return 1
+    fi
+    rm -f "$LAST_OUTPUT_FILE"
 }
 
 # ---------------------------------------------------------------------------
@@ -437,9 +650,9 @@ Your job is to verify that Chunk ${chunk_num} was implemented correctly.
 
 PLAN FILE: ${PLAN_FILE}
 
-Read the plan file. Find "### ✅ Review Checkpoint — Chunk ${chunk_num}" and verify EVERY checklist item:
+Read the plan file. Find the review checkpoint for chunk/task ${chunk_num} (headed "### ✅ Review Checkpoint — Chunk ${chunk_num}" or similar) and verify EVERY checklist item:
 - For each item, actually run the command or check the file
-- Check that all step checkboxes under "## Chunk ${chunk_num}:" are marked "- [x]"
+- Check that all step checkboxes under the chunk/task ${chunk_num} section are marked "- [x]"
 - Run mechanical verification: cross-reference all new imports, confirm targets exist, run tests
 
 ADDITIONAL CHECKS:
@@ -449,6 +662,12 @@ ADDITIONAL CHECKS:
 - If Chunk ${chunk_num} adds new functions, verify they are importable
 - Verify no code is stubbed, placeholder, or incomplete (e.g., "pass", "TODO", "NotImplementedError")
 
+PLAN AND STATE FILES ARE RUNNER-OWNED:
+- The plan file (${PLAN_FILE}) and its \`.ralph-state\` sibling are managed by the runner
+- For the "git status clean" check: IGNORE any dirty state in plan files, state files, or files under \`docs/archive/\` — the runner commits those itself between phases
+- Only flag dirty files that are inside the chunk's actual scope as a "git status clean" failure
+- Do NOT recommend that the implementer \`git mv\`, \`git rm\`, or commit plan/state/archive files as a fix
+
 At the end of your output, write EXACTLY one of these lines:
   REVIEW PASSED — all items verified
   REVIEW FAILED — <brief summary of what failed>
@@ -457,24 +676,22 @@ A single failure means the overall result is REVIEW FAILED.
 PROMPT_EOF
     )
 
-    local output_file
-    output_file=$(mktemp)
+    # `|| true`: under `set -e`, a non-zero run_claude exit (e.g. a non-transient
+    # CLI error after retries are exhausted) would abort the whole script here and
+    # leak the temp file. Swallow it — the PASSED/FAILED grep below is the source
+    # of truth and defaults to FAILED when the output is unclear.
+    run_claude "$REVIEW_MODEL" "$prompt" || true
 
-    set +e
-    claude --model "$REVIEW_MODEL" -p --dangerously-skip-permissions "$prompt" 2>&1 | tee "$output_file"
-    local exit_code=${PIPESTATUS[0]}
-    set -e
-
-    if grep -qi "REVIEW PASSED" "$output_file"; then
-        rm -f "$output_file"
+    if grep -qi "REVIEW PASSED" "$LAST_OUTPUT_FILE"; then
+        rm -f "$LAST_OUTPUT_FILE"
         log_success "Review PASSED for Chunk ${chunk_num}"
         return 0
-    elif grep -qi "REVIEW FAILED" "$output_file"; then
-        rm -f "$output_file"
+    elif grep -qi "REVIEW FAILED" "$LAST_OUTPUT_FILE"; then
+        rm -f "$LAST_OUTPUT_FILE"
         log_error "Review FAILED for Chunk ${chunk_num}"
         return 1
     else
-        rm -f "$output_file"
+        rm -f "$LAST_OUTPUT_FILE"
         log_warn "Review output unclear (no PASSED/FAILED keyword). Treating as FAILED."
         return 1
     fi
@@ -495,7 +712,7 @@ You are fixing review failures for the ${PROJECT_NAME} project at: ${REPO_DIR}
 
 The review for Chunk ${chunk_num} FAILED. Your job:
 1. Read the plan file at: ${PLAN_FILE}
-2. Find "### ✅ Review Checkpoint — Chunk ${chunk_num}"
+2. Find the review checkpoint for chunk/task ${chunk_num}
 3. Run EACH check from the checkpoint to identify what's failing
 4. Fix each failing item — implement real, complete code (no stubs, no TODOs)
 5. Run the project's test suite to verify all tests pass
@@ -506,11 +723,27 @@ Do NOT modify code outside Chunk ${chunk_num} scope.
 Do NOT invoke any slash commands, create new plan files, or spawn subagents.
 Do NOT create wrapper scripts or additional shell scripts.
 
+PLAN AND STATE FILES ARE RUNNER-OWNED — DO NOT TOUCH THEM TO "FIX" GIT STATUS:
+- The plan file (${PLAN_FILE}), its \`.ralph-state\` sibling, and anything under \`docs/archive/\` are managed by the runner — never \`git mv\`, \`git rm\`, edit, or commit them
+- If the review's "git status clean" check failed because of a dirty plan/state/archive file, that is NOT your problem to fix — the runner reconciles those between phases. Leave them alone and address only the in-scope failures.
+- If git status shows other dirty files outside your chunk's scope, run \`git restore <file>\` or \`git stash -- <file>\` — NEVER commit them, NEVER move them to archive, NEVER delete them
+- The only edit you may make to the plan file is marking step checkboxes from \`- [ ]\` to \`- [x]\` for steps under Chunk ${chunk_num}
+
+AFTER COMMITTING — Your work is done:
+- Do NOT re-run the test suite after committing. The review pass will handle verification.
+- Do NOT run additional verification commands, linting, or checks after the commit.
+- Once the commit is created, EXIT IMMEDIATELY. Your fix is complete.
+
 Make sure you are on branch: ${FEATURE_BRANCH}
 PROMPT_EOF
     )
 
-    run_claude "$IMPL_MODEL" "$prompt"
+    if ! run_claude "$IMPL_MODEL" "$prompt"; then
+        log_error "Claude CLI failed during fix of Chunk ${chunk_num} (attempt ${attempt})"
+        rm -f "$LAST_OUTPUT_FILE"
+        return 1
+    fi
+    rm -f "$LAST_OUTPUT_FILE"
 }
 
 # ---------------------------------------------------------------------------
@@ -526,7 +759,16 @@ process_chunk() {
     log_step "Processing Chunk ${chunk_num}/${TOTAL_CHUNKS}: ${title}"
 
     # Implementation
-    run_implement "$chunk_num"
+    if ! run_implement "$chunk_num"; then
+        log_error "Implementation failed for Chunk ${chunk_num}"
+        local action
+        action=$(prompt_action "Implementation failed. What do you want to do?")
+        case "$action" in
+            retry) process_chunk "$chunk_num"; return $? ;;
+            skip)  log_warn "Skipping Chunk ${chunk_num}. Manual intervention needed later."; mark_chunk_skipped "$chunk_num"; return 0 ;;
+            quit)  log_info "Exiting. Elapsed: $(elapsed_since_start). Re-run the same command to resume."; exit 0 ;;
+        esac
+    fi
 
     # Review
     if run_review "$chunk_num"; then
@@ -540,7 +782,11 @@ process_chunk() {
     local attempt=1
     while (( attempt <= MAX_FIX_RETRIES )); do
         log_warn "Review failed. Running fix attempt ${attempt}/${MAX_FIX_RETRIES}..."
-        run_fix "$chunk_num" "$attempt"
+        if ! run_fix "$chunk_num" "$attempt"; then
+            log_warn "Fix attempt ${attempt} failed. Skipping to next attempt."
+            (( attempt++ ))
+            continue
+        fi
 
         if run_review "$chunk_num"; then
             mark_chunk_done "$chunk_num"
@@ -573,161 +819,326 @@ process_chunk() {
 }
 
 # ---------------------------------------------------------------------------
-# Main
+# Archive plan file and clean up state
 # ---------------------------------------------------------------------------
-cd "$REPO_DIR"
+archive_plan() {
+    local archive_dir plan_basename
+    archive_dir="$(dirname "$PLAN_FILE")/archive"
+    plan_basename="$(basename "$PLAN_FILE")"
 
-# Extract plan title from first H1 header, fallback to filename
-PLAN_TITLE=$(grep -m1 '^# ' "$PLAN_FILE" | sed 's/^# //' || basename "$PLAN_FILE" .md)
-
-echo -e "\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}${CYAN}║  Ralph Orchestrator v3.0                                 ║${RESET}"
-echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════╝${RESET}\n"
-
-log_info "Plan: ${PLAN_TITLE}"
-log_info "File: ${PLAN_FILE}"
-log_info "Repo: ${REPO_DIR}"
-log_info "Branch: ${FEATURE_BRANCH}"
-log_info "Models: impl=${IMPL_MODEL}, review=${REVIEW_MODEL}"
-log_info "Chunks: ${TOTAL_CHUNKS}"
-log_info "Abort: Ctrl+C to stop gracefully (progress is saved)"
-
-# Show chunk status
-completed=$(get_completed_count)
-echo ""
-for num in "${CHUNK_NUMS[@]}"; do
-    if is_chunk_done "$num"; then
-        echo -e "  ${GREEN}✔${RESET} ${DIM}Chunk ${num}:${RESET} ${DIM}${CHUNK_TITLES[$num]}${RESET} ${GREEN}(done)${RESET}"
-    elif is_chunk_skipped "$num"; then
-        echo -e "  ${YELLOW}⊘${RESET} ${DIM}Chunk ${num}:${RESET} ${DIM}${CHUNK_TITLES[$num]}${RESET} ${YELLOW}(skipped)${RESET}"
-    else
-        echo -e "  ${BLUE}○${RESET} Chunk ${num}: ${CHUNK_TITLES[$num]}"
-    fi
-done
-echo ""
-
-if [[ "$completed" -gt 0 ]]; then
-    log_info "Progress: ${completed}/${TOTAL_CHUNKS} chunks completed"
-fi
-
-# Review-only mode
-if [[ "$REVIEW_ONLY" -gt 0 ]]; then
-    log_info "Review-only mode for Chunk ${REVIEW_ONLY}"
-    if run_review "$REVIEW_ONLY"; then
-        log_success "Review passed!"
-    else
-        log_error "Review failed."
-        exit 1
-    fi
-    exit 0
-fi
-
-# Determine starting chunk
-if [[ "$START_FROM" -gt 0 ]]; then
-    start="$START_FROM"
-    log_info "Starting from Chunk ${start} (--start-from override)"
-else
-    start=$(find_next_chunk)
-    if [[ -z "$start" ]]; then
-        log_success "All chunks are already complete! Nothing to do."
-
-        # Clean up since everything is done
-        ARCHIVE_DIR="$(dirname "$PLAN_FILE")/archive"
-        PLAN_BASENAME="$(basename "$PLAN_FILE")"
-        if [[ -f "$STATE_FILE" ]]; then
-            rm -f "$STATE_FILE"
-            log_info "Removed state file: $(basename "$STATE_FILE")"
-        fi
-        if [[ -f "$PLAN_FILE" ]]; then
-            mkdir -p "$ARCHIVE_DIR"
-            mv "$PLAN_FILE" "${ARCHIVE_DIR}/${PLAN_BASENAME}"
-            log_info "Archived plan to: docs/archive/${PLAN_BASENAME}"
-            git add "$STATE_FILE" "${ARCHIVE_DIR}/${PLAN_BASENAME}" "$PLAN_FILE" 2>/dev/null || true
-        fi
-
-        echo -e "\n${BOLD}If you want to re-run:${RESET}"
-        echo "  bash $0 ${PLAN_FILE} --reset"
-        exit 0
-    fi
-    if [[ "$completed" -gt 0 ]]; then
-        log_info "Auto-resuming at Chunk ${start}"
-    fi
-fi
-
-# Dry run
-if $DRY_RUN; then
-    log_info "DRY RUN — would process these chunks:"
-    for num in "${CHUNK_NUMS[@]}"; do
-        if [[ "$num" -ge "$start" ]] && ! is_chunk_done "$num" && ! is_chunk_skipped "$num"; then
-            echo "  Chunk ${num}: $(chunk_title "$num")"
-        fi
-    done
-    exit 0
-fi
-
-# Ensure feature branch exists
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$current_branch" != "$FEATURE_BRANCH" ]]; then
-    if git show-ref --verify --quiet "refs/heads/${FEATURE_BRANCH}"; then
-        log_info "Switching to existing branch: ${FEATURE_BRANCH}"
-        git checkout "$FEATURE_BRANCH"
-    else
-        log_info "Creating feature branch: ${FEATURE_BRANCH}"
-        git checkout -b "$FEATURE_BRANCH"
-    fi
-fi
-
-# Process chunks
-for num in "${CHUNK_NUMS[@]}"; do
-    if [[ "$num" -ge "$start" ]] && ! is_chunk_done "$num" && ! is_chunk_skipped "$num"; then
-        process_chunk "$num"
-        echo ""
-    fi
-done
-
-# Summary
-echo ""
-log_success "Plan execution complete!"
-log_info "Total elapsed: $(elapsed_since_start)"
-echo ""
-
-skipped_count=0
-for num in "${CHUNK_NUMS[@]}"; do
-    if is_chunk_skipped "$num"; then
-        (( skipped_count++ ))
-    fi
-done
-
-if [[ "$skipped_count" -gt 0 ]]; then
-    log_warn "${skipped_count} chunk(s) were skipped and need manual attention:"
-    for num in "${CHUNK_NUMS[@]}"; do
-        if is_chunk_skipped "$num"; then
-            echo "  - Chunk ${num}: $(chunk_title "$num")"
-        fi
-    done
-    echo ""
-fi
-
-# ---------------------------------------------------------------------------
-# Post-completion cleanup: archive plan and remove state file
-# ---------------------------------------------------------------------------
-if [[ "$skipped_count" -eq 0 ]]; then
-    # All chunks completed — clean up
-    ARCHIVE_DIR="$(dirname "$PLAN_FILE")/archive"
-    PLAN_BASENAME="$(basename "$PLAN_FILE")"
-
-    # Remove state file (no longer needed)
     if [[ -f "$STATE_FILE" ]]; then
         rm -f "$STATE_FILE"
         log_info "Removed state file: $(basename "$STATE_FILE")"
     fi
 
-    # Archive the plan file
-    mkdir -p "$ARCHIVE_DIR"
-    mv "$PLAN_FILE" "${ARCHIVE_DIR}/${PLAN_BASENAME}"
-    log_info "Archived plan to: docs/archive/${PLAN_BASENAME}"
-    git add "$STATE_FILE" "${ARCHIVE_DIR}/${PLAN_BASENAME}" "$PLAN_FILE" 2>/dev/null || true
+    # Skip move if already in an archive directory, but still commit
+    # the state-file deletion so nothing lingers in the working tree.
+    if [[ "$(basename "$(dirname "$PLAN_FILE")")" == "archive" ]]; then
+        log_info "Plan already archived: ${plan_basename}"
+        git add -A -- "$STATE_FILE" 2>/dev/null || true
+        if ! git diff --cached --quiet 2>/dev/null; then
+            git commit --quiet -m "chore(ralph): clean up state for archived ${plan_basename}" 2>/dev/null || true
+        fi
+        return 0
+    fi
 
+    if [[ -f "$PLAN_FILE" ]]; then
+        mkdir -p "$archive_dir"
+        mv "$PLAN_FILE" "${archive_dir}/${plan_basename}"
+        log_info "Archived plan to: $(basename "$archive_dir")/${plan_basename}"
+        git add -A -- "$STATE_FILE" "${archive_dir}/${plan_basename}" "$PLAN_FILE" 2>/dev/null || true
+        if ! git diff --cached --quiet 2>/dev/null; then
+            if git commit --quiet -m "chore(ralph): archive completed plan ${plan_basename}" 2>/dev/null; then
+                log_info "Committed archive of ${plan_basename}"
+            else
+                log_warn "Failed to commit archive of ${plan_basename} — please commit manually"
+            fi
+        fi
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Execute one plan: display → process chunks → summary → archive
+# ---------------------------------------------------------------------------
+execute_plan() {
+    # Already-completed plans live in docs/archive/. Re-running the same
+    # command would otherwise rebuild empty state and re-process every chunk
+    # (the .ralph-state completion record is deleted on archive), wastefully
+    # re-driving sonnet+opus over work that's already merged. Skip fast.
+    # Escape hatch: pass the archive path directly with --reset to force a re-run.
+    if $PLAN_ALREADY_ARCHIVED && ! $DO_RESET \
+       && [[ "$START_FROM" -eq 0 && "$REVIEW_ONLY" -eq 0 ]]; then
+        log_success "Already completed and archived — skipping: ${PLAN_TITLE}"
+        # Tidy any stale state file a previous buggy resume may have left behind.
+        if ! $DRY_RUN && [[ -f "$STATE_FILE" ]]; then
+            rm -f "$STATE_FILE"
+            # Scope the staged-diff check and commit to the state file so an
+            # unrelated staged change in the user's tree can't get swept into
+            # this housekeeping commit (mirrors commit_state_file).
+            git add -A -- "$STATE_FILE" 2>/dev/null || true
+            git diff --cached --quiet -- "$STATE_FILE" 2>/dev/null \
+                || git commit --quiet -m "chore(ralph): clean up stale state for archived $(basename "$PLAN_FILE")" -- "$STATE_FILE" 2>/dev/null || true
+        fi
+        return 0
+    fi
+
+    # Display plan info
+    log_info "Plan: ${PLAN_TITLE}"
+    log_info "File: ${PLAN_FILE}"
+    log_info "Branch: ${FEATURE_BRANCH}"
+    log_info "Models: impl=${IMPL_MODEL}, review=${REVIEW_MODEL}"
+    log_info "Chunk timeout: ${CHUNK_TIMEOUT}"
+    log_info "Chunks: ${TOTAL_CHUNKS}"
+
+    # Show chunk status
+    local completed
+    completed=$(get_completed_count)
+    echo ""
+    for num in "${CHUNK_NUMS[@]}"; do
+        if is_chunk_done "$num"; then
+            echo -e "  ${GREEN}✔${RESET} ${DIM}Chunk ${num}:${RESET} ${DIM}${CHUNK_TITLES[$num]}${RESET} ${GREEN}(done)${RESET}"
+        elif is_chunk_skipped "$num"; then
+            echo -e "  ${YELLOW}⊘${RESET} ${DIM}Chunk ${num}:${RESET} ${DIM}${CHUNK_TITLES[$num]}${RESET} ${YELLOW}(skipped)${RESET}"
+        else
+            echo -e "  ${BLUE}○${RESET} Chunk ${num}: ${CHUNK_TITLES[$num]}"
+        fi
+    done
+    echo ""
+
+    if [[ "$completed" -gt 0 ]]; then
+        log_info "Progress: ${completed}/${TOTAL_CHUNKS} chunks completed"
+    fi
+
+    # Review-only mode
+    if [[ "$REVIEW_ONLY" -gt 0 ]]; then
+        log_info "Review-only mode for Chunk ${REVIEW_ONLY}"
+        if run_review "$REVIEW_ONLY"; then
+            log_success "Review passed!"
+        else
+            log_error "Review failed."
+            return 1
+        fi
+        return 0
+    fi
+
+    # Determine starting chunk
+    local start
+    if [[ "$START_FROM" -gt 0 ]]; then
+        start="$START_FROM"
+        log_info "Starting from Chunk ${start} (--start-from override)"
+    else
+        start=$(find_next_chunk)
+        if [[ -z "$start" ]]; then
+            log_success "All chunks are already complete! Nothing to do."
+            archive_plan
+            return 0
+        fi
+        if [[ "$completed" -gt 0 ]]; then
+            log_info "Auto-resuming at Chunk ${start}"
+        fi
+    fi
+
+    # Dry run
+    if $DRY_RUN; then
+        log_info "DRY RUN — would process these chunks:"
+        for num in "${CHUNK_NUMS[@]}"; do
+            if [[ "$num" -ge "$start" ]] && ! is_chunk_done "$num" && ! is_chunk_skipped "$num"; then
+                echo "  Chunk ${num}: $(chunk_title "$num")"
+            fi
+        done
+        return 0
+    fi
+
+    # Ensure feature branch exists
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$current_branch" != "$FEATURE_BRANCH" ]]; then
+        if git show-ref --verify --quiet "refs/heads/${FEATURE_BRANCH}"; then
+            log_info "Switching to existing branch: ${FEATURE_BRANCH}"
+            git checkout "$FEATURE_BRANCH"
+        else
+            log_info "Creating feature branch: ${FEATURE_BRANCH}"
+            git checkout -b "$FEATURE_BRANCH"
+        fi
+    fi
+
+    # Process chunks
+    for num in "${CHUNK_NUMS[@]}"; do
+        if [[ "$num" -ge "$start" ]] && ! is_chunk_done "$num" && ! is_chunk_skipped "$num"; then
+            process_chunk "$num"
+            echo ""
+        fi
+    done
+
+    # Per-plan summary
+    local skipped_count=0
+    for num in "${CHUNK_NUMS[@]}"; do
+        if is_chunk_skipped "$num"; then
+            (( ++skipped_count ))
+        fi
+    done
+
+    if [[ "$skipped_count" -gt 0 ]]; then
+        log_warn "${skipped_count} chunk(s) were skipped and need manual attention:"
+        for num in "${CHUNK_NUMS[@]}"; do
+            if is_chunk_skipped "$num"; then
+                echo "  - Chunk ${num}: $(chunk_title "$num")"
+            fi
+        done
+        echo ""
+    fi
+
+    # Archive if all chunks completed
+    if [[ "$skipped_count" -eq 0 ]]; then
+        archive_plan
+    fi
+
+    return 0
+}
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+cd "$REPO_DIR"
+
+echo -e "\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${BOLD}${CYAN}║  Ralph Orchestrator v4.10                                ║${RESET}"
+echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════╝${RESET}\n"
+
+log_info "Repo: ${REPO_DIR}"
+if [[ "$PLANS_TOTAL" -gt 1 ]]; then
+    log_info "Plans: ${PLANS_TOTAL} plan files queued"
+fi
+log_info "Models: impl=${IMPL_MODEL}, review=${REVIEW_MODEL}"
+log_info "Chunk timeout: ${CHUNK_TIMEOUT} (override with --chunk-timeout)"
+log_info "Abort: Ctrl+C to stop gracefully (progress is saved)"
+
+# ---------------------------------------------------------------------------
+# Derive shared branch for multi-plan mode
+# ---------------------------------------------------------------------------
+if [[ "$PLANS_TOTAL" -gt 1 && -z "$SHARED_BRANCH" ]]; then
+    # Prefer an explicit "**Branch:**" declared in the first plan doc — sub-plans
+    # of one feature should all declare the same shared branch.
+    SHARED_BRANCH="$(parse_plan_branch "${RESOLVED_PLAN_FILES[0]}")"
+    if [[ -n "$SHARED_BRANCH" ]]; then
+        log_info "Shared branch from plan doc: ${SHARED_BRANCH}"
+    else
+        # Fall back to a concise name derived from the plan filenames.
+        SHARED_BRANCH="$(derive_shared_branch "${RESOLVED_PLAN_FILES[@]}")"
+        log_info "Shared branch derived from plan filenames: ${SHARED_BRANCH}"
+    fi
+fi
+
+# Multi-plan tracking
+declare -a PLAN_RESULTS=()
+declare -a PLAN_NAMES=()
+PLAN_INDEX=0
+
+for _plan_file in "${RESOLVED_PLAN_FILES[@]}"; do
+    (( ++PLAN_INDEX ))
+
+    # --- Per-plan setup: reset globals ---
+    PLAN_FILE="$_plan_file"
+    STATE_FILE="${PLAN_FILE}.ralph-state"
+
+    # A plan whose file currently lives in docs/archive/ has already been
+    # completed — archiving is the completion marker. Resolution earlier falls
+    # back to the archived copy when the original docs/ path is gone, so this
+    # catches "re-ran the same command after a milestone finished."
+    PLAN_ALREADY_ARCHIVED=false
+    if [[ "$(basename "$(dirname "$PLAN_FILE")")" == "archive" ]]; then
+        PLAN_ALREADY_ARCHIVED=true
+    fi
+
+    CHUNK_NUMS=()
+    unset CHUNK_TITLES 2>/dev/null || true
+    declare -A CHUNK_TITLES
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^##\ (Chunk|Task)\ ([0-9]+):\ (.+)$ ]]; then
+            num="${BASH_REMATCH[2]}"
+            title="${BASH_REMATCH[3]}"
+            title="${title%% \(*}"
+            CHUNK_NUMS+=("$num")
+            CHUNK_TITLES[$num]="$title"
+        fi
+    done < "$PLAN_FILE"
+
+    TOTAL_CHUNKS=${#CHUNK_NUMS[@]}
+
+    if [[ "$TOTAL_CHUNKS" -eq 0 ]]; then
+        log_error "No chunks found in: $(basename "$PLAN_FILE")"
+        PLAN_RESULTS+=("FAILED")
+        PLAN_NAMES+=("$(basename "$PLAN_FILE" .md)")
+        continue
+    fi
+
+    # Derive feature branch: shared (multi-plan) > explicit "**Branch:**" in the
+    # plan doc > derived from the filename (legacy default).
+    if [[ -n "$SHARED_BRANCH" ]]; then
+        FEATURE_BRANCH="$SHARED_BRANCH"
+    else
+        FEATURE_BRANCH="$(parse_plan_branch "$PLAN_FILE")"
+        if [[ -n "$FEATURE_BRANCH" ]]; then
+            log_info "Branch from plan doc: ${FEATURE_BRANCH}"
+        else
+            plan_basename=$(basename "$PLAN_FILE" .md)
+            plan_basename="${plan_basename#plan-}"
+            FEATURE_BRANCH="feature/${plan_basename}"
+        fi
+    fi
+
+    PLAN_TITLE=$(grep -m1 '^# ' "$PLAN_FILE" | sed 's/^# //' || basename "$PLAN_FILE" .md)
+    PLAN_NAMES+=("$PLAN_TITLE")
+
+    # Handle --reset for this plan
+    if $DO_RESET; then
+        reset_state
+    fi
+
+    # --- Plan header (multi-plan only) ---
+    if [[ "$PLANS_TOTAL" -gt 1 ]]; then
+        echo ""
+        echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo -e "${BOLD}${CYAN}  Plan ${PLAN_INDEX}/${PLANS_TOTAL}: ${PLAN_TITLE}${RESET}"
+        echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+    fi
+
+    # --- Execute ---
+    if execute_plan; then
+        PLAN_RESULTS+=("DONE")
+        if [[ "$PLANS_TOTAL" -gt 1 ]]; then
+            log_success "Plan ${PLAN_INDEX}/${PLANS_TOTAL} complete: ${PLAN_TITLE}"
+        fi
+    else
+        PLAN_RESULTS+=("FAILED")
+        log_error "Plan failed: ${PLAN_TITLE}"
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# Final summary
+# ---------------------------------------------------------------------------
+echo ""
+if [[ "$PLANS_TOTAL" -gt 1 ]]; then
+    log_success "All plans processed!"
+else
+    log_success "Plan execution complete!"
+fi
+log_info "Total elapsed: $(elapsed_since_start)"
+echo ""
+
+if [[ "$PLANS_TOTAL" -gt 1 ]]; then
+    echo -e "${BOLD}Pipeline Summary:${RESET}"
+    for i in "${!PLAN_NAMES[@]}"; do
+        _result="${PLAN_RESULTS[$i]}"
+        _name="${PLAN_NAMES[$i]}"
+        if [[ "$_result" == "DONE" ]]; then
+            echo -e "  ${GREEN}✔${RESET} ${_name}"
+        else
+            echo -e "  ${RED}✘${RESET} ${_name}"
+        fi
+    done
     echo ""
 fi
 

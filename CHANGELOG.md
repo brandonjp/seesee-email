@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Documentation site (seesee.email) now shows the current SeeSee version in the footer on every page, read at build time from `pyproject.toml` via a custom Starlight `Footer` override — no manual updates needed
+- Privacy-first, cookieless analytics on the docs site: Umami (self-hosted), OpenPanel (cloud), and Swetrix (self-hosted) page-view tracking, injected via Starlight's `head` config per the shared-ai-docs Analytics Playbook. Only public client IDs are embedded; no server-side secrets ship to the browser
 - Version number is now visible across the UI: as a small tag beside the "email" label in the desktop sidebar brand, in the mobile top-bar header (where "email" now stays, instead of disappearing), and as a fuller `SeeSee.email • v… / <build timestamp>` footer block above the settings section of the nav
 - Image build timestamp baked into the container at build time (CI passes `--build-arg BUILD_TIME`, exposed as `SEESEE_BUILD_TIME` → `settings.build_time`) and rendered in the display timezone; running from source shows "local dev" instead
 - New `app_version` and `build_display` Jinja2 globals available to all templates
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
 
 ### Changed
+- Docs homepage hero now leads with a clearly-labeled **"Read the Docs"** button plus a **"Quick Start"** shortcut, replacing the ambiguous single "Get Started" action that didn't read as a link into the docs
 - Settings card helper text now spells out the override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins
 - Version bumps: 0.18.4-dev → 0.19.4-dev (edit-app-settings feature + review fixes)
 

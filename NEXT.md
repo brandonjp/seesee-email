@@ -1,9 +1,29 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.5-dev
-**Updated:** 2026-07-01
+**Version:** 0.19.15-dev
+**Updated:** 2026-07-02
 
 ## Just Completed
+
+- **Release-prep review** (v0.19.15-dev):
+  - Fixed a runtime version drift: `seesee/__init__.py` was stuck at `0.19.12-dev` while `pyproject.toml` had moved to `0.19.14-dev`, so the app UI, `/health`, and FastAPI docs all showed a stale version. Resynced both to `0.19.15-dev`
+  - Added `tests/test_version_sync.py` — asserts `seesee.__version__` matches the `pyproject.toml` version so this recurring drift now fails CI
+  - Merged a duplicate `### Changed` heading under CHANGELOG `[Unreleased]`
+  - Follow-up noted below: the CHANGELOG `[Unreleased]` block has accumulated several un-released batches and needs a one-time consolidation + cut into a versioned release section
+
+- **App-scoped Bearer keys on `GET /api/v1/emails` + preview 401 fix** (v0.19.14-dev):
+  - The email-list route was admin-only, so client apps (e.g. SplitGive) calling it with their app API key always 401'd. New `require_admin_or_app` dependency: admin auth still sees everything; an app Bearer key is hard-scoped to its own `app_id` regardless of any `app_id` filter passed
+  - The email-detail preview iframe authenticated via session cookie but hit a Basic-only dependency, triggering the browser's native auth prompt. New `require_admin_or_session` checks the cookie first, then falls back to Basic without early-erroring on a missing Basic header
+
+- **SMTP AUTH fixed — SMTP ingest worked for the first time** (v0.19.13-dev):
+  - `SmtpAuthenticator.__call__` was `async def`, but aiosmtpd 1.4.6 invokes the authenticator synchronously without awaiting it — the un-awaited coroutine was treated as a successful login, so the credential check never ran and every `MAIL FROM` was then rejected with `530`. Net effect: zero emails ever ingested via SMTP. Rewrote the authenticator as a plain sync callable using stdlib `sqlite3`
+  - Added wire-level integration tests (`tests/test_smtp_integration.py`) driving a real `Controller` + `smtplib` client through `AUTH → MAIL → RCPT → DATA`, plus a guard test asserting the authenticator is not a coroutine function
+
+- **Docs site + CI + version-display polish** (v0.19.5-dev → v0.19.12-dev):
+  - Migrated `TemplateResponse` calls to the Starlette 1.x signature — this had been crashing every UI page render and blocking Docker image publishing since March
+  - App version now surfaced across the UI (sidebar tag, mobile header, build-time footer block with image build timestamp)
+  - Docs site: version in footer (read from `pyproject.toml` at build time), single clearer hero CTA, privacy-first self-hosted analytics (Umami/OpenPanel/Swetrix), favicon
+  - CI: moved all GitHub Actions and Docker actions off the deprecated Node 20 runtime; added `workflow_dispatch` + self-path trigger to docs deploy
 
 - **Pre-release review polish for edit-app-settings** (v0.19.4-dev):
   - Retention overrides of `0` submitted via the Settings card are now stored as NULL — the retention engine already treated `0` and unset identically, but the read view showed a literal `0`; legacy API-stored `0` values also render as "System default" now (resolves the "retention value of 0 displays literally" known issue)
@@ -62,6 +82,7 @@ Add export buttons to the email search page that download the current filtered r
 
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
 - **No CSRF protection on UI form POSTs.** (Also on ROADMAP Phase 3.0.) `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but must be addressed before multi-user auth lands.
+- **CHANGELOG `[Unreleased]` needs a one-time consolidation.** The `[Unreleased]` section has accumulated several separately-prepended batches, leaving repeated `### Added`/`### Fixed`/`### Removed` subheadings and a stray `### Previously` group (all pre-dating the recent work). Before the next tagged release, consolidate `[Unreleased]` into a single Added/Changed/Fixed/Removed set and cut it into a versioned section. Low risk but should be a deliberate, careful edit — not folded into an unrelated change.
 
 ## Resolved (previously listed here)
 
@@ -69,7 +90,7 @@ Add export buttons to the email search page that download the current filtered r
 
 ## Current State
 
-- 282 tests passing (0 failures)
+- 295 tests passing (0 failures)
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, and complete copy-all-as-ENV-vars on app credentials
 - Full REST API, SMTP ingest, Web UI, retention, docs site
 - 21-theme color system with swatch picker on Settings page (4 accent, 8 developer, 4 light, 6 retro)

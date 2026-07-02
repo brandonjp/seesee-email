@@ -210,3 +210,89 @@ async def test_list_emails_combined_filters(client, admin_auth_header):
     data = response.json()
     assert data["total"] == 1
     assert data["emails"][0]["subject"] == "Sent via Resend"
+
+
+@pytest.mark.asyncio
+async def test_list_emails_app_key_scoped_to_own_app(client, admin_auth_header):
+    """GET /api/v1/emails with an app Bearer key returns only that app's emails."""
+    app1 = await create_test_app(client, admin_auth_header, name="App One")
+    app2 = await create_test_app(client, admin_auth_header, name="App Two")
+
+    await _log_email(client, app1["api_key"], {"subject": "App One Email"})
+    await _log_email(client, app2["api_key"], {"subject": "App Two Email"})
+
+    response1 = await client.get(
+        "/api/v1/emails", headers={"Authorization": f"Bearer {app1['api_key']}"}
+    )
+    assert response1.status_code == 200
+    data1 = response1.json()
+    assert data1["total"] == 1
+    assert data1["emails"][0]["subject"] == "App One Email"
+    assert data1["emails"][0]["app_id"] == app1["id"]
+
+    response2 = await client.get(
+        "/api/v1/emails", headers={"Authorization": f"Bearer {app2['api_key']}"}
+    )
+    assert response2.status_code == 200
+    data2 = response2.json()
+    assert data2["total"] == 1
+    assert data2["emails"][0]["subject"] == "App Two Email"
+    assert data2["emails"][0]["app_id"] == app2["id"]
+
+
+@pytest.mark.asyncio
+async def test_list_emails_app_key_ignores_app_id_filter(client, admin_auth_header):
+    """An app key cannot see another app's emails even via an explicit app_id filter."""
+    app1 = await create_test_app(client, admin_auth_header, name="App One")
+    app2 = await create_test_app(client, admin_auth_header, name="App Two")
+
+    await _log_email(client, app1["api_key"], {"subject": "App One Email"})
+    await _log_email(client, app2["api_key"], {"subject": "App Two Email"})
+
+    response = await client.get(
+        "/api/v1/emails",
+        params={"app_id": app2["id"]},
+        headers={"Authorization": f"Bearer {app1['api_key']}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["emails"][0]["subject"] == "App One Email"
+    assert data["emails"][0]["app_id"] == app1["id"]
+
+
+@pytest.mark.asyncio
+async def test_list_emails_admin_still_sees_all(client, admin_auth_header):
+    """Admin auth still sees emails across all apps."""
+    app1 = await create_test_app(client, admin_auth_header, name="App One")
+    app2 = await create_test_app(client, admin_auth_header, name="App Two")
+
+    await _log_email(client, app1["api_key"], {"subject": "App One Email"})
+    await _log_email(client, app2["api_key"], {"subject": "App Two Email"})
+
+    response = await client.get("/api/v1/emails", headers=admin_auth_header)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_list_emails_bogus_bearer_key_rejected(client):
+    """GET /api/v1/emails with a bogus Bearer key returns 401."""
+    response = await client.get(
+        "/api/v1/emails", headers={"Authorization": "Bearer ss_bogus_key_not_real"}
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_emails_rejects_app_key(client, admin_auth_header):
+    """DELETE /api/v1/emails/{id} still rejects an app Bearer key (admin-only route)."""
+    app_data = await create_test_app(client, admin_auth_header)
+    logged = await _log_email(client, app_data["api_key"])
+
+    response = await client.delete(
+        f"/api/v1/emails/{logged['id']}",
+        headers={"Authorization": f"Bearer {app_data['api_key']}"},
+    )
+    assert response.status_code == 401

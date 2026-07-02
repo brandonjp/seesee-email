@@ -2,12 +2,13 @@
 
 import json
 import math
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 
 from seesee.database import get_db
-from seesee.dependencies import require_admin
+from seesee.dependencies import require_admin, require_admin_or_app, require_admin_or_session
 from seesee.models import (
     BulkDeleteResponse,
     EmailDetail,
@@ -88,9 +89,9 @@ def _row_to_detail(row: dict) -> EmailDetail:
 @router.get(
     "/emails",
     response_model=EmailListResponse,
-    dependencies=[Depends(require_admin)],
 )
 async def list_emails(
+    principal: Annotated[dict, Depends(require_admin_or_app)],
     q: str | None = Query(None, description="Full-text search query"),
     app_id: str | None = Query(None, description="Filter by app ID"),
     status_filter: str | None = Query(None, alias="status", description="Filter by status"),
@@ -102,8 +103,17 @@ async def list_emails(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Results per page"),
 ) -> EmailListResponse:
-    """List and search emails with pagination. Requires admin auth."""
+    """List and search emails with pagination.
+
+    Accepts either admin auth (sees all emails) or an app Bearer key
+    (hard-scoped to that app's own emails, ignoring any app_id filter).
+    """
     db = await get_db()
+
+    # Non-admin callers are hard-scoped to their own app, regardless of
+    # any app_id filter they pass in.
+    if not principal["admin"]:
+        app_id = principal["app"]["id"]
 
     # Validate sort field
     if sort not in _ALLOWED_SORT_FIELDS:
@@ -255,7 +265,7 @@ async def get_email(email_id: str) -> EmailDetail:
 @router.get(
     "/emails/{email_id}/preview",
     response_class=HTMLResponse,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_admin_or_session)],
 )
 async def preview_email(email_id: str) -> HTMLResponse:
     """Return sandboxed HTML preview of an email's body.

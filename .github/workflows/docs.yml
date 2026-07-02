@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - '.github/workflows/docs.yml'
+  # Allow manual redeploys (e.g. to pick up a version bump made outside docs/).
+  workflow_dispatch:
 
 permissions:
   contents: read

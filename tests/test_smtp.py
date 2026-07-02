@@ -225,7 +225,7 @@ class TestSmtpAuthenticator:
         auth_data.login = smtp_username.encode()
         auth_data.password = api_key.encode()
 
-        result = await authenticator(server, session, envelope, "LOGIN", auth_data)
+        result = authenticator(server, session, envelope, "LOGIN", auth_data)
 
         assert result.success is True
         # App should be stored on the session
@@ -246,7 +246,7 @@ class TestSmtpAuthenticator:
         auth_data.login = smtp_username.encode()
         auth_data.password = b"wrong_password"
 
-        result = await authenticator(server, session, envelope, "LOGIN", auth_data)
+        result = authenticator(server, session, envelope, "LOGIN", auth_data)
 
         assert result.success is False
 
@@ -265,7 +265,7 @@ class TestSmtpAuthenticator:
         auth_data.login = b"nonexistent-app"
         auth_data.password = b"whatever"
 
-        result = await authenticator(server, session, envelope, "LOGIN", auth_data)
+        result = authenticator(server, session, envelope, "LOGIN", auth_data)
 
         assert result.success is False
 

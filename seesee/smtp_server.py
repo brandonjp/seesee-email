@@ -10,8 +10,10 @@ import email
 import email.policy
 import json
 import logging
+import sqlite3
 import uuid
 import warnings
+from contextlib import closing
 from email.message import EmailMessage
 
 from aiosmtpd.controller import Controller
@@ -59,9 +61,20 @@ logging.getLogger("mail.log").addFilter(_SuppressAuthTlsLogFilter())
 
 
 class SmtpAuthenticator:
-    """Authenticate SMTP clients against per-app credentials in the database."""
+    """Authenticate SMTP clients against per-app credentials in the database.
 
-    async def __call__(
+    MUST be a plain synchronous callable: aiosmtpd invokes the authenticator
+    without awaiting it (``SMTP._authenticate`` is sync). An ``async def``
+    here returns a coroutine object, which aiosmtpd's legacy result handling
+    treats as a successful login — the credential check never runs,
+    ``session.authenticated`` is never set, and every MAIL FROM afterwards is
+    rejected with ``530 Authentication required``. That is why we use stdlib
+    sqlite3 instead of the app's aiosqlite connection. The blocking query +
+    bcrypt check run on the SMTP server's own event-loop thread; at SeeSee's
+    scale that is acceptable.
+    """
+
+    def __call__(
         self,
         server: SMTP,
         session: Session,
@@ -80,12 +93,12 @@ class SmtpAuthenticator:
         )
 
         try:
-            db = await get_db()
-            cursor = await db.execute(
-                "SELECT * FROM apps WHERE smtp_username = ?",
-                (username,),
-            )
-            app_row = await cursor.fetchone()
+            with closing(sqlite3.connect(settings.db_path)) as db:
+                db.row_factory = sqlite3.Row
+                app_row = db.execute(
+                    "SELECT * FROM apps WHERE smtp_username = ?",
+                    (username,),
+                ).fetchone()
 
             if app_row is None:
                 logger.warning("SMTP AUTH failed: unknown username %r", username)

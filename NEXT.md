@@ -1,6 +1,6 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.4-dev
+**Version:** 0.19.5-dev
 **Updated:** 2026-07-01
 
 ## Just Completed

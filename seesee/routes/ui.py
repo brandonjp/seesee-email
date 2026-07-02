@@ -129,7 +129,7 @@ def _pop_flash(request: Request) -> dict | None:
 async def login_page(request: Request, error: str | None = None) -> HTMLResponse:
     """Render the login page."""
     tmpl = _get_templates()
-    return tmpl.TemplateResponse("login.html", {"request": request, "error": error})
+    return tmpl.TemplateResponse(request, "login.html", {"error": error})
 
 
 @router.post("/login")
@@ -143,8 +143,9 @@ async def login_submit(
     if not secret_key or not settings.admin_password:
         tmpl = _get_templates()
         return tmpl.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "Admin password not configured"},
+            {"error": "Admin password not configured"},
             status_code=403,
         )
 
@@ -160,8 +161,9 @@ async def login_submit(
     if not (username_ok and password_ok):
         tmpl = _get_templates()
         return tmpl.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "Invalid username or password"},
+            {"error": "Invalid username or password"},
             status_code=401,
         )
 
@@ -251,9 +253,9 @@ async def dashboard(request: Request, user: str = Depends(require_session)) -> H
     daily_volume = [{"day": row["day"], "count": row["cnt"]} for row in await cursor.fetchall()]
 
     return tmpl.TemplateResponse(
+        request,
         "dashboard.html",
         {
-            "request": request,
             "user": user,
             "current_page": "dashboard",
             "total_emails": total_emails,
@@ -359,9 +361,9 @@ async def email_list(
     providers = [row["provider"] for row in await cursor.fetchall()]
 
     return tmpl.TemplateResponse(
+        request,
         "emails.html",
         {
-            "request": request,
             "user": user,
             "current_page": "emails",
             "emails": emails_list,
@@ -405,8 +407,9 @@ async def email_detail(
     row = await cursor.fetchone()
     if row is None:
         return tmpl.TemplateResponse(
+            request,
             "email_detail.html",
-            {"request": request, "user": user, "current_page": "emails", "email": None},
+            {"user": user, "current_page": "emails", "email": None},
             status_code=404,
         )
 
@@ -420,9 +423,9 @@ async def email_detail(
     email["metadata"] = json.loads(email["metadata"]) if email.get("metadata") else None
 
     return tmpl.TemplateResponse(
+        request,
         "email_detail.html",
         {
-            "request": request,
             "user": user,
             "current_page": "emails",
             "email": email,
@@ -460,9 +463,9 @@ async def app_list(
     deleted_app = flash.get("deleted_app") if flash else None
 
     response = tmpl.TemplateResponse(
+        request,
         "apps.html",
         {
-            "request": request,
             "user": user,
             "current_page": "apps",
             "apps": apps,
@@ -596,8 +599,9 @@ async def app_detail(
     app = await cursor.fetchone()
     if app is None:
         return tmpl.TemplateResponse(
+            request,
             "app_detail.html",
-            {"request": request, "user": user, "current_page": "apps", "app": None},
+            {"user": user, "current_page": "apps", "app": None},
             status_code=404,
         )
     app = dict(app)
@@ -626,9 +630,9 @@ async def app_detail(
     rotated_key = flash.get("rotated_key") if flash else None
 
     response = tmpl.TemplateResponse(
+        request,
         "app_detail.html",
         {
-            "request": request,
             "user": user,
             "current_page": "apps",
             "app": app,
@@ -895,9 +899,9 @@ async def settings_page(
     db_size_bytes = row["size"] if row else 0
 
     return tmpl.TemplateResponse(
+        request,
         "settings.html",
         {
-            "request": request,
             "user": user,
             "current_page": "settings",
             "settings": settings,

@@ -74,8 +74,13 @@ if _templates_dir.is_dir():
 
     templates.env.filters["display_dt"] = format_for_display
 
-    # Expose the app version to all templates (e.g. sidebar brand).
+    # Expose version + build metadata to all templates (sidebar brand + footer).
     templates.env.globals["app_version"] = __version__
+    templates.env.globals["build_display"] = (
+        format_for_display(settings.build_time, "%Y-%m-%d %H:%M:%S %Z")
+        if settings.build_time
+        else "local dev"
+    )
 
 # Register route modules
 app.include_router(ingest.router)

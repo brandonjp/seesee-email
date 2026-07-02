@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Sidebar brand now shows the running app version (e.g. `v0.19.5-dev`) beside the "email" label, sourced from `seesee.__version__` via a new `app_version` Jinja2 global available to all templates
+- Version number is now visible across the UI: as a small tag beside the "email" label in the desktop sidebar brand, in the mobile top-bar header (where "email" now stays, instead of disappearing), and as a fuller `SeeSee.email • v… / <build timestamp>` footer block above the settings section of the nav
+- Image build timestamp baked into the container at build time (CI passes `--build-arg BUILD_TIME`, exposed as `SEESEE_BUILD_TIME` → `settings.build_time`) and rendered in the display timezone; running from source shows "local dev" instead
+- New `app_version` and `build_display` Jinja2 globals available to all templates
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
 ### Fixed

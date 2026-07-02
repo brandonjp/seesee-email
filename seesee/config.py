@@ -43,6 +43,11 @@ class SeeSeeSettings(BaseSettings):
     # UI
     theme: str = "system"
 
+    # Build metadata — baked into the image at build time (see Dockerfile /
+    # build.yml). UTC ISO 8601 timestamp, e.g. "2026-07-01T23:18:00". Empty
+    # when running from source; the UI shows "local dev" in that case.
+    build_time: str = ""
+
     # Display timezone — controls how dates are shown in admin views.
     # IANA timezone string (e.g. "America/Chicago", "Europe/London").
     # Does NOT affect storage (always UTC) or API responses (always UTC ISO 8601).

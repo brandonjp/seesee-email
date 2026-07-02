@@ -38,6 +38,7 @@
                     <span class="text-accent">See</span><span>See</span>
                 </span>
                 <span class="text-xs text-gray-400 mt-1">email</span>
+                <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1.5" title="SeeSee email v{{ app_version }}">v{{ app_version }}</span>
                 <button @click="sidebarOpen = false" class="ml-auto lg:hidden p-2.5 text-gray-400 hover:text-gray-600 active:text-gray-600 dark:hover:text-gray-300 dark:active:text-gray-300" aria-label="Close sidebar">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -71,6 +72,12 @@
                     API Docs
                 </a>
             </nav>
+
+            <!-- Build / version info -->
+            <div class="px-5 py-3 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+                <div class="font-medium">SeeSee.email &bull; v{{ app_version }}</div>
+                <div>{{ build_display }}</div>
+            </div>
 
             <!-- Bottom section: theme toggle + logout -->
             <div class="px-3 py-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
@@ -107,9 +114,13 @@
                 <button @click="sidebarOpen = true" class="p-2.5 -m-1.5 text-gray-600 dark:text-gray-400" aria-label="Open menu">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <span class="text-lg font-bold tracking-tight">
-                    <span class="text-accent">See</span><span>See</span>
-                </span>
+                <div class="flex items-center gap-2">
+                    <span class="text-lg font-bold tracking-tight">
+                        <span class="text-accent">See</span><span>See</span>
+                    </span>
+                    <span class="text-xs text-gray-400 mt-1">email</span>
+                    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1.5" title="SeeSee email v{{ app_version }}">v{{ app_version }}</span>
+                </div>
             </header>
 
             <!-- Page content -->

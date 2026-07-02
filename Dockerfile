@@ -31,9 +31,14 @@ COPY seesee/ seesee/
 # Create data directory for SQLite
 RUN mkdir -p /data && chown seesee:seesee /data
 
+# Build metadata — passed by CI (docker build --build-arg BUILD_TIME=...).
+# Baked into the image so the UI can show when this image was built.
+ARG BUILD_TIME=""
+
 # Default environment
 ENV SEESEE_DB_PATH=/data/seesee.db \
-    SEESEE_PORT=8080
+    SEESEE_PORT=8080 \
+    SEESEE_BUILD_TIME=$BUILD_TIME
 
 # Switch to non-root user
 USER seesee

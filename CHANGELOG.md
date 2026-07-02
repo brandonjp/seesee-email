@@ -9,13 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Documentation site (seesee.email) now shows the current SeeSee version in the footer on every page, read at build time from `pyproject.toml` via a custom Starlight `Footer` override — no manual updates needed
-- Privacy-first, cookieless analytics on the docs site: Umami (self-hosted), OpenPanel (cloud), and Swetrix (self-hosted) page-view tracking, injected via Starlight's `head` config per the shared-ai-docs Analytics Playbook. Only public client IDs are embedded; no server-side secrets ship to the browser
+- Privacy-first, cookieless analytics on the docs site: Umami (self-hosted), OpenPanel (self-hosted), and Swetrix (self-hosted) page-view tracking, injected via Starlight's `head` config per the shared-ai-docs Analytics Playbook. Only public client IDs are embedded; no server-side secrets ship to the browser
 - Version number is now visible across the UI: as a small tag beside the "email" label in the desktop sidebar brand, in the mobile top-bar header (where "email" now stays, instead of disappearing), and as a fuller `SeeSee.email • v… / <build timestamp>` footer block above the settings section of the nav
 - Image build timestamp baked into the container at build time (CI passes `--build-arg BUILD_TIME`, exposed as `SEESEE_BUILD_TIME` → `settings.build_time`) and rendered in the display timezone; running from source shows "local dev" instead
 - New `app_version` and `build_display` Jinja2 globals available to all templates
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
 
 ### Fixed
+- OpenPanel analytics on the docs site now actually record page views. OpenPanel is self-hosted (`api.openpanel.bpf.fyi`, like Umami and Swetrix), but the init call omitted `apiUrl`, so `op1.js` posted events to OpenPanel cloud (`api.openpanel.dev`), which returned `401 "Invalid client id"` (the client only exists on the self-hosted instance). Added `apiUrl: 'https://api.openpanel.bpf.fyi'` per shared-ai-docs Analytics Playbook §7; Umami and Swetrix were unaffected
+- Docs site favicon 404: Starlight auto-injects `<link rel="icon" href="/favicon.svg">`, but no `docs/public/favicon.svg` existed. Added one (the SeeSee "See" mark) so `/favicon.svg` resolves instead of returning 404
 - CI test failures under Starlette 1.x that blocked Docker image publishing since March — all `TemplateResponse` calls now use the modern `TemplateResponse(request, name, context)` signature; the old `(name, {"request": ...})` form was removed in Starlette 1.0 and crashed every UI page render with `TypeError: unhashable type: 'dict'` (v0.19.5-dev)
 - Retention overrides of `0` submitted via the settings UI are now stored as "system default" (NULL) — the retention engine already treated `0` and unset identically, but the read view displayed a literal `0`, implying it did something; legacy `0` values stored via the API also render as "System default" now
 - `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent

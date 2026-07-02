@@ -62,13 +62,16 @@ export default defineConfig({
           },
         },
 
-        // OpenPanel (cloud) — official Proxy-based stub queues calls, then the
-        // SDK loads from the CDN (always openpanel.dev, even for self-hosted).
+        // OpenPanel (self-hosted API) — official Proxy-based stub queues calls,
+        // then the SDK loads from the CDN (always openpanel.dev, even for
+        // self-hosted). apiUrl MUST point at the self-hosted ingest API, or
+        // op1.js posts to OpenPanel cloud and gets 401 "Invalid client id".
         {
           tag: "script",
           content:
             'window.op=window.op||function(){var n=[];return new Proxy(function(){arguments.length&&n.push([].slice.call(arguments))},{get:function(t,r){return"q"===r?n:function(){n.push([r].concat([].slice.call(arguments)))}},has:function(t,r){return"q"===r}})}();' +
-            "window.op('init',{clientId:'e2718fe6-14a2-4d03-ba82-ffe48413d145'," +
+            "window.op('init',{apiUrl:'https://api.openpanel.bpf.fyi'," +
+            "clientId:'e2718fe6-14a2-4d03-ba82-ffe48413d145'," +
             "trackScreenViews:true,trackOutgoingLinks:true,trackAttributes:true});",
         },
         {

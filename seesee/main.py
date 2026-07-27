@@ -82,6 +82,10 @@ if _templates_dir.is_dir():
         else "local dev"
     )
 
+    from seesee.csrf import csrf_token_for
+
+    templates.env.globals["csrf_token_for"] = csrf_token_for
+
 # Register route modules
 app.include_router(ingest.router)
 app.include_router(apps.router)

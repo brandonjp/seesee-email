@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seesee"
-version = "0.20.0"
+version = "0.20.1-dev"
 description = "Lightweight, self-hosted sent email log aggregator with search UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -69,7 +69,17 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+# S608 (SQL built by string interpolation) and RUF100 (unused noqa) are
+# selected as a pair, deliberately. The codebase carries ~20 `# noqa: S608`
+# comments marking reviewed f-string SQL — every one interpolates a
+# module-level column constant or a placeholder string, never user input.
+# Without S608 enabled those comments suppressed nothing, so they read as
+# enforcement while being decorative, and `ruff format` had already silently
+# moved one onto the wrong line without anything noticing. Enabling S608
+# makes them real: new f-string SQL now has to be acknowledged explicitly.
+# RUF100 is the other half — it fails the build if a noqa ever stops
+# matching a real diagnostic, so they cannot rot back into decoration.
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "S608", "RUF100"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]

@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **The `# noqa: S608` comments marking reviewed f-string SQL suppressed nothing — they were decoration that read as enforcement.** `S608` (flake8-bandit's SQL-injection check) was never in `[tool.ruff.lint] select`, so all 20 of them were inert, and `RUF100` (unused-noqa) was not enabled either, so nothing would ever say so. The consequence had already happened silently: `ruff format` moved one of them off its diagnostic line in `seesee/mcp_server.py` while collapsing a call, and no check noticed. `S608` and `RUF100` are now selected as a pair — the first makes the suppressions real (new f-string SQL has to be acknowledged deliberately), the second fails the build if a `noqa` ever stops matching a real diagnostic, so they cannot rot back into decoration. Enabling `S608` flagged exactly one site, the misplaced comment, which is fixed; the other 19 were already correct. Reviewed all 20 while confirming this: every one interpolates a module-level column constant or a generated `?` placeholder string, never user input (v0.20.1-dev)
 
 ---
 

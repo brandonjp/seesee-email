@@ -250,8 +250,8 @@ async def get_app(app_id: str) -> str:
     """One app record plus its key METADATA (never hashes or plaintext)."""
     db = await get_db()
     cursor = await db.execute(
-        f"SELECT {_APP_COLUMNS} FROM apps WHERE id = ?",
-        (app_id,),  # noqa: S608
+        f"SELECT {_APP_COLUMNS} FROM apps WHERE id = ?",  # noqa: S608
+        (app_id,),
     )
     row = await cursor.fetchone()
     if row is None:

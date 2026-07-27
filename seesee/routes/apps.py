@@ -5,10 +5,10 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from seesee import keys
+from seesee.app_service import create_app_record
 from seesee.auth import (
     API_KEY_PREFIX,
     generate_api_key,
-    generate_slug,
     hash_secret,
 )
 from seesee.database import get_db
@@ -25,7 +25,7 @@ from seesee.models import (
     KeyMetadata,
     KeyRotateResponse,
 )
-from seesee.timezone import iso_in_days, utc_now, utc_now_iso
+from seesee.timezone import iso_in_days, utc_now_iso
 
 router = APIRouter(prefix="/api/v1", tags=["apps"])
 
@@ -40,90 +40,14 @@ async def create_app(
     principal: Principal = Depends(require_scope("apps:write")),  # noqa: B008
 ) -> AppCreateResponse:
     """Register a new application. Returns API key and SMTP credentials (shown once)."""
-    if request.body_storage_mode not in VALID_BODY_STORAGE_MODES:
+    try:
+        record = await create_app_record(**request.model_dump(), created_by=principal.key_id)
+    except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"body_storage_mode must be one of: {', '.join(sorted(VALID_BODY_STORAGE_MODES))}",
-        )
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
-    db = await get_db()
-
-    # Generate slug with collision handling
-    base_slug = generate_slug(request.name)
-    slug = base_slug
-    suffix = 2
-    while True:
-        cursor = await db.execute("SELECT 1 FROM apps WHERE slug = ?", (slug,))
-        if await cursor.fetchone() is None:
-            break
-        slug = f"{base_slug}-{suffix}"
-        suffix += 1
-
-    # Generate credentials
-    app_id = str(uuid.uuid4())
-    api_key = generate_api_key()
-    key_prefix = api_key[len(API_KEY_PREFIX) : len(API_KEY_PREFIX) + 8]
-    api_key_hash = hash_secret(api_key)
-
-    smtp_username = slug
-
-    now = utc_now()
-    now_iso = utc_now_iso()
-
-    await db.execute(
-        """INSERT INTO apps (id, name, slug, api_key, key_prefix, smtp_username, smtp_password,
-                             body_storage_mode, retention_max_count, retention_max_age_days,
-                             retention_degrade_to_text_days, retention_degrade_to_preview_days,
-                             created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            app_id,
-            request.name,
-            slug,
-            api_key_hash,
-            key_prefix,
-            smtp_username,
-            api_key_hash,
-            request.body_storage_mode,
-            request.retention_max_count,
-            request.retention_max_age_days,
-            request.retention_degrade_to_text_days,
-            request.retention_degrade_to_preview_days,
-            now_iso,
-        ),
-    )
-
-    await db.execute(
-        "INSERT INTO api_keys (id, key_hash, key_prefix, label, app_id, scopes, "
-        "created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            str(uuid.uuid4()),
-            api_key_hash,
-            key_prefix,
-            "default",
-            app_id,
-            '["emails:read","emails:write"]',
-            principal.key_id,
-            now_iso,
-        ),
-    )
-
-    await db.commit()
-
-    return AppCreateResponse(
-        id=app_id,
-        name=request.name,
-        slug=slug,
-        body_storage_mode=request.body_storage_mode,
-        retention_max_count=request.retention_max_count,
-        retention_max_age_days=request.retention_max_age_days,
-        retention_degrade_to_text_days=request.retention_degrade_to_text_days,
-        retention_degrade_to_preview_days=request.retention_degrade_to_preview_days,
-        created_at=now,
-        last_activity_at=None,
-        api_key=api_key,
-        smtp_username=smtp_username,
-    )
+    return AppCreateResponse(**record)
 
 
 @router.get(

@@ -1,9 +1,15 @@
 # Next Steps — SeeSee
 
-**Version:** 0.20.3-dev
+**Version:** 0.20.0
 **Updated:** 2026-07-27
 
 ## Just Completed
+
+- **🎉 0.20.0 released — the project's first tagged version** (2026-07-27). `CHANGELOG.md`'s `[Unreleased]` block, which had accumulated every batch since `0.8.0-dev` with repeated `### Added`/`### Fixed`/`### Removed` headings and a stray `### Previously` group, was consolidated into one Added/Changed/Fixed/Removed/Security set and cut into `## [0.20.0] — 2026-07-27`. Verified item-by-item that nothing was lost: the only deletions were the fourteen `Version bump: X → Y` lines (collapsed into a single line) and three stale `N total tests passing` counts. `pyproject.toml` and `seesee/__init__.py` set to `0.20.0`; tagged `v0.20.0`. The build workflow already triggers on `tags: ['v*']` and carries `type=semver` metadata patterns, so the tag publishes `ghcr.io/brandonjp/seesee-email:0.20.0` and `:0.20` alongside `latest`.
+
+- **Review of the two post-merge commits** (2026-07-27) — both verified sound; 423 tests, `ruff check` and `ruff format --check` clean at `ruff 0.16.0`. Details:
+  - `769d18c` (Secure cookies): coverage is complete — both `set_cookie` sites and all four `delete_cookie` sites carry the flag, and all three `_pop_flash` readers delete the cookie. The 60-second `_FLASH_MAX_AGE` bounds the plaintext-key exposure window. One gap logged under Known Issues (the `SEESEE_BASE_URL` default makes the fix a silent no-op if unset).
+  - `07463bb` (ruff pin): the pin genuinely governs CI — `build.yml` runs `pip install -e ".[dev]"` and then bare `ruff` commands, so the dev extra is the resolved version. No dependabot or pre-commit config exists to silently un-pin it. All six markdown diffs are pure line-joining inside fenced code blocks; no prose or content was lost.
 
 - **`ruff` pinned to `==0.16.0`** (v0.20.3-dev) — CI installed an unpinned `ruff>=0.6.0`, resolved to 0.16.0, which started formatting Python code blocks inside Markdown. `ruff format --check .` failed on six untouched docs files and, because the Docker `build` job declares `needs: test`, the image publish was skipped. Second time an unpinned formatter has blocked the publish, so the version is now pinned rather than floored; bump it deliberately and reformat in the same commit. Only Markdown code blocks were reformatted — no Python source changed.
 
@@ -79,23 +85,25 @@
 
 ## Highest Priority Next Task
 
-### Cut the 0.20.0 release
-
-All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), the work has passed a full code review, and **`feature/management-keys-mcp` is merged to `main`** (merge commit `7f092f8`, 2026-07-27). `main` currently sits at `0.20.3-dev` with 423 tests passing.
-
-What remains is the deliberate, manual release cut — explicitly kept out of any loop:
-
-1. Do the one-time CHANGELOG `[Unreleased]` consolidation (see Known Issues) — collapse the repeated `### Added`/`### Fixed`/`### Removed` batches and the stray `### Previously` group into a single Added/Changed/Fixed/Removed set.
-2. Cut `[Unreleased]` into a `## [0.20.0]` section, set `pyproject.toml` + `seesee/__init__.py` to `0.20.0` (drop the `-dev` suffix), tag `v0.20.0`, and let CI publish the image.
-3. Do the work on a branch, not on `main` — a global pre-commit hook blocks edits to files in a repo sitting on `main`.
-
-Skipped deliberately: the pre-0.20.0 upgrade smoke test against a real database. There are no existing installs to migrate (single-user, redeployable from scratch), and `tests/test_migration_v4.py` now covers the v4 backfill including proof that a pre-upgrade key still authenticates over both REST and SMTP.
-
-Design spec (source of truth for the shipped behavior): `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md`.
-
 ### CSV/JSON Search Export
 
-Add export buttons to the email search page that download the current filtered results as CSV or JSON files. (Next feature after the 0.20.0 cut.)
+Add export buttons to the email search page that download the current filtered results as CSV or JSON files.
+
+Worth knowing before starting: `seesee/routes/export.py` already implements CSV and JSON serialization for the per-recipient GDPR export (`GET /api/v1/export`), including the `Content-Disposition` attachment header and the `format=csv` / `Accept: text/csv` negotiation. This task is mostly about reusing that machinery against the `/emails` search filters (`q`, `app_id`, `status`, `provider`, `date_from`, `date_to`) rather than writing new serializers. Route the search query through `seesee/search.py` like every other FTS5 call site.
+
+### Release verification (do this first, once CI finishes)
+
+The `v0.20.0` tag was pushed but its CI run has not been observed. Confirm the `build` job went green and that `ghcr.io/brandonjp/seesee-email:0.20.0` and `:0.20` actually exist in the registry — the whole point of the tag is the semver-tagged image, and this project has a history of the publish being skipped by a red `test` job.
+
+### Follow-up from the 0.20.0 release review
+
+- **Decide whether `cookies_are_secure()` should warn when it silently does nothing.** See the first Known Issue below. Small, self-contained, and the natural companion to the fix that just shipped.
+
+### Deferred
+
+Design spec for the shipped 0.20.0 behavior (source of truth): `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md`.
+
+Deliberately skipped at the 0.20.0 cut: the pre-upgrade smoke test against a real database. There are no existing installs to migrate (single-user, redeployable from scratch), and `tests/test_migration_v4.py` covers the v4 backfill including proof that a pre-upgrade key still authenticates over both REST and SMTP.
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
@@ -108,14 +116,18 @@ Add export buttons to the email search page that download the current filtered r
 
 ## Known Issues
 
+- **`Secure` cookies silently do nothing if `SEESEE_BASE_URL` is left unset.** (Found reviewing `769d18c`, the fix that added them.) `cookies_are_secure()` (`seesee/routes/ui.py`) derives the flag from `settings.base_url`, whose default — in `seesee/config.py` and in `.env.example` — is `http://localhost:8080`. So an operator who deploys behind HTTPS but never sets `SEESEE_BASE_URL` gets the insecure branch, with no warning and no visible symptom: the app works fine, and the session and plaintext-key-carrying flash cookies just keep travelling in the clear. The deployment guides (Coolify, Docker) do tell you to set it, but nothing enforces or checks it. The derivation itself is the right call — the alternative, hard-coding `Secure`, locks HTTP-only installs out silently. What's missing is a signal. Options: (a) log a startup `WARNING` when `base_url` is `http://` and the host is not `localhost`/`127.0.0.1`; (b) OR the check with the live request scheme (`request.url.scheme == "https"`, or `X-Forwarded-Proto` behind the reverse proxy), which needs the `Request` at cookie-set time — available in all the relevant handlers; (c) surface the effective cookie posture on the Settings page. (a) is the cheapest real improvement.
+
+- **All 20 `# noqa: S608` comments in the codebase are inert.** (Noticed reviewing `07463bb`.) `[tool.ruff.lint] select` in `pyproject.toml` is `["E", "F", "I", "N", "W", "UP", "B", "SIM"]` — no `S` (flake8-bandit), so `S608` is never raised and the suppressions are documentation, not suppression. Harmless today, but two things follow. First, if `S` is ever added to `select`, at least one noqa is on the wrong line: `seesee/mcp_server.py:254` puts it on the `(app_id,)` argument rather than on the f-string at line 253 — and `ruff format` is what moved it there, which is exactly how these drift. Second, `RUF100` (unused-noqa) is not enabled either, so nothing will ever tell you they're dead. If SQL-injection linting is actually wanted, enable `S` and fix the placements in the same commit; if not, they're fine as comments but shouldn't be trusted as enforcement.
+
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
 - **Legacy key columns must be deleted in 0.21.0.** `_resolve_legacy_fallback` in `seesee/keys.py`, the matching fallback branch at the end of `resolve_smtp_password`, and the legacy `apps.api_key` / `apps.smtp_password` columns exist only to survive a 0.19.x↔0.20.0 deploy overlap. They are commented "delete in 0.21.0" in three places. Once 0.20.0 has been running long enough that no 0.19.x container can come back, remove all three plus the `revoke_key` tombstone write, and drop the columns in a schema v5 migration. Until then a revoked *primary* app key stays revoked only because `revoke_key` tombstones those columns — do not remove that write in isolation.
 - **App-detail key minting has no expiry control.** `create_app_key_ui` (`seesee/routes/ui.py`) always passes `expires_at=None`, so keys minted from an app's page never expire, while the Settings page defaults management keys to 90 days. Defensible (app keys are long-lived deploy credentials) but inconsistent and undocumented in the UI. Either add the same expiry `<select>` to the app-detail form or add a line of helper text saying app keys do not expire.
 - **`last_used_at` costs a write transaction on every authenticated request.** `keys._record_use` runs an `UPDATE … WHERE last_used_at < cutoff` and commits on every successful key resolution. The 60-second debounce is in the `WHERE` clause, so the *row* is written at most once a minute, but the transaction and commit happen every request — a SQLite writer-lock acquisition per API call. Fine at current volume; revisit if ingest throughput ever becomes a concern (in-process debounce cache, or skip the commit when `rowcount == 0`).
 - **Plaintext keys are interpolated into a JS string literal in templates.** `copyToClipboard('{{ flash.new_app_key }}', this)` in `app_detail.html` and `settings.html` (and the older `created_credentials` block) put a value inside a JS string inside an HTML attribute, where Jinja's HTML autoescaping does not protect the JS context. Safe today because the interpolated value is always a generated URL-safe base64 key (`[A-Za-z0-9_-]`), but the pattern breaks the moment anything user-supplied — a key *label*, say — is copied the same way. Prefer `|tojson` (already used for the ENV-vars block) if this pattern spreads.
-- **CHANGELOG `[Unreleased]` needs a one-time consolidation.** The `[Unreleased]` section has accumulated several separately-prepended batches, leaving repeated `### Added`/`### Fixed`/`### Removed` subheadings and a stray `### Previously` group (all pre-dating the recent work). Before the next tagged release, consolidate `[Unreleased]` into a single Added/Changed/Fixed/Removed set and cut it into a versioned section. Low risk but should be a deliberate, careful edit — not folded into an unrelated change.
-
 ## Resolved (previously listed here)
+
+- ~~**CHANGELOG `[Unreleased]` needs a one-time consolidation.**~~ Done at the 0.20.0 cut (2026-07-27): the accumulated batches, repeated subheadings, and the stray `### Previously` group were merged into one Added/Changed/Fixed/Removed/Security set under `## [0.20.0]`, and `[Unreleased]` is now empty. Keep it that way — append to the existing heading for a bump rather than prepending a new block.
 
 - ~~**Session and flash cookies not marked `Secure`.**~~ Fixed in v0.20.2-dev: `cookies_are_secure()` (`seesee/routes/ui.py`) derives the flag from `SEESEE_BASE_URL`, so an `https://` deployment gets secure cookies automatically while HTTP-only installs keep working. Covered by tests in `tests/test_ui.py`, including one asserting the plaintext-key-carrying flash cookie is `Secure` over HTTPS.
 - ~~**No CSRF protection on UI form POSTs.**~~ Shipped in the 0.20.0 cycle: signed CSRF tokens bound to the session user on every session-authenticated POST handler (`seesee/csrf.py`), with `X-CSRF-Token` for `fetch()` callers. The 0.20.0 review closed the last gap (`POST /logout`).
@@ -123,7 +135,7 @@ Add export buttons to the email search page that download the current filtered r
 
 ## Current State
 
-- 423 tests passing (0 failures); `ruff check` and `ruff format --check` clean
+- 423 tests passing (0 failures); `ruff check` and `ruff format --check` clean (ruff pinned at 0.16.0)
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, complete copy-all-as-ENV-vars on app credentials, and the 0.20.0 management-keys + MCP work
 - Full REST API, SMTP ingest, Web UI, retention, docs site, MCP server at `/mcp`
 - Scoped management API keys (`ss_mgmt_`) with expiry and revocation; multiple keys per app for zero-downtime rotation; CLI bootstrap via `python -m seesee.keys`

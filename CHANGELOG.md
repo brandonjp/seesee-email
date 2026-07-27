@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+---
+
+## [0.20.0] — 2026-07-27
+
+First tagged release. Everything below accumulated under `[Unreleased]` across the
+`0.8.0-dev`–`0.20.3-dev` development series and ships here as one version.
+
 ### Added
-- MCP server at /mcp (streamable HTTP): nine provisioning + email-debugging tools, scope-filtered tool list, management-key auth, SEESEE_MCP_ENABLED toggle
-- Management API keys: scoped (emails:read/apps:read/apps:write/apps:delete), labeled, expiring, individually revocable; key CRUD REST endpoints; Keys UI on Settings and app detail; safe two-step rotation
-- Unified api_keys table (schema v4): multi-key-per-app, management keys (ss_mgmt_), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (python -m seesee.keys)
-- CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; fetch() callers send X-CSRF-Token)
+- MCP server at `/mcp` (streamable HTTP): nine provisioning + email-debugging tools, scope-filtered tool list, management-key auth, `SEESEE_MCP_ENABLED` toggle
+- Management API keys: scoped (`emails:read`/`apps:read`/`apps:write`/`apps:delete`), labeled, expiring, individually revocable; key CRUD REST endpoints; Keys UI on Settings and app detail; safe two-step rotation
+- Unified `api_keys` table (schema v4): multi-key-per-app, management keys (`ss_mgmt_`), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (`python -m seesee.keys`)
+- CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; `fetch()` callers send `X-CSRF-Token`)
 - `GET /api/v1/emails` now also accepts an app-scoped Bearer API key (in addition to admin auth), hard-scoped to that app's own emails — any `app_id` filter passed by an app key is overridden by its own app ID, so an app can never read another app's emails. Fixes client apps (e.g. SplitGive) that call this endpoint with their `MAIL_SEESEE_API_KEY` to show recent emails in their own dashboards and got 401s because the route was admin-only. New `require_admin_or_app` dependency in `seesee/dependencies.py`; all other email routes remain admin-only
 - `GET /api/v1/emails/{id}/preview` now also accepts the admin session cookie (in addition to HTTP Basic), fixing the email-detail page's preview iframe: the iframe request carried the session cookie but no Basic header, so `HTTPBasic` 401'd with a `WWW-Authenticate: Basic` challenge and the browser popped a native login prompt instead of rendering the preview. New `require_admin_or_session` dependency checks the session cookie first, then falls back to Basic, without triggering the browser's native auth prompt for cookie-bearing requests
 - Documentation site (seesee.email) now shows the current SeeSee version in the footer on every page, read at build time from `pyproject.toml` via a custom Starlight `Footer` override — no manual updates needed
@@ -20,98 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image build timestamp baked into the container at build time (CI passes `--build-arg BUILD_TIME`, exposed as `SEESEE_BUILD_TIME` → `settings.build_time`) and rendered in the display timezone; running from source shows "local dev" instead
 - New `app_version` and `build_display` Jinja2 globals available to all templates
 - Edit an app's storage mode and retention overrides after creation, via a new "Settings" card on the app detail page
-
-### Fixed
-- **CI's formatting gate broke the build again, and `ruff` is now pinned instead of floored.** The dev extra specified `ruff>=0.6.0`, so CI resolved to whatever was current — 0.16.0, which began formatting Python code blocks *inside Markdown files*. `ruff format --check .` therefore failed on six untouched docs files, and because the Docker `build` job declares `needs: test`, the image publish was skipped: a red build for a reason unrelated to any code change. Pinned to `ruff==0.16.0` and reformatted (Markdown code blocks only — no Python source changed), so local and CI agree byte-for-byte. This is the second time an unpinned formatter has blocked the publish; the pin is the durable fix, and bumping it is now a deliberate act with reformatting in the same commit (v0.20.3-dev)
-- **Session and flash cookies are now marked `Secure` on HTTPS deployments.** Both previously set `HttpOnly` + `SameSite=Lax` but not `Secure`, so they were transmitted in the clear over plain HTTP. This mattered most for the flash cookie, which briefly carries a **plaintext API key** on the redirect after minting one. The flag is derived from `SEESEE_BASE_URL` rather than a new setting — the two can never sensibly disagree, and hard-coding `Secure` would silently lock the admin out of any HTTP-only install (localhost, LAN) because the browser drops the cookie. No configuration change needed: an `https://` base URL gets secure cookies automatically (v0.20.2-dev)
-- **Search crashed with a 500 on ordinary input — including any email address.** SQLite FTS5 treats the `MATCH` operand as a query *language*, not a literal string, so `user@example.com`, a stray `"`, or a lone `(` raised `sqlite3.OperationalError` straight out of the route. This hit `GET /api/v1/emails`, the `DELETE /api/v1/emails` bulk delete, the `/emails` UI search box, the UI bulk delete, and the new MCP `search_emails` tool. New `seesee/search.py` normalizes every query first: well-formed input (including advanced syntax like `subject:foo`, `foo AND bar`, `reset*`, `"exact phrase"`) is still passed to FTS5 verbatim, malformed input degrades to a quoted-term search, and input with no searchable term at all (`((((`, `***`) matches nothing rather than silently dropping the filter and returning every email. Pre-existing bug, project-wide; found during the 0.20.0 review (v0.20.1-dev)
-- Minting an app key from the app-detail UI for a nonexistent app returned a 500 (`sqlite3.IntegrityError` from the foreign key) instead of a 404 — the REST route already checked, the UI handler did not (v0.20.1-dev)
-- The MCP `create_app_key` tool surfaced a raw `FOREIGN KEY constraint failed` to the calling agent when given an unknown `app_id`; it now raises an actionable `No app with id …` error, matching the REST route (v0.20.1-dev)
-- The MCP auth gate rejected a lowercase `bearer` scheme; per RFC 7235 the auth scheme is case-insensitive (v0.20.1-dev)
-- The legacy-key fallback added for the 0.19.x→0.20.0 transition could not rescue the case its own docstring described. `_resolve_legacy_fallback` selected candidate apps *by* `key_prefix`, so an app row with a NULL prefix — exactly the row the v4 backfill records as `''`, and which `resolve_key`'s indexed lookup therefore cannot find — was unreachable, and that app's key would have stopped authenticating after the upgrade. It now also matches NULL/empty prefixes, and heals both the `api_keys` and `apps` rows to the real prefix on first use so the slow path runs at most once per app. Latent rather than live (every insert path has populated `apps.key_prefix` since Phase 1.0), but the transition safety net now covers what it claims to. Also added the first tests asserting a pre-0.20.0 key still authenticates over both REST and SMTP after the migration (v0.20.1-dev)
-- `POST /logout` did not verify the CSRF token its own form had been shipping since the CSRF work landed. It is now checked when a session is present, and skipped when there is none — a forged logout against an already-unauthenticated visitor achieves nothing, and 403-ing would strand a user whose session expired behind a logout button that no longer worked (v0.20.1-dev)
-- **CI (and therefore the Docker image publish) was blocked by a formatting failure.** `tests/test_email_detail.py` had been committed without running the formatter, so the `Format check` step (`ruff format --check .`) exited non-zero, failing the `test` job. Because the `build` job declares `needs: test`, the Docker image build/push was skipped entirely — a green-looking deploy that never rebuilt the image. Reformatted the file (a call that fits within the configured `line-length = 100` was collapsed to one line); `ruff format --check .` now passes clean (v0.19.16-dev)
-- **Runtime version was stale in the app UI.** `seesee/__init__.py` (`__version__`, which drives the FastAPI docs, the `/health` payload, and the web UI sidebar/footer) was left at `0.19.12-dev` while `pyproject.toml` had advanced to `0.19.14-dev` — so the running app reported a two-bump-old version. Resynced both to `0.19.15-dev` and added `tests/test_version_sync.py`, which asserts `seesee.__version__` equals the `pyproject.toml` version so this drift fails CI in the future (v0.19.15-dev)
-- **SMTP ingest was completely broken since inception — no email was ever accepted over SMTP.** The server replied `235 Authentication successful` to *any* credentials (valid or bogus) but never actually authenticated the session, so every subsequent `MAIL FROM` was rejected with `530 5.7.0 Authentication required`. Root cause: `SmtpAuthenticator.__call__` was declared `async def`, but aiosmtpd (1.4.6) invokes the authenticator synchronously without awaiting it — the un-awaited coroutine object fell into aiosmtpd's legacy "truthy result = success" branch, so the DB lookup and bcrypt check never ran and `session.authenticated`/`session.app` were never set. The authenticator is now a plain synchronous callable using stdlib `sqlite3`. Added wire-level integration tests (`tests/test_smtp_integration.py`) that drive a real aiosmtpd `Controller` with a real `smtplib` client through `AUTH` → `MAIL` → `RCPT` → `DATA` — the previous unit tests manually awaited the authenticator and therefore masked the bug (v0.19.13-dev)
-- OpenPanel analytics on the docs site now actually record page views. OpenPanel is self-hosted (`api.openpanel.bpf.fyi`, like Umami and Swetrix), but the init call omitted `apiUrl`, so `op1.js` posted events to OpenPanel cloud (`api.openpanel.dev`), which returned `401 "Invalid client id"` (the client only exists on the self-hosted instance). Added `apiUrl: 'https://api.openpanel.bpf.fyi'` per shared-ai-docs Analytics Playbook §7; Umami and Swetrix were unaffected
-- Docs site favicon 404: Starlight auto-injects `<link rel="icon" href="/favicon.svg">`, but no `docs/public/favicon.svg` existed. Added one (the SeeSee "See" mark) so `/favicon.svg` resolves instead of returning 404
-- CI test failures under Starlette 1.x that blocked Docker image publishing since March — all `TemplateResponse` calls now use the modern `TemplateResponse(request, name, context)` signature; the old `(name, {"request": ...})` form was removed in Starlette 1.0 and crashed every UI page render with `TypeError: unhashable type: 'dict'` (v0.19.5-dev)
-- Retention overrides of `0` submitted via the settings UI are now stored as "system default" (NULL) — the retention engine already treated `0` and unset identically, but the read view displayed a literal `0`, implying it did something; legacy `0` values stored via the API also render as "System default" now
-- `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent
-- `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
-
-### Changed
-- CI: bumped the remaining Node 20 actions to fully clear the deprecation — `docker/setup-qemu-action` v3→v4, `docker/setup-buildx-action` v3→v4, `docker/login-action` v3→v4, `docker/metadata-action` v5→v6, `docker/build-push-action` v5→v7 (pinned `provenance: false` so the published multi-arch image stays a clean 2-arch manifest), `actions/upload-pages-artifact` v4→v5, and `actions/setup-python` v5→v6. No Node 20 deprecation warnings remain in either workflow
-- CI: the docs deploy workflow now also triggers on changes to its own workflow file and supports manual `workflow_dispatch` runs (useful for redeploying to pick up a version bump made outside `docs/`)
-- CI: bumped first-party GitHub Actions off the deprecated Node 20 runtime — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (and the docs build now uses Node 22), `actions/upload-pages-artifact` v3→v4, `actions/deploy-pages` v4→v5. Docker and `setup-python` actions left as-is (not affected)
-- Docs homepage hero button relabeled from the ambiguous "Get Started" to **"Read the Docs — Quick Start Guide"**, so it clearly reads as the way into the docs; the "View on GitHub" link is unchanged
-- Settings card helper text now spells out the override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins
-- Version bumps: 0.18.4-dev → 0.19.4-dev (edit-app-settings feature + review fixes)
-- Version bump: 0.18.2-dev → 0.18.4-dev
-- "Copy all as ENV vars" now copies the complete block: SMTP_PASSWORD plus app identity vars (APP_ID, APP_URL, LOG_URL), grouped under section comments — both the post-creation alert and the SMTP Settings tab produce the identical layout
-- ENV var block is built server-side from a single source, so SMTP host/port/encryption can no longer drift between the two copy locations
-- Unified API key and SMTP password — the API key is now the only credential (used for both API and SMTP auth)
-- "Copy all as ENV vars" now includes SMTP_HOST, SMTP_PORT, and SMTP_ENCRYPTION
-- SMTP authenticator validates against the API key directly
-- Key rotation updates SMTP credentials automatically
-
-### Fixed
-- Consolidated the `VALID_BODY_STORAGE_MODES` constant into `seesee/helpers.py` — the app-create and app-settings UI handlers now validate against a single source instead of three duplicated inline copies that could silently drift apart
-- App detail edit forms (Settings, rename) no longer briefly flash open before Alpine.js initializes — added the missing `[x-cloak]` CSS rule to `base.html`
-- `MAIL_SEESEE_SMTP_ENCRYPTION` in the copied ENV block now emits `null` (no encryption) instead of `STARTTLS` — the SMTP ingest server (aiosmtpd) does not speak TLS; TLS is terminated by a reverse proxy, so a copied `STARTTLS` value would have caused client connection failures
-- Version numbers were out of sync across `pyproject.toml` (0.18.1-dev), `seesee/__init__.py` (0.18.2-dev), and docs — all realigned to 0.18.4-dev
-
-### Added
-- Inline app name editing on app detail page (pencil icon next to the name)
-- POST /apps/{app_id}/rename UI endpoint for renaming apps
-
-### Removed
-- Separate SMTP password — replaced by API key
-- `generate_smtp_password()` utility
-- `smtp_password` field from `AppCreateResponse` API model
-
-### Previously
-- Version bump: 0.18.0-dev → 0.18.1-dev
-- Replaced "SS" favicon text with "See" to avoid unintended abbreviation associations
-
-### Added
-- Screenshots in documentation: login, dashboard onboarding, settings, app creation modal, keyboard shortcuts
-- Screenshot placeholders for missing images (email list with data, email detail, hero screenshot)
-- GitHub issue templates (bug report, feature request) with structured YAML forms
-- GitHub pull request template with testing checklist
-- SECURITY.md with vulnerability disclosure process
-- CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
-- Bulk delete endpoint (DELETE /api/v1/emails) documented in API reference
-- Delete app endpoint (DELETE /api/v1/apps/{app_id}) documented in API reference
-- Per-app degradation fields (retention_degrade_to_text_days, retention_degrade_to_preview_days) documented for create/update app endpoints
-- Provider Webhooks, GDPR Ready, 21 Themes, and Keyboard Shortcuts feature cards on landing page
-- Improved docs site CSS: screenshot styling, focus states, smooth scrolling, responsive images
-
-### Fixed
-- Health endpoint response in docs showed `"healthy"` instead of actual `"ok"` status value
-- Health endpoint version in docs showed `"0.6.0-dev"` instead of current version
-- Contributing page missing routes (export.py, webhooks.py, admin.py) from project structure
-- Privacy page contradictory "No CDN" claim corrected (Tailwind/Alpine load from CDN)
-
-### Added
-- "Copy all as ENV vars" button on app credentials alert (post-creation) and SMTP Settings tab in app detail — copies `MAIL_SEESEE_API_KEY`, `MAIL_SEESEE_SMTP_PASSWORD`, `MAIL_SEESEE_SMTP_USERNAME`, and `MAIL_SEESEE_URL` as a ready-to-paste `.env` block
-
-- Expanded theme catalog — 11 new themes added (Phase 4), bringing total to 21:
+- Inline app name editing on app detail page (pencil icon next to the name), backed by a new `POST /apps/{app_id}/rename` UI endpoint
+- "Copy all as ENV vars" button on the app credentials alert (post-creation) and the SMTP Settings tab in app detail — copies the complete `.env` block: `MAIL_SEESEE_API_KEY`, the full SMTP connection (host/port/username/password/encryption), base URL, and app identity vars (`MAIL_SEESEE_APP_ID`, `MAIL_SEESEE_APP_URL`, `MAIL_SEESEE_LOG_URL`), grouped under section comments
+- Expanded theme catalog — 11 new themes added (Phase 4), bringing the total to 21:
   - Developer: Monokai, Tomorrow Night, Rosé Pine, Catppuccin Mocha, Obsidian
   - Light: Paper, Aqua Classic, Blueprint (with subtle CSS grid background overlay)
   - Retro: Amber Terminal, VHS (with scanline texture), Mac OS 9 (with beveled borders), Rad (with neon glow effects)
   - Special CSS overrides scoped to `[data-theme]` for Blueprint (grid), VHS (scanlines), OS 9 (beveled borders), Rad (neon glow)
   - Theme picker reorganized into logical groups: Accent (4), Developer (8), Light (4), Retro (6)
   - All themes WCAG AA compliant for body text contrast
-
-### Fixed
-- Theme picker not applying selected theme — `$root.getAttribute('data-theme')` returned null (Alpine's `$root` scopes to current component, not `<html>`); replaced with `localStorage` read and `$dispatch` event for cross-component communication
-- Accent-background buttons (Add App, Search, Login, etc.) invisible on dark-accent themes (Win95, Obsidian, Indigo, Rose, VHS, Rad, etc.) — added `--color-accent-contrast` CSS variable per theme, replaced hardcoded `text-gray-900` with `text-accent-contrast` on all solid `bg-accent` elements
-
-### Changed
-- Version bump: 0.17.0-dev → 0.18.0-dev
-
-### Added
 - Theme selector UI on settings page with 10 color themes (Phase 3.0):
   - Theme picker grid with two-tone color swatches, active checkmark indicator, and instant live preview
   - 4 accent themes: Mint (default), Indigo, Rose, Amber
@@ -122,11 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Win95 theme includes scoped overrides: `border-radius: 0 !important` and outset borders on cards/buttons
   - Hooks into existing Alpine.js theme state and `localStorage('seesee-theme')` persistence
   - Responsive grid (3 columns mobile, 5 columns desktop) with 44px+ touch targets
-
-### Changed
-- Version bump: 0.16.0-dev → 0.17.0-dev
-
-### Added
 - Admin UX audit fixes (12 issues across 7 files):
   - Clickable sort column headers on email list — Subject and Date columns are links that toggle sort direction, with chevron indicators on the active sort column; sort state preserved across pagination
   - Copy-to-clipboard buttons on email metadata tab (Provider, Provider Message ID)
@@ -138,35 +59,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Required field asterisk (`*`) on App Name field in creation modal
   - `title` tooltips on truncated table cells (Subject, From, To in emails; Name, Slug, Storage in apps)
   - Search input changed to `type="search"` for native clear button and search keyboard action
-
-### Fixed
-- iOS Safari auto-zoom on form focus — CSS rule enforces 16px minimum font-size on all input/select/textarea elements via `@media screen and (-webkit-min-device-pixel-ratio: 0)`
-- Mobile touch targets below 44px — CSS `@media (pointer: coarse)` rule sets `min-height: 44px` on buttons and interactive elements; sidebar hamburger and close buttons increased from `p-1` to `p-2.5`
-
-### Changed
-- Version bump: 0.15.0-dev → 0.16.0-dev
-
-### Added
 - Mobile UX, theme system foundation, and UI polish (Phase 2.1):
-  - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute on `<html>` — current mint palette becomes the default theme; future themes only need a new `[data-theme="name"]` CSS block
+  - CSS custom properties theme system (`--color-accent`, `--color-paper`) with `data-theme` attribute on `<html>` — the mint palette becomes the default theme; future themes only need a new `[data-theme="name"]` CSS block
   - Tailwind config now uses CSS variable-based colors (`accent`, `paper`) instead of hardcoded hex values
   - Renamed all `mint` Tailwind classes to `accent` across all templates for theme-agnostic styling
-  - Theme state stored in `localStorage('seesee-theme')` via Alpine.js, ready for future settings page selector
+  - Theme state stored in `localStorage('seesee-theme')` via Alpine.js
   - Active/tap feedback on all interactive elements (`active:` Tailwind classes alongside every `hover:` class) for touch device responsiveness
   - CSS active states for table rows, buttons, and links (scale transform, background color change)
   - Enlarged touch targets on icon-only buttons (`p-2 -m-2` padding pattern) for 44px minimum tap area
   - Copy-to-clipboard buttons on email addresses (From, To, CC, BCC, Reply-To) in email detail view
-  - Copy-to-clipboard buttons on all code snippets (integration tabs in app detail, onboarding steps in dashboard)
-  - `copyCodeBlock()` JS helper for code block copy buttons
+  - Copy-to-clipboard buttons on all code snippets (integration tabs in app detail, onboarding steps in dashboard), via a new `copyCodeBlock()` JS helper
   - Code copy buttons: always visible on touch devices, hover-to-reveal on pointer devices via `@media (hover: hover)`
   - Active filter count badge on filter toggle button in emails list (shows count when filters active but panel collapsed)
   - Responsive metadata labels in email detail (`w-24 sm:w-40` instead of fixed `w-40`)
   - `aria-label` attributes on all icon-only buttons (sidebar close, hamburger menu, toast dismiss, modal close, copy, rotate key, delete)
-
-### Changed
-- Version bump: 0.14.0-dev → 0.15.0-dev
-
-### Added
+- Click-to-copy buttons on credential values — small clipboard icon next to API Key, SMTP Username, SMTP Password, and rotated key values; copies to clipboard on click with checkmark feedback and toast notification
 - Data export per recipient — GDPR right of access (Phase 3.0):
   - `GET /api/v1/export?recipient=user@example.com` — export all emails associated with a recipient address (admin auth required)
   - Searches across `to_addresses`, `cc_addresses`, and `bcc_addresses` fields (case-insensitive)
@@ -175,21 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CSV format via `format=csv` query parameter or `Accept: text/csv` header, with `Content-Disposition` attachment header
   - Input validation: requires valid email address (must contain `@`)
   - `ExportEmail` and `ExportResponse` Pydantic models
-  - 15 new tests covering: export by to/cc/bcc, cross-field matching, no results, auth required, missing/invalid recipient, case-insensitive matching, body content, metadata fields, CSV format (param and Accept header), CSV empty results, exported_at timestamp
-  - 272 total tests passing
-
-### Changed
-- Version bump: 0.13.1-dev → 0.14.0-dev
-
-### Fixed
-- Added `SEESEE_DISPLAY_TIMEZONE` to docs site configuration reference (was missing from the UI table and example `.env` block)
-- Added `SEESEE_DISPLAY_TIMEZONE` to `docker-compose.yml` environment section
-- Marked search-and-delete as completed in dev.md Phase 3.0 checklist
-
-### Changed
-- Version bump: 0.13.0-dev → 0.13.1-dev
-
-### Added
+  - 15 new tests covering export by to/cc/bcc, cross-field matching, no results, auth required, missing/invalid recipient, case-insensitive matching, body content, metadata fields, CSV format (param and Accept header), CSV empty results, exported_at timestamp
 - Search-and-delete / GDPR right to erasure (Phase 3.0):
   - `DELETE /api/v1/emails` — bulk delete emails matching search criteria (admin auth required)
   - Accepts same filter parameters as `GET /api/v1/emails`: `q`, `app_id`, `status`, `provider`, `date_from`, `date_to`
@@ -199,24 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "Delete matching" button on emails search page when filters are active, with confirmation modal showing count
   - Toast notification on completion with deleted count
   - 11 new tests covering bulk delete by app, status, provider, FTS query, date range, combined filters, empty results, no-filter rejection, auth requirement, and FTS consistency after delete
-  - 257 total tests passing
-
-### Changed
-- Version bump: 0.12.0-dev → 0.13.0-dev
-
-### Added
 - Timezone handling architecture — consistent UTC storage and configurable admin display:
   - `SEESEE_DISPLAY_TIMEZONE` env var — IANA timezone string (default: `UTC`) controlling how dates are shown in admin views; does not affect storage or API responses
   - `seesee/timezone.py` helper module — `utc_now_iso()`, `utc_iso()`, `utc_cutoff_iso()`, `format_for_display()`, `get_display_tz()`, `display_day_start_utc()` for consistent timestamp handling
   - `display_dt` Jinja2 filter — server-rendered timestamp fallback in admin templates using the configured display timezone
   - Client-side timezone display — JavaScript shows relative times with tooltips showing both local and UTC times via `Intl.DateTimeFormat`
   - 37 new tests covering timezone helpers, DST transitions, non-hour offset timezones (Asia/Kolkata, Pacific/Chatham), format consistency, and display formatting
-
-### Fixed
-- Timestamp comparison bug — replaced all SQLite `datetime('now', ...)` calls with Python-computed UTC parameters; the format mismatch (SQLite's space separator vs Python's `T` separator) caused incorrect lexicographic comparisons in time-window queries (dashboard stats, retention cleanup)
-- Standardized all timestamp storage to `YYYY-MM-DDTHH:MM:SS` format (no microseconds, no offset suffix) across API ingest, SMTP ingest, app creation, and retention cleanup for consistent cross-query comparisons
-
-### Added
 - Graduated body degradation (Phase 3.0) — automatically degrade email body storage over time to save disk space:
   - `full` → `text_only`: strip HTML body after a configurable number of days, preserving text and preview
   - `text_only` → `preview`: strip text body after a configurable number of days, keeping only the preview (first 500 chars)
@@ -232,12 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `body_degraded_at` audit timestamp on emails — records when degradation occurred
   - Database schema migrations (v1 → v2 → v3) add per-app override columns and audit timestamp
   - 26 new tests covering degradation logic, thresholds, per-app overrides, FTS consistency, and body_size accuracy
-
-### Changed
-- Version bump: 0.11.0-dev → 0.12.0-dev
-
-### Added
-- Click-to-copy buttons on credential values — small clipboard icon next to API Key, SMTP Username, SMTP Password, and rotated key values; copies to clipboard on click with checkmark feedback and toast notification
 - Provider webhook receivers — automatically update email delivery status from provider callbacks:
   - `POST /api/v1/webhooks/resend` — receive Resend delivery status webhooks (sent, delivered, bounced, complained, delayed)
   - `POST /api/v1/webhooks/sendgrid` — receive SendGrid event webhooks (delivered, bounced, dropped, deferred, complained)
@@ -248,36 +123,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `WebhookResponse` and `WebhookEventResult` Pydantic response models
   - Database index on `provider_message_id` for efficient webhook event matching
   - 23 new tests covering signature verification, event parsing, status updates, unknown providers, invalid signatures, edge cases
-  - 183 total tests passing
-
-### Changed
-- Version bump: 0.10.0-dev → 0.11.0-dev
-
-### Added
 - Persistence diagnostics — startup logging and admin debug endpoint for diagnosing volume/data loss issues:
   - `GET /api/v1/admin/debug/persistence` — returns database path, size, app/email counts, volume mount status, container hostname, and uptime (admin auth)
   - Startup diagnostics logged on every boot: database state (new vs existing), app/email counts, mount info, with `WARNING` when database appears freshly created
   - `PersistenceDiagnostics` Pydantic response model
   - 2 new tests covering the debug endpoint (happy path + auth requirement)
-- Coolify deployment troubleshooting docs — detailed "Data lost after redeploy" section with debug endpoint usage, Storages verification steps, startup log examples, and common volume pitfalls
-
-### Changed
-- Removed `VOLUME ["/data"]` instruction from Dockerfile — it creates anonymous volumes that interfere with named volume mounting in orchestrators like Coolify, causing silent data loss on redeploy. Named volumes in docker-compose.yml are unaffected.
-- Updated Coolify deployment guide: persistent storage section now clearly states the requirement to verify Coolify Storages configuration, with explicit field values for adding a mount
-- Version bump: 0.9.0-dev → 0.10.0-dev
-
-### Added
 - App deletion — permanently remove an app and all its emails from both the REST API and admin UI:
   - `DELETE /api/v1/apps/{app_id}` — delete an app and all its emails (admin auth)
   - Delete button (trash icon) in Apps list Actions column with confirmation modal
   - "Delete App" button on app detail page alongside existing Rotate Key and Purge actions
   - Flash alert on Apps page confirming deletion with email count
   - 4 new tests covering app deletion (with emails, without emails, 404, auth required)
-
-### Removed
-- SMTP relay feature — SeeSee no longer forwards emails to upstream SMTP servers. The SMTP ingest remains as a capture-only feature, consistent with SeeSee's core principle of being a log viewer, not a mail server. Removed `aiosmtplib` dependency, all `SEESEE_SMTP_RELAY_*` configuration variables, and the `_relay_message()` function. SMTP ingest (capture-only) continues to work as before.
-
-### Added
 - Web UI Polish (Phase 1.1 completion + Phase 2.1):
   - App detail page (`GET /apps/{id}`) with email stats, status breakdown, integration snippets (REST, Python, Node.js, PHP, SMTP), rotate key and purge buttons
   - Settings page (`GET /settings`) displaying retention configuration and storage usage, with manual cleanup trigger
@@ -299,16 +155,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated REST API reference docs with new endpoints (batch, status, delete, purge, admin cleanup)
 - `seesee/routes/admin.py` — new admin router for cleanup and future admin-only endpoints
 - `BatchLogRequest`, `BatchLogError`, `StatusUpdateRequest`, `CleanupResponse` Pydantic models
+- Documentation and community files: screenshots (login, dashboard onboarding, settings, app creation modal, keyboard shortcuts) plus placeholders for the ones still missing; GitHub issue templates (bug report, feature request) with structured YAML forms; a pull request template with a testing checklist; `SECURITY.md` with a vulnerability disclosure process; and `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1)
+- Docs coverage for previously undocumented API surface: bulk delete (`DELETE /api/v1/emails`), delete app (`DELETE /api/v1/apps/{app_id}`), and the per-app degradation fields (`retention_degrade_to_text_days`, `retention_degrade_to_preview_days`) on create/update app
+- Coolify deployment troubleshooting docs — detailed "Data lost after redeploy" section with debug endpoint usage, Storages verification steps, startup log examples, and common volume pitfalls
+- Provider Webhooks, GDPR Ready, 21 Themes, and Keyboard Shortcuts feature cards on the landing page; improved docs site CSS (screenshot styling, focus states, smooth scrolling, responsive images)
 
 ### Changed
+- Unified API key and SMTP password — the API key is now the only credential (used for both API and SMTP auth). The SMTP authenticator validates against the API key directly, and key rotation updates SMTP credentials automatically
+- The ENV var block is built server-side from a single source, so SMTP host/port/encryption can no longer drift between the two copy locations
+- CI: bumped the remaining Node 20 actions to fully clear the deprecation — `docker/setup-qemu-action` v3→v4, `docker/setup-buildx-action` v3→v4, `docker/login-action` v3→v4, `docker/metadata-action` v5→v6, `docker/build-push-action` v5→v7 (pinned `provenance: false` so the published multi-arch image stays a clean 2-arch manifest), `actions/upload-pages-artifact` v4→v5, and `actions/setup-python` v5→v6. No Node 20 deprecation warnings remain in either workflow
+- CI: bumped first-party GitHub Actions off the deprecated Node 20 runtime — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (and the docs build now uses Node 22), `actions/upload-pages-artifact` v3→v4, `actions/deploy-pages` v4→v5
+- CI: the docs deploy workflow now also triggers on changes to its own workflow file and supports manual `workflow_dispatch` runs (useful for redeploying to pick up a version bump made outside `docs/`)
+- Docs homepage hero button relabeled from the ambiguous "Get Started" to **"Read the Docs — Quick Start Guide"**, so it clearly reads as the way into the docs; the "View on GitHub" link is unchanged
+- Settings card helper text now spells out the override semantics: blank (or 0) inherits the system default, and when both an override and a system default are set, the stricter (smaller) value wins
+- Removed the `VOLUME ["/data"]` instruction from the Dockerfile — it creates anonymous volumes that interfere with named volume mounting in orchestrators like Coolify, causing silent data loss on redeploy. Named volumes in `docker-compose.yml` are unaffected
+- Updated the Coolify deployment guide: the persistent storage section now clearly states the requirement to verify Coolify Storages configuration, with explicit field values for adding a mount
 - `requires-python` relaxed from `>=3.12` to `>=3.11` (no 3.12-only features used)
-- Sidebar navigation updated with Settings link and keyboard shortcut hint
-- Dashboard "Emails by App" section now links to app detail pages
-- Email list table rows include `data-href` for keyboard navigation
-- Apps list table rows are clickable links to app detail pages
+- Sidebar navigation updated with Settings link and keyboard shortcut hint; dashboard "Emails by App" section and Apps list rows now link to app detail pages; email list table rows include `data-href` for keyboard navigation
 - `BatchLogResponse.errors` field now uses structured `BatchLogError` objects (index + error) instead of plain strings
 - `app.js` rewritten with toast manager, keyboard shortcuts, relative timestamp utilities, and flash-to-toast bridge
-- Version bump: 0.7.0-dev → 0.8.0-dev → 0.9.0-dev
+- Replaced the "SS" favicon text with "See" to avoid unintended abbreviation associations
+- Internal development versions `0.8.0-dev` through `0.20.3-dev` are superseded by this release; the per-bump `Version bump: X → Y` entries that had accumulated under `[Unreleased]` are consolidated into this line
+
+### Fixed
+- **CI's formatting gate broke the build, and `ruff` is now pinned instead of floored.** The dev extra specified `ruff>=0.6.0`, so CI resolved to whatever was current — 0.16.0, which began formatting Python code blocks *inside Markdown files*. `ruff format --check .` therefore failed on six untouched docs files, and because the Docker `build` job declares `needs: test`, the image publish was skipped: a red build for a reason unrelated to any code change. Pinned to `ruff==0.16.0` and reformatted (Markdown code blocks only — no Python source changed), so local and CI agree byte-for-byte. This was the second time an unpinned formatter blocked the publish; the pin is the durable fix, and bumping it is now a deliberate act with reformatting in the same commit (v0.20.3-dev)
+- **Session and flash cookies are now marked `Secure` on HTTPS deployments.** Both previously set `HttpOnly` + `SameSite=Lax` but not `Secure`, so they were transmitted in the clear over plain HTTP. This mattered most for the flash cookie, which briefly carries a **plaintext API key** on the redirect after minting one. The flag is derived from `SEESEE_BASE_URL` rather than a new setting — the two can never sensibly disagree, and hard-coding `Secure` would silently lock the admin out of any HTTP-only install (localhost, LAN) because the browser drops the cookie. No configuration change needed: an `https://` base URL gets secure cookies automatically (v0.20.2-dev)
+- **Search crashed with a 500 on ordinary input — including any email address.** SQLite FTS5 treats the `MATCH` operand as a query *language*, not a literal string, so `user@example.com`, a stray `"`, or a lone `(` raised `sqlite3.OperationalError` straight out of the route. This hit `GET /api/v1/emails`, the `DELETE /api/v1/emails` bulk delete, the `/emails` UI search box, the UI bulk delete, and the new MCP `search_emails` tool. New `seesee/search.py` normalizes every query first: well-formed input (including advanced syntax like `subject:foo`, `foo AND bar`, `reset*`, `"exact phrase"`) is still passed to FTS5 verbatim, malformed input degrades to a quoted-term search, and input with no searchable term at all (`((((`, `***`) matches nothing rather than silently dropping the filter and returning every email. Pre-existing bug, project-wide; found during the 0.20.0 review (v0.20.1-dev)
+- Minting an app key from the app-detail UI for a nonexistent app returned a 500 (`sqlite3.IntegrityError` from the foreign key) instead of a 404 — the REST route already checked, the UI handler did not (v0.20.1-dev)
+- The MCP `create_app_key` tool surfaced a raw `FOREIGN KEY constraint failed` to the calling agent when given an unknown `app_id`; it now raises an actionable `No app with id …` error, matching the REST route (v0.20.1-dev)
+- The MCP auth gate rejected a lowercase `bearer` scheme; per RFC 7235 the auth scheme is case-insensitive (v0.20.1-dev)
+- The legacy-key fallback added for the 0.19.x→0.20.0 transition could not rescue the case its own docstring described. `_resolve_legacy_fallback` selected candidate apps *by* `key_prefix`, so an app row with a NULL prefix — exactly the row the v4 backfill records as `''`, and which `resolve_key`'s indexed lookup therefore cannot find — was unreachable, and that app's key would have stopped authenticating after the upgrade. It now also matches NULL/empty prefixes, and heals both the `api_keys` and `apps` rows to the real prefix on first use so the slow path runs at most once per app. Latent rather than live (every insert path has populated `apps.key_prefix` since Phase 1.0), but the transition safety net now covers what it claims to. Also added the first tests asserting a pre-0.20.0 key still authenticates over both REST and SMTP after the migration (v0.20.1-dev)
+- `POST /logout` did not verify the CSRF token its own form had been shipping since the CSRF work landed. It is now checked when a session is present, and skipped when there is none — a forged logout against an already-unauthenticated visitor achieves nothing, and 403-ing would strand a user whose session expired behind a logout button that no longer worked (v0.20.1-dev)
+- **CI (and therefore the Docker image publish) was blocked by a formatting failure.** `tests/test_email_detail.py` had been committed without running the formatter, so the `Format check` step (`ruff format --check .`) exited non-zero, failing the `test` job. Because the `build` job declares `needs: test`, the Docker image build/push was skipped entirely — a green-looking deploy that never rebuilt the image. Reformatted the file (a call that fits within the configured `line-length = 100` was collapsed to one line); `ruff format --check .` now passes clean (v0.19.16-dev)
+- **Runtime version was stale in the app UI.** `seesee/__init__.py` (`__version__`, which drives the FastAPI docs, the `/health` payload, and the web UI sidebar/footer) was left at `0.19.12-dev` while `pyproject.toml` had advanced to `0.19.14-dev` — so the running app reported a two-bump-old version. Resynced both and added `tests/test_version_sync.py`, which asserts `seesee.__version__` equals the `pyproject.toml` version so this drift fails CI in the future (v0.19.15-dev)
+- **SMTP ingest was completely broken since inception — no email was ever accepted over SMTP.** The server replied `235 Authentication successful` to *any* credentials (valid or bogus) but never actually authenticated the session, so every subsequent `MAIL FROM` was rejected with `530 5.7.0 Authentication required`. Root cause: `SmtpAuthenticator.__call__` was declared `async def`, but aiosmtpd (1.4.6) invokes the authenticator synchronously without awaiting it — the un-awaited coroutine object fell into aiosmtpd's legacy "truthy result = success" branch, so the DB lookup and bcrypt check never ran and `session.authenticated`/`session.app` were never set. The authenticator is now a plain synchronous callable using stdlib `sqlite3`. Added wire-level integration tests (`tests/test_smtp_integration.py`) that drive a real aiosmtpd `Controller` with a real `smtplib` client through `AUTH` → `MAIL` → `RCPT` → `DATA` — the previous unit tests manually awaited the authenticator and therefore masked the bug (v0.19.13-dev)
+- OpenPanel analytics on the docs site now actually record page views. OpenPanel is self-hosted (`api.openpanel.bpf.fyi`, like Umami and Swetrix), but the init call omitted `apiUrl`, so `op1.js` posted events to OpenPanel cloud (`api.openpanel.dev`), which returned `401 "Invalid client id"` (the client only exists on the self-hosted instance). Added `apiUrl: 'https://api.openpanel.bpf.fyi'` per shared-ai-docs Analytics Playbook §7; Umami and Swetrix were unaffected
+- Docs site favicon 404: Starlight auto-injects `<link rel="icon" href="/favicon.svg">`, but no `docs/public/favicon.svg` existed. Added one (the SeeSee "See" mark) so `/favicon.svg` resolves instead of returning 404
+- CI test failures under Starlette 1.x that blocked Docker image publishing since March — all `TemplateResponse` calls now use the modern `TemplateResponse(request, name, context)` signature; the old `(name, {"request": ...})` form was removed in Starlette 1.0 and crashed every UI page render with `TypeError: unhashable type: 'dict'` (v0.19.5-dev)
+- Retention overrides of `0` submitted via the settings UI are now stored as "system default" (NULL) — the retention engine already treated `0` and unset identically, but the read view displayed a literal `0`, implying it did something; legacy `0` values stored via the API also render as "System default" now
+- `POST /api/v1/log` with no `Authorization` header now returns **401 Unauthorized** (was 403 Forbidden) — changed `HTTPBearer` to `auto_error=False` and added an explicit 401 raise in `get_current_app` when credentials are absent
+- `get_current_app` credentials annotation now uses `HTTPAuthorizationCredentials | None` instead of `Optional[...]` — the project's ruff config enables `UP` rules and the `Optional[]` form failed `ruff check` (`UP045`), which the dev guide requires to pass before merge
+- Consolidated the `VALID_BODY_STORAGE_MODES` constant into `seesee/helpers.py` — the app-create and app-settings UI handlers now validate against a single source instead of three duplicated inline copies that could silently drift apart
+- App detail edit forms (Settings, rename) no longer briefly flash open before Alpine.js initializes — added the missing `[x-cloak]` CSS rule to `base.html`
+- `MAIL_SEESEE_SMTP_ENCRYPTION` in the copied ENV block now emits `null` (no encryption) instead of `STARTTLS` — the SMTP ingest server (aiosmtpd) does not speak TLS; TLS is terminated by a reverse proxy, so a copied `STARTTLS` value would have caused client connection failures
+- Theme picker not applying selected theme — `$root.getAttribute('data-theme')` returned null (Alpine's `$root` scopes to current component, not `<html>`); replaced with `localStorage` read and `$dispatch` event for cross-component communication
+- Accent-background buttons (Add App, Search, Login, etc.) invisible on dark-accent themes (Win95, Obsidian, Indigo, Rose, VHS, Rad, etc.) — added `--color-accent-contrast` CSS variable per theme, replaced hardcoded `text-gray-900` with `text-accent-contrast` on all solid `bg-accent` elements
+- iOS Safari auto-zoom on form focus — CSS rule enforces 16px minimum font-size on all input/select/textarea elements via `@media screen and (-webkit-min-device-pixel-ratio: 0)`
+- Mobile touch targets below 44px — CSS `@media (pointer: coarse)` rule sets `min-height: 44px` on buttons and interactive elements; sidebar hamburger and close buttons increased from `p-1` to `p-2.5`
+- Timestamp comparison bug — replaced all SQLite `datetime('now', ...)` calls with Python-computed UTC parameters; the format mismatch (SQLite's space separator vs Python's `T` separator) caused incorrect lexicographic comparisons in time-window queries (dashboard stats, retention cleanup)
+- Standardized all timestamp storage to `YYYY-MM-DDTHH:MM:SS` format (no microseconds, no offset suffix) across API ingest, SMTP ingest, app creation, and retention cleanup for consistent cross-query comparisons
+- Version numbers were out of sync across `pyproject.toml`, `seesee/__init__.py`, and the docs during the 0.18.x series — all realigned
+- Docs corrections: the health endpoint response showed `"healthy"` instead of the actual `"ok"` status value and a stale `"0.6.0-dev"` version; the Contributing page was missing routes (`export.py`, `webhooks.py`, `admin.py`) from the project structure; and the Privacy page's "No CDN" claim contradicted the Tailwind/Alpine CDN loads
+- Docs and compose gaps for `SEESEE_DISPLAY_TIMEZONE` — added to the docs-site configuration reference (UI table and example `.env` block) and to the `docker-compose.yml` environment section; marked search-and-delete complete in the `dev.md` Phase 3.0 checklist
+
+### Removed
+- SMTP relay feature — SeeSee no longer forwards emails to upstream SMTP servers. The SMTP ingest remains as a capture-only feature, consistent with SeeSee's core principle of being a log viewer, not a mail server. Removed the `aiosmtplib` dependency, all `SEESEE_SMTP_RELAY_*` configuration variables, and the `_relay_message()` function. SMTP ingest (capture-only) continues to work as before
+- Separate SMTP password — replaced by the unified API key; the `generate_smtp_password()` utility and the `smtp_password` field on `AppCreateResponse` are gone
 
 ### Security
 - App credentials (API key, SMTP username/password) and rotated keys are no longer exposed in URL query parameters; they are now passed via signed, httponly flash cookies that are consumed on the next page load and immediately deleted — prevents leakage via browser history, server logs, and Referer headers

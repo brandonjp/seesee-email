@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- MCP server at /mcp (streamable HTTP): nine provisioning + email-debugging tools, scope-filtered tool list, management-key auth, SEESEE_MCP_ENABLED toggle
 - Management API keys: scoped (emails:read/apps:read/apps:write/apps:delete), labeled, expiring, individually revocable; key CRUD REST endpoints; Keys UI on Settings and app detail; safe two-step rotation
 - Unified api_keys table (schema v4): multi-key-per-app, management keys (ss_mgmt_), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (python -m seesee.keys)
 - CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; fetch() callers send X-CSRF-Token)

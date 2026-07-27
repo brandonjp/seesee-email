@@ -86,6 +86,16 @@ To rotate a key with zero downtime: mint a new key, deploy it to the consumer, c
 
 A key with `apps:write` can mint app keys and therefore transitively read all email in the instance — scope keys per agent and prefer read-only keys for debugging.
 
+## MCP server
+
+SeeSee also mounts a [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp` (streamable HTTP), authenticated by the same management keys, so agents can provision apps and debug email delivery directly:
+
+```bash
+claude mcp add --transport http seesee https://seesee.example.com/mcp --header "Authorization: Bearer ss_mgmt_..."
+```
+
+See the [MCP Server guide](https://seesee.email/guides/mcp-server/) for the full tool list and security notes.
+
 ## Features
 
 - **REST API** — `POST /api/v1/log` from any language

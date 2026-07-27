@@ -2,6 +2,7 @@
 SDK's session_manager.run() is once-per-instance."""
 
 import json
+import re
 
 import pytest
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from seesee import keys
 from seesee.config import settings
 from seesee.mcp_server import TOOL_SCOPES, build_mcp_asgi_app, create_mcp_server
+from seesee.routes.ui import API_KEY_PLACEHOLDER
 
 INIT_PARAMS = {
     "protocolVersion": "2025-06-18",
@@ -166,6 +168,133 @@ async def test_mcp_disabled_404(monkeypatch):
     async with MCPHarness() as h:
         response = await h.client.post("/mcp/", headers=MCP_HEADERS, content=b"junk")
         assert response.status_code == 404
+
+
+async def test_create_app_roundtrip():
+    from seesee.main import app as main_app
+
+    token = await mint_mgmt_key(["apps:write"])
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {"name": "create_app", "arguments": {"name": "Via MCP"}},
+            id_=2,
+        )
+        result = response.json()["result"]
+        assert response.status_code == 200
+        assert not result.get("isError")
+        data = json.loads(result["content"][0]["text"])
+        assert "MAIL_SEESEE_API_KEY=ss_" in data["env_vars"]
+
+    async with AsyncClient(
+        transport=ASGITransport(app=main_app), base_url="http://localhost:8000"
+    ) as rest_client:
+        response = await rest_client.post(
+            "/api/v1/log",
+            json={"to": ["a@example.com"], "from": "b@example.com", "subject": "hi"},
+            headers={"Authorization": f"Bearer {data['api_key']}"},
+        )
+        assert response.status_code == 201
+
+
+async def test_create_and_revoke_app_key_tools():
+    from seesee.app_service import create_app_record
+    from seesee.main import app as main_app
+
+    record = await create_app_record(name="Key App", created_by="test")
+    app_id = record["id"]
+    token = await mint_mgmt_key(["apps:write"])
+
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {"name": "create_app_key", "arguments": {"app_id": app_id, "label": "extra"}},
+            id_=2,
+        )
+        result = response.json()["result"]
+        assert not result.get("isError")
+        key_data = json.loads(result["content"][0]["text"])
+
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {
+                "name": "revoke_app_key",
+                "arguments": {"app_id": "not-the-right-app", "key_id": key_data["key_id"]},
+            },
+            id_=3,
+        )
+        result = response.json()["result"]
+        assert result["isError"] is True
+
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {
+                "name": "revoke_app_key",
+                "arguments": {"app_id": app_id, "key_id": key_data["key_id"]},
+            },
+            id_=4,
+        )
+        result = response.json()["result"]
+        assert not result.get("isError")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=main_app), base_url="http://localhost:8000"
+    ) as rest_client:
+        response = await rest_client.post(
+            "/api/v1/log",
+            json={"to": ["a@example.com"], "from": "b@example.com", "subject": "hi"},
+            headers={"Authorization": f"Bearer {key_data['api_key']}"},
+        )
+        assert response.status_code == 401
+
+
+async def test_get_integration_env_redacts_both():
+    from seesee.app_service import create_app_record
+
+    record = await create_app_record(name="Env App", created_by="test")
+    token = await mint_mgmt_key(["apps:read"])
+
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {"name": "get_integration_env", "arguments": {"app_id": record["id"]}},
+            id_=2,
+        )
+        result = response.json()["result"]
+        assert not result.get("isError")
+        text = result["content"][0]["text"]
+        assert text.count(API_KEY_PLACEHOLDER) == 2
+        assert not re.search(r"ss_[A-Za-z0-9_-]{20,}", text)
+
+
+async def test_get_app_returns_key_metadata_only():
+    from seesee.app_service import create_app_record
+
+    record = await create_app_record(name="Meta App", created_by="test")
+    token = await mint_mgmt_key(["apps:read"])
+
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {"name": "get_app", "arguments": {"app_id": record["id"]}},
+            id_=2,
+        )
+        result = response.json()["result"]
+        assert not result.get("isError")
+        data = json.loads(result["content"][0]["text"])
+        assert len(data["keys"]) >= 1
+        assert all("key_prefix" in k for k in data["keys"])
+        assert all("key_hash" not in k for k in data["keys"])
 
 
 _main_app_mount_tested = False

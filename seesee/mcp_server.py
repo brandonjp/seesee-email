@@ -16,8 +16,11 @@ from mcp.types import Tool
 from starlette.responses import JSONResponse
 
 from seesee import keys
+from seesee.app_service import create_app_record
 from seesee.config import settings
 from seesee.database import get_db
+from seesee.routes.ui import API_KEY_PLACEHOLDER, _build_env_vars
+from seesee.timezone import iso_in_days
 
 # Single source of truth: drives BOTH tools/list filtering and dispatch checks.
 # A test asserts every registered tool has exactly one entry here.
@@ -170,6 +173,94 @@ async def list_recent_failures(limit: int = 20) -> str:
     return json.dumps([dict(r) for r in rows], default=str)
 
 
+async def create_app(name: str, body_storage_mode: str = "full") -> str:
+    """Register a new app. Returns the record, the plaintext API key (shown
+    ONCE — store it now), and a ready-to-paste .env block."""
+    principal = _current_principal.get()
+    record = await create_app_record(
+        name=name, body_storage_mode=body_storage_mode, created_by=principal.key_id
+    )
+    env_block = _build_env_vars(
+        record["id"], record["slug"], record["api_key"], settings.base_url, settings.smtp_port
+    )
+    return json.dumps({**record, "env_vars": env_block}, default=str)
+
+
+async def create_app_key(
+    app_id: str, label: str, scopes: list[str] | None = None, expires_days: int | None = None
+) -> str:
+    """Mint an additional key for an app (safe rotation: mint, deploy, then
+    revoke_app_key the old id). Plaintext is returned once."""
+    principal = _current_principal.get()
+    expires_at = iso_in_days(expires_days) if expires_days else None
+    key_id, plaintext = await keys.create_key(
+        label=label,
+        app_id=app_id,
+        scopes=scopes or ["emails:read", "emails:write"],
+        expires_at=expires_at,
+        created_by=principal.key_id,
+    )
+    return json.dumps({"key_id": key_id, "api_key": plaintext})
+
+
+async def revoke_app_key(app_id: str, key_id: str) -> str:
+    """Revoke one of an app's keys. Errors unless the key belongs to that app
+    (management keys can never be revoked over MCP)."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id FROM api_keys WHERE id = ? AND app_id = ?", (key_id, app_id)
+    )
+    if await cursor.fetchone() is None:
+        raise ValueError("Key not found for that app")
+    await keys.revoke_key(key_id)
+    return json.dumps({"revoked": key_id})
+
+
+_APP_COLUMNS = (
+    "id, name, slug, body_storage_mode, retention_max_count, retention_max_age_days, "
+    "retention_degrade_to_text_days, retention_degrade_to_preview_days, created_at, "
+    "last_activity_at"
+)
+
+
+async def list_apps() -> str:
+    """List registered apps (no credentials)."""
+    db = await get_db()
+    cursor = await db.execute(
+        f"SELECT {_APP_COLUMNS} FROM apps ORDER BY created_at DESC"  # noqa: S608
+    )
+    rows = await cursor.fetchall()
+    return json.dumps([dict(r) for r in rows], default=str)
+
+
+async def get_app(app_id: str) -> str:
+    """One app record plus its key METADATA (never hashes or plaintext)."""
+    db = await get_db()
+    cursor = await db.execute(
+        f"SELECT {_APP_COLUMNS} FROM apps WHERE id = ?",
+        (app_id,),  # noqa: S608
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise ValueError(f"No app with id {app_id!r}")
+    return json.dumps({**dict(row), "keys": await keys.list_keys(app_id)}, default=str)
+
+
+async def get_integration_env(app_id: str) -> str:
+    """The .env integration block with the key REDACTED to a placeholder —
+    plaintext keys are unrecoverable after mint; use create_app_key for a new
+    one. Passing the placeholder as api_key redacts BOTH occurrences
+    (MAIL_SEESEE_API_KEY and MAIL_SEESEE_SMTP_PASSWORD)."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id, slug FROM apps WHERE id = ?", (app_id,))
+    row = await cursor.fetchone()
+    if row is None:
+        raise ValueError(f"No app with id {app_id!r}")
+    return _build_env_vars(
+        row["id"], row["slug"], API_KEY_PLACEHOLDER, settings.base_url, settings.smtp_port
+    )
+
+
 def create_mcp_server() -> ScopedFastMCP:
     """Build a fresh server instance.
 
@@ -195,6 +286,12 @@ def create_mcp_server() -> ScopedFastMCP:
     server.tool()(search_emails)
     server.tool()(get_email)
     server.tool()(list_recent_failures)
+    server.tool()(list_apps)
+    server.tool()(get_app)
+    server.tool()(get_integration_env)
+    server.tool()(create_app)
+    server.tool()(create_app_key)
+    server.tool()(revoke_app_key)
     return server
 
 

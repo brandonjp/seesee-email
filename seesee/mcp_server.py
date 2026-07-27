@@ -176,6 +176,10 @@ def create_mcp_server() -> ScopedFastMCP:
     A factory (not only a module singleton) because the SDK's
     session_manager.run() is once-per-instance — main.py builds one at import;
     each test builds its own.
+
+    Note: this function's name contains "_mcp_server" only as text — it does
+    not read or write FastMCP's private `self._mcp_server` attribute anywhere
+    in this module; ScopedFastMCP only overrides the public list_tools/call_tool.
     """
     server = ScopedFastMCP(
         "seesee",

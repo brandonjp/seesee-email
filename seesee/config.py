@@ -26,6 +26,9 @@ class SeeSeeSettings(BaseSettings):
     smtp_enabled: bool = True
     smtp_port: int = 2525
 
+    # MCP server (mounted at /mcp; Bearer ss_mgmt_ keys only)
+    mcp_enabled: bool = True
+
     # Retention
     retention_max_count: int = 1000
     retention_max_age_days: int = 90

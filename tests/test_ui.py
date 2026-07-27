@@ -899,3 +899,64 @@ async def test_ui_create_app_key_unknown_app_404(client):
         data={"label": "x", "scopes": ["emails:read"], "csrf_token": token},
     )
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Cookie Secure flag — derived from base_url (code review 2026-07-27)
+# ---------------------------------------------------------------------------
+
+
+async def test_cookies_not_secure_over_plain_http(client, monkeypatch):
+    """A Secure cookie on an http:// deployment is dropped by the browser and
+    would lock the admin out of the UI entirely."""
+    from seesee.config import settings
+
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
+    response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    assert response.status_code == 303
+    assert "secure" not in response.headers["set-cookie"].lower()
+
+
+async def test_cookies_secure_over_https(client, monkeypatch):
+    from seesee.config import settings
+
+    monkeypatch.setattr(settings, "base_url", "https://seesee.example.com")
+    response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    assert response.status_code == 303
+    assert "secure" in response.headers["set-cookie"].lower()
+
+
+async def test_flash_cookie_carrying_a_plaintext_key_is_secure_over_https(monkeypatch):
+    """The flash cookie briefly holds a plaintext API key — it must not travel
+    in the clear on an HTTPS deployment.
+
+    Uses its own https:// client: a Secure cookie is not stored by a client on
+    a plain-http origin, so the shared fixture could never stay logged in here.
+    """
+    import re
+
+    from httpx import ASGITransport, AsyncClient
+
+    from seesee.config import settings
+    from seesee.main import app
+
+    monkeypatch.setattr(settings, "base_url", "https://seesee.example.com")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="https://seesee.example.com"
+    ) as https_client:
+        await https_client.post("/login", data={"username": "admin", "password": "testpassword"})
+        page = await https_client.get("/settings")
+        token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
+        response = await https_client.post(
+            "/settings/keys",
+            data={
+                "label": "agent",
+                "scopes": ["apps:read"],
+                "expires": "90",
+                "csrf_token": token,
+            },
+        )
+        assert response.status_code == 303
+        flash = [c for c in response.headers.get_list("set-cookie") if "seesee_flash" in c]
+        assert flash, "minting a key should set the flash cookie"
+        assert "secure" in flash[0].lower()

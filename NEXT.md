@@ -1,6 +1,6 @@
 # Next Steps — SeeSee
 
-**Version:** 0.20.1-dev
+**Version:** 0.20.2-dev
 **Updated:** 2026-07-27
 
 ## Just Completed
@@ -102,7 +102,6 @@ Add export buttons to the email search page that download the current filtered r
 ## Known Issues
 
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
-- **⚠️ HUMAN DECISION — session and flash cookies are not marked `Secure`.** (Found in the 0.20.0 review; deliberately not changed.) `SESSION_COOKIE_NAME` and `FLASH_COOKIE_NAME` (`seesee/routes/ui.py`) set `httponly` + `samesite=lax` but not `secure`, so both are transmitted over plain HTTP. This now matters more: the flash cookie briefly carries a **plaintext API key** (`new_mgmt_key` / `new_app_key` / `created_credentials`) for the one redirect after minting. The fix is one flag, but setting it unconditionally breaks every self-hosted install running on plain HTTP — the project's documented local/LAN deployment mode. Options: (a) always `secure`, and document that HTTPS is required; (b) `secure=settings.base_url.startswith("https")`; (c) a new `SEESEE_SECURE_COOKIES` setting defaulting to auto. Needs a call on the project's deployment posture before implementing.
 - **Legacy key columns must be deleted in 0.21.0.** `_resolve_legacy_fallback` in `seesee/keys.py`, the matching fallback branch at the end of `resolve_smtp_password`, and the legacy `apps.api_key` / `apps.smtp_password` columns exist only to survive a 0.19.x↔0.20.0 deploy overlap. They are commented "delete in 0.21.0" in three places. Once 0.20.0 has been running long enough that no 0.19.x container can come back, remove all three plus the `revoke_key` tombstone write, and drop the columns in a schema v5 migration. Until then a revoked *primary* app key stays revoked only because `revoke_key` tombstones those columns — do not remove that write in isolation.
 - **App-detail key minting has no expiry control.** `create_app_key_ui` (`seesee/routes/ui.py`) always passes `expires_at=None`, so keys minted from an app's page never expire, while the Settings page defaults management keys to 90 days. Defensible (app keys are long-lived deploy credentials) but inconsistent and undocumented in the UI. Either add the same expiry `<select>` to the app-detail form or add a line of helper text saying app keys do not expire.
 - **`last_used_at` costs a write transaction on every authenticated request.** `keys._record_use` runs an `UPDATE … WHERE last_used_at < cutoff` and commits on every successful key resolution. The 60-second debounce is in the `WHERE` clause, so the *row* is written at most once a minute, but the transaction and commit happen every request — a SQLite writer-lock acquisition per API call. Fine at current volume; revisit if ingest throughput ever becomes a concern (in-process debounce cache, or skip the commit when `rowcount == 0`).
@@ -111,12 +110,13 @@ Add export buttons to the email search page that download the current filtered r
 
 ## Resolved (previously listed here)
 
+- ~~**Session and flash cookies not marked `Secure`.**~~ Fixed in v0.20.2-dev: `cookies_are_secure()` (`seesee/routes/ui.py`) derives the flag from `SEESEE_BASE_URL`, so an `https://` deployment gets secure cookies automatically while HTTP-only installs keep working. Covered by tests in `tests/test_ui.py`, including one asserting the plaintext-key-carrying flash cookie is `Secure` over HTTPS.
 - ~~**No CSRF protection on UI form POSTs.**~~ Shipped in the 0.20.0 cycle: signed CSRF tokens bound to the session user on every session-authenticated POST handler (`seesee/csrf.py`), with `X-CSRF-Token` for `fetch()` callers. The 0.20.0 review closed the last gap (`POST /logout`).
 - ~~**Retention value of `0` displays literally.**~~ Fixed in v0.19.4-dev: the settings UI stores `0` as NULL, and the read view treats `0` (e.g. legacy API-stored values) as "System default".
 
 ## Current State
 
-- 420 tests passing (0 failures); `ruff check` and `ruff format --check` clean
+- 423 tests passing (0 failures); `ruff check` and `ruff format --check` clean
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, complete copy-all-as-ENV-vars on app credentials, and the 0.20.0 management-keys + MCP work
 - Full REST API, SMTP ingest, Web UI, retention, docs site, MCP server at `/mcp`
 - Scoped management API keys (`ss_mgmt_`) with expiry and revocation; multiple keys per app for zero-downtime rotation; CLI bootstrap via `python -m seesee.keys`

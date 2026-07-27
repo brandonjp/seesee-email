@@ -100,6 +100,19 @@ def _get_secret_key() -> str:
     return settings.secret_key or settings.admin_password
 
 
+def cookies_are_secure() -> bool:
+    """Whether to mark cookies `Secure` (HTTPS-only).
+
+    Derived from base_url rather than a separate setting, because the two can
+    never sensibly disagree: if SeeSee is reachable over HTTPS, its cookies
+    should never travel in the clear, and if it is only reachable over HTTP
+    (localhost, a LAN box) a Secure cookie would simply be dropped and lock the
+    admin out of the UI. This matters most for the flash cookie, which briefly
+    carries a PLAINTEXT API key on the redirect after minting one.
+    """
+    return settings.base_url.lower().startswith("https://")
+
+
 def _set_flash(response: Response, data: dict) -> None:
     """Store flash data in a signed, short-lived cookie."""
     serializer = URLSafeTimedSerializer(_get_secret_key(), salt="seesee-flash")
@@ -109,6 +122,7 @@ def _set_flash(response: Response, data: dict) -> None:
         max_age=_FLASH_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=cookies_are_secure(),
     )
 
 
@@ -178,6 +192,7 @@ async def login_submit(
         max_age=settings.session_max_age_days * 86400,
         httponly=True,
         samesite="lax",
+        secure=cookies_are_secure(),
     )
     return response
 
@@ -186,7 +201,9 @@ async def login_submit(
 async def logout(_csrf: None = Depends(require_csrf_if_session)) -> RedirectResponse:
     """Clear session cookie and redirect to login."""
     response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie(SESSION_COOKIE_NAME)
+    response.delete_cookie(
+        SESSION_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+    )
     return response
 
 
@@ -484,7 +501,9 @@ async def app_list(
         },
     )
     if flash:
-        response.delete_cookie(FLASH_COOKIE_NAME)
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
     return response
 
 
@@ -669,7 +688,9 @@ async def app_detail(
         },
     )
     if flash:
-        response.delete_cookie(FLASH_COOKIE_NAME)
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
     return response
 
 
@@ -990,7 +1011,9 @@ async def settings_page(
         },
     )
     if flash:
-        response.delete_cookie(FLASH_COOKIE_NAME)
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
     return response
 
 

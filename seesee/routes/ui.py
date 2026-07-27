@@ -21,6 +21,7 @@ from seesee.auth import (
     hash_secret,
 )
 from seesee.config import settings
+from seesee.csrf import require_csrf
 from seesee.database import get_db
 from seesee.dependencies import require_session
 from seesee.helpers import VALID_BODY_STORAGE_MODES
@@ -483,6 +484,7 @@ async def app_list(
 async def create_app_ui(
     request: Request,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     name: str = Form(...),
     body_storage_mode: str = Form("full"),
 ) -> RedirectResponse:
@@ -551,6 +553,7 @@ async def create_app_ui(
 async def rotate_key_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Rotate an app's API key via the web UI."""
     db = await get_db()
@@ -664,6 +667,7 @@ async def app_detail(
 async def rename_app_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     name: str = Form(...),
 ) -> RedirectResponse:
     """Rename an app via the web UI."""
@@ -687,6 +691,7 @@ async def rename_app_ui(
 async def update_app_settings_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     body_storage_mode: str = Form(...),
     retention_max_count: str = Form(""),
     retention_max_age_days: str = Form(""),
@@ -751,6 +756,7 @@ async def update_app_settings_ui(
 async def purge_app_emails_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Purge all emails for an app via the web UI."""
     db = await get_db()
@@ -769,6 +775,7 @@ async def purge_app_emails_ui(
 async def delete_app_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Delete an app and all its emails via the web UI."""
     db = await get_db()
@@ -803,6 +810,7 @@ async def delete_app_ui(
 async def bulk_delete_emails_ui(
     request: Request,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     q: str = Form(""),
     app_id: str = Form(""),
     status_val: str = Form("", alias="status"),
@@ -856,6 +864,7 @@ async def bulk_delete_emails_ui(
 async def delete_email_ui(
     email_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Delete a single email via the web UI."""
     db = await get_db()
@@ -915,6 +924,7 @@ async def settings_page(
 @router.post("/settings/cleanup")
 async def run_cleanup_ui(
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Trigger an immediate retention cleanup via the web UI."""
     await run_cleanup()

@@ -5,7 +5,14 @@ from itsdangerous import URLSafeTimedSerializer
 
 from seesee.auth import SESSION_COOKIE_NAME, create_session_token
 from seesee.config import settings
+from seesee.csrf import CSRF_FIELD_NAME, make_csrf_token
 from seesee.routes.ui import FLASH_COOKIE_NAME, _build_env_vars
+
+
+def csrf_form(data: dict | None = None) -> dict:
+    """Merge a valid CSRF token into form data for session-authenticated POSTs."""
+    token = make_csrf_token("admin", "testpassword")
+    return {**(data or {}), CSRF_FIELD_NAME: token}
 
 
 def _get_session_cookie(username: str = "admin") -> str:
@@ -324,7 +331,7 @@ async def test_apps_create_via_form(client: AsyncClient) -> None:
     token = _get_session_cookie()
     resp = await client.post(
         "/apps",
-        data={"name": "Form Created App", "body_storage_mode": "full"},
+        data=csrf_form({"name": "Form Created App", "body_storage_mode": "full"}),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -350,6 +357,7 @@ async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> 
     token = _get_session_cookie()
     resp = await client.post(
         f"/apps/{app_id}/rotate-key",
+        data=csrf_form(),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -371,13 +379,15 @@ async def test_apps_update_settings(client: AsyncClient, admin_auth_header: dict
 
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "preview",
-            "retention_max_count": "250",
-            "retention_max_age_days": "30",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "preview",
+                "retention_max_count": "250",
+                "retention_max_age_days": "30",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -404,26 +414,30 @@ async def test_apps_update_settings_clears_retention(
     # First set overrides
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "500",
-            "retention_max_age_days": "45",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "500",
+                "retention_max_age_days": "45",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     # Then clear them
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -447,13 +461,15 @@ async def test_apps_update_settings_rejects_invalid_mode(
 
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "bogus",
-            "retention_max_count": "",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "bogus",
+                "retention_max_count": "",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -477,26 +493,30 @@ async def test_apps_update_settings_rejects_negative_retention(
     # Set a known value first
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "100",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "100",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     # Negative value must be rejected
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "-5",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "-5",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -520,25 +540,29 @@ async def test_apps_update_settings_zero_means_system_default(
     # Set real overrides first so the coercion has something to clear
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "100",
-            "retention_max_age_days": "30",
-            "retention_degrade_to_text_days": "7",
-            "retention_degrade_to_preview_days": "14",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "100",
+                "retention_max_age_days": "30",
+                "retention_degrade_to_text_days": "7",
+                "retention_degrade_to_preview_days": "14",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "0",
-            "retention_max_age_days": "0",
-            "retention_degrade_to_text_days": "0",
-            "retention_degrade_to_preview_days": "0",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "0",
+                "retention_max_age_days": "0",
+                "retention_degrade_to_text_days": "0",
+                "retention_degrade_to_preview_days": "0",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -566,13 +590,15 @@ async def test_app_detail_settings_card(client: AsyncClient, admin_auth_header: 
 
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "preview",
-            "retention_max_count": "111",
-            "retention_max_age_days": "22",
-            "retention_degrade_to_text_days": "7",
-            "retention_degrade_to_preview_days": "14",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "preview",
+                "retention_max_count": "111",
+                "retention_max_age_days": "22",
+                "retention_degrade_to_text_days": "7",
+                "retention_degrade_to_preview_days": "14",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -622,7 +648,7 @@ async def test_apps_create_flash_includes_env_vars(client: AsyncClient) -> None:
     token = _get_session_cookie()
     resp = await client.post(
         "/apps",
-        data={"name": "Env Block App", "body_storage_mode": "full"},
+        data=csrf_form({"name": "Env Block App", "body_storage_mode": "full"}),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )

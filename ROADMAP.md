@@ -152,7 +152,7 @@
 - [ ] **Management API keys + MCP server (0.20.0)** — scoped, revocable machine credentials (`ss_mgmt_`) and an MCP server at `/mcp` for provisioning + email debugging. Unified `api_keys` table (schema v4) also fixes today's destructive key rotation by allowing multiple keys per app. Spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md`
 - [ ] CSV/JSON search export
 - [ ] Per-app "disable degradation" override — needs a design decision: the retention engine treats a per-app `0`/NULL as "inherit global", so an app cannot opt out of a globally enabled degradation schedule (see NEXT.md Known Issues)
-- [ ] ✅ CSRF protection for session-authenticated UI form POSTs (settings, rename, purge, key rotation) — acceptable for single-admin self-hosted use today; required before multi-user auth lands (shipped in 0.20.0 cycle — CSRF tokens on all session POST handlers)
+- [x] ✅ CSRF protection for session-authenticated UI form POSTs (settings, rename, purge, key rotation) — acceptable for single-admin self-hosted use today; required before multi-user auth lands (shipped in 0.20.0 cycle — CSRF tokens on all session POST handlers)
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles
 - [ ] WordPress plugin with settings page

@@ -18,8 +18,8 @@ Sub-plan 2 of 4 for the 0.20.0 management-keys + MCP feature. Unified `api_keys`
 
 ## Chunk 1: Prerequisite gate + schema v4 (`seesee/database.py`, `tests/test_migration_v4.py`)
 
-- [ ] Step 1 (GATE): Run `test -f seesee/csrf.py && grep -q "Depends(require_csrf)" seesee/routes/ui.py && echo GATE-OK`. If this does not print `GATE-OK`, **HALT** — sub-plan 1 (`docs/plan-mgmt-keys-1-csrf.md`) has not run. Do not proceed or attempt to work around it.
-- [ ] Step 2: In `seesee/database.py`, set `SCHEMA_VERSION = 4` and append to `SCHEMA_SQL` (after the `emails_au` trigger):
+- [x] Step 1 (GATE): Run `test -f seesee/csrf.py && grep -q "Depends(require_csrf)" seesee/routes/ui.py && echo GATE-OK`. If this does not print `GATE-OK`, **HALT** — sub-plan 1 (`docs/plan-mgmt-keys-1-csrf.md`) has not run. Do not proceed or attempt to work around it.
+- [x] Step 2: In `seesee/database.py`, set `SCHEMA_VERSION = 4` and append to `SCHEMA_SQL` (after the `emails_au` trigger):
 
 ```sql
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
 
 (`app_id IS NULL` = management key. Fresh databases are born at v4 with this table via `SCHEMA_SQL` — the migration below only runs for databases upgrading from ≤3, because `init_db` stamps the version before `_run_migrations()`.)
 
-- [ ] Step 3: In `_run_migrations()`, after the `current_version < 3` block, add the v4 backfill. It MUST be this single statement (idempotent via `NOT EXISTS`; single-statement so concurrent deploying containers cannot interleave; `COALESCE` migrates NULL-prefix rows with an empty prefix so SMTP keeps working for them):
+- [x] Step 3: In `_run_migrations()`, after the `current_version < 3` block, add the v4 backfill. It MUST be this single statement (idempotent via `NOT EXISTS`; single-statement so concurrent deploying containers cannot interleave; `COALESCE` migrates NULL-prefix rows with an empty prefix so SMTP keeps working for them):
 
 ```python
     if current_version < 4:
@@ -63,13 +63,13 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
         logger.info("Database migrated to schema version 4")
 ```
 
-- [ ] Step 4: Create `tests/test_migration_v4.py`. Use stdlib `sqlite3` to seed a pre-v4 database, then run `init_db()` against it. Tests (all `async` where they call `init_db`, following the async patterns in existing tests):
+- [x] Step 4: Create `tests/test_migration_v4.py`. Use stdlib `sqlite3` to seed a pre-v4 database, then run `init_db()` against it. Tests (all `async` where they call `init_db`, following the async patterns in existing tests):
   - `test_fresh_db_has_api_keys_table` — after `init_db()` on a fresh path, `PRAGMA table_info(api_keys)` lists the 11 columns, and `schema_version` is `4`.
   - `test_v3_backfill` — seed: create a db file with `sqlite3` containing a `metadata` table (`schema_version` = `'3'`) and an `apps` table (copy the `apps` DDL from `SCHEMA_SQL`) with one row (`id='app1'`, `api_key=<bcrypt hash of a known plaintext via seesee.auth.hash_secret>`, `key_prefix=<first 8 chars of the random segment>`, other columns filled minimally). After `init_db()`: exactly one `api_keys` row exists with `app_id='app1'`, `key_hash` equal to the seeded hash, `key_prefix` equal to the seeded prefix, `scopes='["emails:read","emails:write"]'`, `created_by='migration'`, `label='default'`.
   - `test_backfill_idempotent` — after the v3 seed and `init_db()`, close the db, set `schema_version` back to `'3'` with sqlite3, run `init_db()` again: still exactly one `api_keys` row for `app1`.
   - `test_null_prefix_migrates_with_empty_prefix` — seed a v3 app row with `key_prefix=NULL`; after `init_db()` its `api_keys` row has `key_prefix=''` (not skipped).
-- [ ] Step 5: `python -m pytest -x -q` — full suite passes. `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/database.py tests/test_migration_v4.py && git commit -m "feat(keys): schema v4 — unified api_keys table + backfill migration"`
+- [x] Step 5: `python -m pytest -x -q` — full suite passes. `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/database.py tests/test_migration_v4.py && git commit -m "feat(keys): schema v4 — unified api_keys table + backfill migration"`
 
 ### ✅ Review Checkpoint — Chunk 1
 - [ ] `grep -n "SCHEMA_VERSION = 4" seesee/database.py`
@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
 
 ## Chunk 2: `seesee/keys.py` — pure sync core (`seesee/keys.py`, `tests/test_api_keys.py`)
 
-- [ ] Step 1: Create `seesee/keys.py` with the module docstring `"""API key lifecycle — generation, resolution, revocation. Sync helpers are shared by the async (REST/MCP) and sync (SMTP) resolvers."""` and this content:
+- [x] Step 1: Create `seesee/keys.py` with the module docstring `"""API key lifecycle — generation, resolution, revocation. Sync helpers are shared by the async (REST/MCP) and sync (SMTP) resolvers."""` and this content:
 
 ```python
 import secrets
@@ -162,7 +162,7 @@ def validate_scopes(scopes: list[str], app_id: str | None) -> None:
         )
 ```
 
-- [ ] Step 2: Create `tests/test_api_keys.py` with sync unit tests:
+- [x] Step 2: Create `tests/test_api_keys.py` with sync unit tests:
   - `test_generate_key_formats` — `generate_key()` starts with `ss_` and does NOT start with `ss_mgmt_`; `generate_key(management=True)` starts with `ss_mgmt_`.
   - `test_extract_prefix_app_key` — for `"ss_" + "a" * 43`: exactly one candidate, `"aaaaaaaa"`.
   - `test_extract_prefix_mgmt_key` — for `"ss_mgmt_" + "b" * 43`: TWO candidates, `["b" * 8, "mgmt_bbb"]` (mgmt marker slice first, then the ss_ slice `"mgmt_" + "bbb"`).
@@ -170,8 +170,8 @@ def validate_scopes(scopes: list[str], app_id: str | None) -> None:
   - `test_extract_prefix_too_short` — `"ss_abc"` and `"ss_mgmt_ab"` → `[]`; `"garbage"` → `[]`.
   - `test_key_is_active` — active row → `(True, "")`; `revoked_at` set → `(False, "revoked")`; `expires_at` in the past → `(False, "expired")`; `expires_at` in the future → active. Use plain dicts as rows.
   - `test_validate_scopes_matrix` — app key with `["emails:read"]` OK; app key with `["apps:write"]` raises ValueError; management key (`app_id=None`) with `["apps:read", "apps:write"]` OK; management key with `["emails:write"]` raises; empty list raises.
-- [ ] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 4: Commit: `git add seesee/keys.py tests/test_api_keys.py && git commit -m "feat(keys): key module sync core — generation, prefix extraction, scope matrix"`
+- [x] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 4: Commit: `git add seesee/keys.py tests/test_api_keys.py && git commit -m "feat(keys): key module sync core — generation, prefix extraction, scope matrix"`
 
 ### ✅ Review Checkpoint — Chunk 2
 - [ ] `python -c "from seesee.keys import Principal, generate_key, extract_prefix, key_is_active, validate_scopes, KeyRevokedError, KeyExpiredError"` succeeds
@@ -185,7 +185,7 @@ def validate_scopes(scopes: list[str], app_id: str | None) -> None:
 
 ## Chunk 3: `seesee/keys.py` — async layer (`seesee/keys.py`, `tests/test_api_keys.py`)
 
-- [ ] Step 1: Add to `seesee/keys.py` (imports: `json`, `uuid`, `datetime`, `from seesee.database import get_db`, `from seesee.timezone import utc_now_iso`):
+- [x] Step 1: Add to `seesee/keys.py` (imports: `json`, `uuid`, `datetime`, `from seesee.database import get_db`, `from seesee.timezone import utc_now_iso`):
 
 ```python
 _LAST_USED_DEBOUNCE_SECONDS = 60
@@ -385,7 +385,7 @@ async def list_keys(app_id: str | None) -> list[dict]:
     return result
 ```
 
-- [ ] Step 2: Extend `tests/test_api_keys.py` with async tests (use the `client`/db fixtures pattern from `conftest.py`; `init_db` runs implicitly via `get_db`):
+- [x] Step 2: Extend `tests/test_api_keys.py` with async tests (use the `client`/db fixtures pattern from `conftest.py`; `init_db` runs implicitly via `get_db`):
   - `test_create_and_resolve_management_key` — `create_key(label="ci", app_id=None, scopes=["apps:read"], expires_at=None, created_by="cli")` → `resolve_key(plaintext)` returns a Principal with `app_id is None`, `scopes == frozenset({"apps:read"})`.
   - `test_create_and_resolve_app_key` — app key round-trip (create an app first via the REST API with the `client` + `admin_auth_header` fixtures, then `create_key(app_id=...)`).
   - `test_resolve_unknown_returns_none` — a fresh `generate_key()` never stored → `None`.
@@ -396,8 +396,8 @@ async def list_keys(app_id: str | None) -> list[dict]:
   - `test_revoke_primary_tombstones_legacy` — create an app via REST (plaintext key K, hash mirrored in `apps.api_key`); find its `api_keys` row; `revoke_key` it; assert `apps.api_key` changed (no longer verifies K) and `resolve_key(K)` raises `KeyRevokedError`.
   - `test_legacy_fallback_lazy_migrates` — create an app via REST, then DELETE its `api_keys` row directly (simulating a deploy-overlap orphan); `resolve_key(K)` succeeds AND a new `api_keys` row now exists for the app.
   - `test_list_keys_never_leaks_hashes` — `list_keys` result dicts contain no `key_hash` key.
-- [ ] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 4: Commit: `git add seesee/keys.py tests/test_api_keys.py && git commit -m "feat(keys): async resolver, mint/revoke/list, legacy fallback, tombstone"`
+- [x] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 4: Commit: `git add seesee/keys.py tests/test_api_keys.py && git commit -m "feat(keys): async resolver, mint/revoke/list, legacy fallback, tombstone"`
 
 ### ✅ Review Checkpoint — Chunk 3
 - [ ] `_record_use` is a single guarded `UPDATE ... WHERE ... (last_used_at IS NULL OR last_used_at < ?)` — no read-compare-write
@@ -414,7 +414,7 @@ async def list_keys(app_id: str | None) -> list[dict]:
 
 External behavior of existing routes must not change — the regression bar is the whole untouched suite.
 
-- [ ] Step 1: Rewrite `get_current_app` in `seesee/dependencies.py` to resolve through `seesee.keys` while keeping its exact return contract (the full app row as a dict) and its existing 401 messages for the missing-header and bad-format cases:
+- [x] Step 1: Rewrite `get_current_app` in `seesee/dependencies.py` to resolve through `seesee.keys` while keeping its exact return contract (the full app row as a dict) and its existing 401 messages for the missing-header and bad-format cases:
 
 ```python
 async def get_current_app(
@@ -468,7 +468,7 @@ async def get_current_app(
 
 Add `from seesee import keys` to the imports. `require_admin_or_app` needs no change — its Bearer branch already delegates to `get_current_app`.
 
-- [ ] Step 2: In `seesee/routes/apps.py` `create_app`, after the `INSERT INTO apps` and before `db.commit()`, dual-write the primary key row (design §1a — apps created under 0.20.0 keep working after a rollback because `apps.api_key` still holds the real hash):
+- [x] Step 2: In `seesee/routes/apps.py` `create_app`, after the `INSERT INTO apps` and before `db.commit()`, dual-write the primary key row (design §1a — apps created under 0.20.0 keep working after a rollback because `apps.api_key` still holds the real hash):
 
 ```python
     await db.execute(
@@ -487,8 +487,8 @@ Add `from seesee import keys` to the imports. `require_admin_or_app` needs no ch
     )
 ```
 
-- [ ] Step 3: In `rotate_key` (same file), preserve legacy immediate-invalidation semantics across BOTH tables: first `SELECT id, api_key FROM apps WHERE id = ?` (replacing the current `SELECT id`), then after computing the new hash: (a) `UPDATE apps ...` as today; (b) revoke the old primary row: `UPDATE api_keys SET revoked_at = <utc_now_iso()> WHERE app_id = ? AND key_hash = ? AND revoked_at IS NULL` with the OLD `api_key` hash; (c) insert the new key row (same INSERT shape as Step 2, `created_by`, `'admin'`, new hash/prefix, `label` `'default'`).
-- [ ] Step 4: Extend `tests/test_api_keys.py`:
+- [x] Step 3: In `rotate_key` (same file), preserve legacy immediate-invalidation semantics across BOTH tables: first `SELECT id, api_key FROM apps WHERE id = ?` (replacing the current `SELECT id`), then after computing the new hash: (a) `UPDATE apps ...` as today; (b) revoke the old primary row: `UPDATE api_keys SET revoked_at = <utc_now_iso()> WHERE app_id = ? AND key_hash = ? AND revoked_at IS NULL` with the OLD `api_key` hash; (c) insert the new key row (same INSERT shape as Step 2, `created_by`, `'admin'`, new hash/prefix, `label` `'default'`).
+- [x] Step 4: Extend `tests/test_api_keys.py`:
   - `test_rest_auth_via_api_keys_table` — create app via REST; `POST /api/v1/emails` (the ingest route, Bearer = plaintext key) still 201s (proves the rewire path).
   - `test_revoked_key_gets_distinct_401` — revoke the app's primary key; ingest POST → 401 with detail `"API key revoked"`; also assert the app's OLD plaintext no longer authenticates even against `apps.api_key` (tombstone).
   - `test_mgmt_key_cannot_ingest` — mint a management key with `emails:read`; Bearer ingest POST → 401 `"App API key required"`.
@@ -512,7 +512,7 @@ Add `from seesee import keys` to the imports. `require_admin_or_app` needs no ch
 
 ⚠️ This chunk touches the file with the project's worst historical bug. The authenticator stays a plain sync callable; `tests/test_smtp_integration.py` and `tests/test_smtp.py` are FROZEN — if either needs edits, the implementation is wrong.
 
-- [ ] Step 1: Add to `seesee/keys.py` a sync resolver using stdlib `sqlite3` (imports at module top: `import sqlite3`, `from contextlib import closing`, `from seesee.config import settings`):
+- [x] Step 1: Add to `seesee/keys.py` a sync resolver using stdlib `sqlite3` (imports at module top: `import sqlite3`, `from contextlib import closing`, `from seesee.config import settings`):
 
 ```python
 def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
@@ -560,7 +560,7 @@ def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
 
 (The async lazy-insert self-heal will adopt such an app on its first REST call; the SMTP path deliberately stays read-mostly and does not insert.)
 
-- [ ] Step 2: In `seesee/smtp_server.py`, replace the body of `SmtpAuthenticator.__call__`'s `try:` block: keep the username/password decoding as is, then:
+- [x] Step 2: In `seesee/smtp_server.py`, replace the body of `SmtpAuthenticator.__call__`'s `try:` block: keep the username/password decoding as is, then:
 
 ```python
         try:
@@ -578,15 +578,15 @@ def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
 
 Add `from seesee.keys import resolve_smtp_password` to the imports; remove the now-unused `sqlite3`/`closing`/`verify_secret` imports ONLY if nothing else in the file uses them (check first). Keep the class docstring (the sync-callable warning) verbatim.
 
-- [ ] Step 3: Create `tests/test_smtp_keys.py` (NEW file — do not touch `test_smtp.py`), following the direct-authenticator-call style used in `tests/test_smtp.py`:
+- [x] Step 3: Create `tests/test_smtp_keys.py` (NEW file — do not touch `test_smtp.py`), following the direct-authenticator-call style used in `tests/test_smtp.py`:
   - `test_authenticator_still_sync` — `import asyncio, inspect; assert not asyncio.iscoroutinefunction(SmtpAuthenticator.__call__)` and `assert not inspect.iscoroutinefunction(resolve_smtp_password)`.
   - `test_second_key_authenticates` — create an app via REST; mint a second key via `keys.create_key(app_id=..., scopes=["emails:write"], ...)`; the authenticator accepts the SECOND plaintext as SMTP password.
   - `test_original_key_still_works` — after minting the second key, the original creation-time key still authenticates (multi-key overlap window).
   - `test_revoked_key_rejected_over_smtp` — revoke the second key; the authenticator now rejects its plaintext (and the tombstone test: revoke the PRIMARY key → its plaintext is rejected too, including via the legacy-column path).
   - `test_emails_read_only_key_rejected` — mint an app key with scopes `["emails:read"]`; its plaintext must NOT authenticate over SMTP.
-- [ ] Step 4: `python -m pytest -x -q` — full suite, including `test_smtp_integration.py`, passes unmodified.
-- [ ] Step 5: `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/keys.py seesee/smtp_server.py tests/test_smtp_keys.py && git commit -m "feat(keys): SMTP auth accepts any active emails:write key (sync resolver)"`
+- [x] Step 4: `python -m pytest -x -q` — full suite, including `test_smtp_integration.py`, passes unmodified.
+- [x] Step 5: `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/keys.py seesee/smtp_server.py tests/test_smtp_keys.py && git commit -m "feat(keys): SMTP auth accepts any active emails:write key (sync resolver)"`
 
 ### ✅ Review Checkpoint — Chunk 5
 - [ ] `SmtpAuthenticator.__call__` is NOT a coroutine function: `python -c "import asyncio; from seesee.smtp_server import SmtpAuthenticator; assert not asyncio.iscoroutinefunction(SmtpAuthenticator.__call__)"`
@@ -599,7 +599,7 @@ Add `from seesee.keys import resolve_smtp_password` to the imports; remove the n
 
 ## Chunk 6: CLI bootstrap + version (`seesee/keys.py`, `tests/test_api_keys.py`, `pyproject.toml`, `seesee/__init__.py`, `CHANGELOG.md`)
 
-- [ ] Step 1: Append to `seesee/keys.py` a sync CLI (headless bootstrap — no running server; design §9). Sync `sqlite3` throughout; `created_by='cli'`:
+- [x] Step 1: Append to `seesee/keys.py` a sync CLI (headless bootstrap — no running server; design §9). Sync `sqlite3` throughout; `created_by='cli'`:
 
 ```python
 def _cli_create(args) -> int:
@@ -702,12 +702,12 @@ if __name__ == "__main__":
 
 Add `import argparse` and `import sys` to the module imports. NOTE: the CLI assumes the database schema exists (server has booted at least once); if `sqlite3.OperationalError: no such table` occurs, that precondition failed — wrap the `_cli_create`/`_cli_list`/`_cli_revoke` db work in `try/except sqlite3.OperationalError` printing `error: database not initialized — start SeeSee once first` and returning 3.
 
-- [ ] Step 2: Extend `tests/test_api_keys.py`:
+- [x] Step 2: Extend `tests/test_api_keys.py`:
   - `test_cli_create_and_resolve` — after `init_db()` (get a db via the fixtures), call `keys.main(["create", "--label", "ci", "--scopes", "apps:write,emails:read"])` capturing stdout (capsys); the printed key resolves via `resolve_key` to a management Principal with those scopes and `created_by` recorded as `cli` in the row.
   - `test_cli_create_invalid_scopes_exits_2` — `main(["create", "--label", "x", "--scopes", "emails:write"])` returns 2 (management keys cannot carry `emails:write`).
   - `test_cli_list_and_revoke` — create via CLI, `list` output contains the label, `revoke <id>` returns 0, second revoke returns 1.
-- [ ] Step 3: Bump version to `0.19.18-dev` in `pyproject.toml` and `seesee/__init__.py`. Add to `CHANGELOG.md` `[Unreleased]` → `### Added`: `- Unified api_keys table (schema v4): multi-key-per-app, management keys (ss_mgmt_), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (python -m seesee.keys)`
-- [ ] Step 4: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 3: Bump version to `0.19.18-dev` in `pyproject.toml` and `seesee/__init__.py`. Add to `CHANGELOG.md` `[Unreleased]` → `### Added`: `- Unified api_keys table (schema v4): multi-key-per-app, management keys (ss_mgmt_), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (python -m seesee.keys)`
+- [x] Step 4: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
 - [ ] Step 5: Commit: `git add seesee/keys.py tests/test_api_keys.py pyproject.toml seesee/__init__.py CHANGELOG.md && git commit -m "feat(keys): CLI bootstrap for management keys; bump 0.19.18-dev"`
 
 ### ✅ Review Checkpoint — Chunk 6

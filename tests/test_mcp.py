@@ -330,3 +330,66 @@ async def test_main_app_mount_both_slash_forms():
             json=rpc_body("initialize", INIT_PARAMS, id_=2),
         )
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Error surfaces and header parsing (code review 2026-07-27)
+# ---------------------------------------------------------------------------
+
+
+async def test_create_app_key_unknown_app_gives_actionable_error():
+    """Without an existence check the FK constraint fires and the agent gets
+    'FOREIGN KEY constraint failed' — unactionable. REST returns 404 here."""
+    token = await mint_mgmt_key(["apps:write"])
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        response = await h.rpc(
+            token,
+            "tools/call",
+            {"name": "create_app_key", "arguments": {"app_id": "no-such-app", "label": "x"}},
+            id_=2,
+        )
+        result = response.json()["result"]
+        assert result["isError"] is True
+        text = result["content"][0]["text"]
+        assert "no-such-app" in text
+        assert "FOREIGN KEY" not in text
+
+
+async def test_search_emails_malformed_query_is_not_an_error():
+    """Agents pass free text; an email address must not raise fts5 syntax error."""
+    token = await mint_mgmt_key(["emails:read"])
+    async with MCPHarness() as h:
+        await h.rpc(token, "initialize", INIT_PARAMS)
+        for query in ["user@example.com", "foo(", 'bar"', "(((("]:
+            response = await h.rpc(
+                token,
+                "tools/call",
+                {"name": "search_emails", "arguments": {"query": query}},
+                id_=2,
+            )
+            result = response.json()["result"]
+            assert result.get("isError") is not True, (query, result)
+
+
+async def test_auth_scheme_is_case_insensitive():
+    """RFC 7235: the auth scheme token is case-insensitive."""
+    token = await mint_mgmt_key(["emails:read"])
+    async with MCPHarness() as h:
+        response = await h.client.post(
+            "/mcp/",
+            headers={**MCP_HEADERS, "Authorization": f"bearer {token}"},
+            json=rpc_body("initialize", INIT_PARAMS),
+        )
+        assert response.status_code == 200
+
+
+async def test_auth_rejects_non_bearer_scheme():
+    token = await mint_mgmt_key(["emails:read"])
+    async with MCPHarness() as h:
+        response = await h.client.post(
+            "/mcp/",
+            headers={**MCP_HEADERS, "Authorization": f"Basic {token}"},
+            json=rpc_body("initialize", INIT_PARAMS),
+        )
+        assert response.status_code == 401

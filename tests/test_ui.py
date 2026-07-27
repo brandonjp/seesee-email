@@ -885,3 +885,17 @@ async def test_cross_app_revoke_ui_404(client: AsyncClient, admin_auth_header: d
         follow_redirects=False,
     )
     assert resp.status_code == 404
+
+
+async def test_ui_create_app_key_unknown_app_404(client):
+    """Minting against a nonexistent app hit the FK constraint and 500'd."""
+    await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    page = await client.get("/settings")
+    import re
+
+    token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
+    response = await client.post(
+        "/apps/does-not-exist/keys",
+        data={"label": "x", "scopes": ["emails:read"], "csrf_token": token},
+    )
+    assert response.status_code == 404

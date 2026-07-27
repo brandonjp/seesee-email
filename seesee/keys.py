@@ -150,6 +150,13 @@ async def _resolve_legacy_fallback(token: str, now_iso: str) -> Principal | None
     (deploy overlap): verify against apps.api_key and lazily insert the
     missing api_keys row — the request carries the plaintext, so the prefix
     is computed correctly even for legacy NULL-prefix rows.
+
+    Candidate apps are matched on key_prefix OR a NULL/empty prefix. The NULL
+    arm is what makes the docstring above true: an app row that never had a
+    prefix cannot be found BY that prefix, and it is exactly the row the
+    backfill wrote as '' (COALESCE) and that resolve_key's indexed lookup
+    therefore misses. Both the api_keys row and the apps row are healed to the
+    real prefix on the way out, so a given app takes this path at most once.
     """
     if not token.startswith(APP_KEY_MARKER):
         return None
@@ -157,15 +164,19 @@ async def _resolve_legacy_fallback(token: str, now_iso: str) -> Principal | None
     if len(prefix) < PREFIX_LEN:
         return None
     db = await get_db()
-    cursor = await db.execute("SELECT * FROM apps WHERE key_prefix = ?", (prefix,))
+    cursor = await db.execute(
+        "SELECT * FROM apps WHERE key_prefix = ? OR key_prefix IS NULL OR key_prefix = ''",
+        (prefix,),
+    )
     rows = await cursor.fetchall()
     for app_row in rows:
         if verify_secret(token, app_row["api_key"]):
             cursor = await db.execute(
-                "SELECT 1 FROM api_keys WHERE app_id = ? AND key_hash = ?",
+                "SELECT * FROM api_keys WHERE app_id = ? AND key_hash = ?",
                 (app_row["id"], app_row["api_key"]),
             )
-            if await cursor.fetchone() is None:
+            row = await cursor.fetchone()
+            if row is None:
                 key_id = str(uuid.uuid4())
                 await db.execute(
                     "INSERT INTO api_keys (id, key_hash, key_prefix, label, app_id, "
@@ -182,11 +193,23 @@ async def _resolve_legacy_fallback(token: str, now_iso: str) -> Principal | None
                     ),
                 )
                 await db.commit()
-            cursor = await db.execute(
-                "SELECT * FROM api_keys WHERE app_id = ? AND key_hash = ?",
-                (app_row["id"], app_row["api_key"]),
-            )
-            row = await cursor.fetchone()
+                cursor = await db.execute(
+                    "SELECT * FROM api_keys WHERE app_id = ? AND key_hash = ?",
+                    (app_row["id"], app_row["api_key"]),
+                )
+                row = await cursor.fetchone()
+            elif row["key_prefix"] != prefix:
+                # Backfilled from a NULL apps.key_prefix as ''. Heal it so the
+                # indexed lookup in resolve_key finds it next time.
+                await db.execute(
+                    "UPDATE api_keys SET key_prefix = ? WHERE id = ?", (prefix, row["id"])
+                )
+                await db.commit()
+            if not app_row["key_prefix"]:
+                await db.execute(
+                    "UPDATE apps SET key_prefix = ? WHERE id = ?", (prefix, app_row["id"])
+                )
+                await db.commit()
             await _record_use(row["id"], now_iso)
             return _principal_from_row(row)
     return None

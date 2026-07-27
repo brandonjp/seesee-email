@@ -22,11 +22,12 @@ from seesee.auth import (
     hash_secret,
 )
 from seesee.config import settings
-from seesee.csrf import require_csrf
+from seesee.csrf import require_csrf, require_csrf_if_session
 from seesee.database import get_db
 from seesee.dependencies import require_session
 from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.retention import run_cleanup
+from seesee.search import normalize_fts_query
 from seesee.timezone import iso_in_days, utc_cutoff_iso, utc_now_iso
 
 router = APIRouter(tags=["ui"])
@@ -182,7 +183,7 @@ async def login_submit(
 
 
 @router.post("/logout")
-async def logout() -> RedirectResponse:
+async def logout(_csrf: None = Depends(require_csrf_if_session)) -> RedirectResponse:
     """Clear session cookie and redirect to login."""
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE_NAME)
@@ -309,8 +310,14 @@ async def email_list(
     params: list[str | int] = []
 
     if q:
-        conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # No searchable term — match nothing rather than silently dropping
+            # the condition, which would list every email.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("e.app_id = ?")
         params.append(app_id)
@@ -676,6 +683,12 @@ async def create_app_key_ui(
     scopes: list[str] = Form([]),  # noqa: B008
 ) -> RedirectResponse:
     """Mint an additional key for an app. Plaintext flashed once."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        # Without this the FK constraint raises IntegrityError and the request
+        # 500s (the REST route returns 404 here).
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
     response = RedirectResponse(url=f"/apps/{app_id}", status_code=303)
     try:
         _key_id, plaintext = await keys.create_key(
@@ -874,8 +887,13 @@ async def bulk_delete_emails_ui(
     params: list[str | int] = []
 
     if q:
-        conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # A search that cannot match must delete nothing.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("app_id = ?")
         params.append(app_id)

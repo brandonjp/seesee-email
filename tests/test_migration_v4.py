@@ -43,9 +43,10 @@ def _seed_v3_db(db_path: str, api_key_hash: str, key_prefix: str | None) -> None
         db.executescript(_SEED_APPS_SQL)
         db.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', '3')")
         db.execute(
-            "INSERT INTO apps (id, name, slug, api_key, key_prefix, created_at) "
-            "VALUES ('app1', 'App One', 'app-one', ?, ?, ?)",
-            (api_key_hash, key_prefix, utc_now_iso()),
+            "INSERT INTO apps (id, name, slug, api_key, key_prefix, smtp_username, "
+            "smtp_password, created_at) "
+            "VALUES ('app1', 'App One', 'app-one', ?, ?, 'app-one', ?, ?)",
+            (api_key_hash, key_prefix, api_key_hash, utc_now_iso()),
         )
         db.commit()
 
@@ -124,3 +125,76 @@ async def test_null_prefix_migrates_with_empty_prefix():
     cursor = await _db.execute("SELECT * FROM api_keys WHERE app_id = 'app1'")
     row = await cursor.fetchone()
     assert row["key_prefix"] == ""
+
+
+# ---------------------------------------------------------------------------
+# The upgrade that actually matters: keys issued before 0.20.0 must keep
+# working afterwards, on both transports. Backfilling the right ROWS is not the
+# same as the credential still authenticating.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pre_upgrade_key_still_authenticates_over_rest():
+    known_plaintext = "ss_" + "d" * 32
+    _seed_v3_db(settings.db_path, hash_secret(known_plaintext), known_plaintext[3:11])
+
+    await init_db()
+
+    from seesee import keys
+
+    principal = await keys.resolve_key(known_plaintext)
+    assert principal is not None, "an app key minted before 0.20.0 must survive the upgrade"
+    assert principal.app_id == "app1"
+    assert "emails:write" in principal.scopes
+
+
+@pytest.mark.asyncio
+async def test_pre_upgrade_key_still_authenticates_over_smtp():
+    known_plaintext = "ss_" + "e" * 32
+    _seed_v3_db(settings.db_path, hash_secret(known_plaintext), known_plaintext[3:11])
+
+    await init_db()
+
+    from seesee.keys import resolve_smtp_password
+
+    app_row = resolve_smtp_password("app-one", known_plaintext)
+    assert app_row is not None, "SMTP credentials must survive the upgrade too"
+    assert app_row["id"] == "app1"
+
+
+@pytest.mark.asyncio
+async def test_pre_upgrade_key_with_null_prefix_still_authenticates():
+    """The backfill stores '' for a NULL key_prefix, so the prefix index cannot
+    find the row — the legacy fallback has to carry these until 0.21.0."""
+    known_plaintext = "ss_" + "f" * 32
+    _seed_v3_db(settings.db_path, hash_secret(known_plaintext), None)
+
+    await init_db()
+
+    from seesee import keys
+
+    principal = await keys.resolve_key(known_plaintext)
+    assert principal is not None
+    assert principal.app_id == "app1"
+
+
+@pytest.mark.asyncio
+async def test_null_prefix_is_healed_on_first_use():
+    """After the fallback rescues a NULL-prefix app, both rows carry the real
+    prefix, so the next request takes the fast indexed path."""
+    known_plaintext = "ss_" + "g" * 32
+    _seed_v3_db(settings.db_path, hash_secret(known_plaintext), None)
+
+    await init_db()
+
+    from seesee import keys
+    from seesee.database import _db
+
+    assert await keys.resolve_key(known_plaintext) is not None
+
+    expected = known_plaintext[3:11]
+    cursor = await _db.execute("SELECT key_prefix FROM api_keys WHERE app_id = 'app1'")
+    assert (await cursor.fetchone())["key_prefix"] == expected
+    cursor = await _db.execute("SELECT key_prefix FROM apps WHERE id = 'app1'")
+    assert (await cursor.fetchone())["key_prefix"] == expected

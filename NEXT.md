@@ -1,9 +1,19 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.16-dev
+**Version:** 0.20.1-dev
 **Updated:** 2026-07-27
 
 ## Just Completed
+
+- **Full branch code review before the 0.20.0 release** (v0.20.1-dev) — reviewed all 40 files touched by `feature/management-keys-mcp`. Findings and fixes:
+  - **Search 500'd on any email address** (and on a stray `"`, `(`, or `-`). FTS5's `MATCH` operand is a query language, not a literal, so `sqlite3.OperationalError` escaped the route. Affected five call sites: REST list, REST bulk delete, UI search box, UI bulk delete, and the new MCP `search_emails`. New `seesee/search.py` normalizes queries; well-formed advanced syntax is unchanged, malformed input degrades to a term search, and a no-term query matches nothing instead of dropping the filter (which would have returned *every* email — and, in bulk delete, deleted them). **Pre-existing and project-wide, not introduced by this branch.**
+  - UI app-key mint against an unknown app 500'd on the FK constraint; now 404, matching the REST route
+  - MCP `create_app_key` leaked `FOREIGN KEY constraint failed` to the agent; now an actionable error
+  - MCP auth gate rejected a lowercase `bearer` scheme (RFC 7235: case-insensitive)
+  - `POST /logout` never verified the CSRF token its form was already sending; now checked when a session exists, skipped when there is none
+  - The 0.20.0 legacy-auth safety net could not rescue the one case it documented. `_resolve_legacy_fallback` looked up candidate apps *by* `key_prefix`, so an app row whose prefix was NULL — precisely the row the backfill stores as `''` and that `resolve_key`'s indexed lookup misses — was unfindable, and its key would have stopped authenticating. Found by a new post-upgrade test. It now also matches NULL/empty prefixes and heals both rows to the real prefix on first use. **Latent, not live:** `apps.key_prefix` has been populated by every insert path since Phase 1.0, so no real deployment should contain a NULL — but the safety net now actually covers what it claims to
+  - 45 new regression tests (`tests/test_search_sanitization.py` plus additions to `test_migration_v4.py`, `test_mcp.py`, `test_csrf.py`, `test_ui.py`), including the first tests that assert a pre-0.20.0 key still authenticates over **both** REST and SMTP after the upgrade
+  - Verified clean: `require_scope` correctly refuses app-bound keys on management routes; all state-changing REST routes use Basic/Bearer only (no ambient cookie), so the CSRF surface really is limited to the UI handlers; the schema v4 migration is idempotent and correctly skipped on fresh databases
 
 - **Release-prep review** (v0.19.15-dev):
   - Fixed a runtime version drift: `seesee/__init__.py` was stuck at `0.19.12-dev` while `pyproject.toml` had moved to `0.19.14-dev`, so the app UI, `/health`, and FastAPI docs all showed a stale version. Resynced both to `0.19.15-dev`
@@ -65,30 +75,20 @@
 
 ## Highest Priority Next Task
 
-### Management API Keys + MCP Server (0.20.0) — READY TO LAUNCH (Ralph plans written)
+### Cut the 0.20.0 release
 
-Design spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (branch `feature/management-keys-mcp`). Read the spec first — it is the source of truth; this is a pointer, not a summary.
+All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), and the branch has passed a full code review. What remains is the deliberate, manual release cut — explicitly kept out of any loop:
 
-Gives agents/automation a scoped, revocable credential for managing an instance, and exposes provisioning + email debugging over MCP. Unified `api_keys` table (schema v4) covering both app and management keys, five-scope vocabulary, multi-key-per-app (fixes today's destructive rotate), `/mcp` server, key management UI, CSRF on session POSTs.
+1. Merge `feature/management-keys-mcp` to `main`.
+2. Do the one-time CHANGELOG `[Unreleased]` consolidation (see Known Issues) — collapse the repeated `### Added`/`### Fixed`/`### Removed` batches and the stray `### Previously` group into a single Added/Changed/Fixed/Removed set.
+3. Cut `[Unreleased]` into a `## [0.20.0]` section, set `pyproject.toml` + `seesee/__init__.py` to `0.20.0`, tag, and let CI publish the image.
+4. **Upgrade smoke test before tagging:** start a container against a *pre-0.20.0* database file and confirm the v4 migration backfills one `api_keys` row per app and existing app keys still authenticate over both REST and SMTP. The migration is covered by `tests/test_migration_v4.py`, but it has never been exercised against a real, dirty production database.
 
-**Status (2026-07-27):** All required review edits applied to the design spec — B1 (`require_scope` never reads session cookies), B2 (legacy-column dual-write/tombstone policy, §1a), B3 (kind/scope validity matrix + belongs-to-app revoke), B4 (MCP rejects app-bound principals normatively, per-request resolution), B5 (sync/async resolver split for SMTP), N1 (regression bar restated: whole suite + frozen files + per-spec test-change budgets), N2 (`SCHEMA_SQL` gains `api_keys`; single INSERT…SELECT backfill). Adopted recommendations: CSRF hoisted to its own spec run first, `created_by` provenance column, 90-day UI expiry default, lazy legacy fallback (N3), `TOOL_SCOPES` single source of truth (N5), guarded `last_used_at` UPDATE (N6), pre-SDK auth middleware + both-occurrence redaction (N8).
-
-Both launch hazards are resolved:
-- `tests/test_smtp_integration.py` verified stable in isolation: 3 consecutive clean runs (~1.4s each) on 2026-07-27.
-- The `mcp` SDK surface was verified against installed `mcp==1.26.0` by a running end-to-end experiment (mount, lifespan, stateless auth, contextvar propagation, scope-filtered `tools/list`, trailing-slash behavior, once-per-instance `session_manager.run()`). The verified facts are prescriptive in design §6 and baked into Ralph sub-plan 4.
-
-Four sequential Ralph sub-plans, one shared branch (`feature/management-keys-mcp`), one runner invocation — queued in `~/.ralph-queue/queue-2026-07-27.sh`:
-
-1. `docs/plan-mgmt-keys-1-csrf.md` — CSRF tokens on all session POST handlers (lands first so key forms are born protected).
-2. `docs/plan-mgmt-keys-2-foundation.md` — schema v4, `seesee/keys.py`, migration + backfill, REST/SMTP auth rewire, dual-write policy, CLI bootstrap.
-3. `docs/plan-mgmt-keys-3-rest-ui.md` — `require_scope`, scope-mapped app routes, key CRUD endpoints, Keys UI (Settings + app detail).
-4. `docs/plan-mgmt-keys-4-mcp.md` — `/mcp` mount per the verified SDK surface, auth middleware, the nine tools, docs-site page, bump to 0.20.0-dev.
-
-After all four complete: cut the `0.20.0` release manually — that's when the CHANGELOG `[Unreleased]` one-time consolidation (see Known Issues) happens, deliberately, not inside a loop.
+Design spec (source of truth for the shipped behavior): `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md`.
 
 ### CSV/JSON Search Export
 
-Add export buttons to the email search page that download the current filtered results as CSV or JSON files. (Deprioritized below the 0.20.0 work above.)
+Add export buttons to the email search page that download the current filtered results as CSV or JSON files. (Next feature after the 0.20.0 cut.)
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
@@ -102,18 +102,25 @@ Add export buttons to the email search page that download the current filtered r
 ## Known Issues
 
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
-- **No CSRF protection on UI form POSTs.** (Also on ROADMAP Phase 3.0.) `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but must be addressed before multi-user auth lands. **Severity rises with the 0.20.0 management-keys work:** once a key-creation form exists, a forged POST mints a durable attacker-known credential that survives a password change and is invisible until someone reads the key list. CSRF is therefore in scope for 0.20.0 (Ralph spec 2), not deferred.
+- **⚠️ HUMAN DECISION — session and flash cookies are not marked `Secure`.** (Found in the 0.20.0 review; deliberately not changed.) `SESSION_COOKIE_NAME` and `FLASH_COOKIE_NAME` (`seesee/routes/ui.py`) set `httponly` + `samesite=lax` but not `secure`, so both are transmitted over plain HTTP. This now matters more: the flash cookie briefly carries a **plaintext API key** (`new_mgmt_key` / `new_app_key` / `created_credentials`) for the one redirect after minting. The fix is one flag, but setting it unconditionally breaks every self-hosted install running on plain HTTP — the project's documented local/LAN deployment mode. Options: (a) always `secure`, and document that HTTPS is required; (b) `secure=settings.base_url.startswith("https")`; (c) a new `SEESEE_SECURE_COOKIES` setting defaulting to auto. Needs a call on the project's deployment posture before implementing.
+- **Legacy key columns must be deleted in 0.21.0.** `_resolve_legacy_fallback` in `seesee/keys.py`, the matching fallback branch at the end of `resolve_smtp_password`, and the legacy `apps.api_key` / `apps.smtp_password` columns exist only to survive a 0.19.x↔0.20.0 deploy overlap. They are commented "delete in 0.21.0" in three places. Once 0.20.0 has been running long enough that no 0.19.x container can come back, remove all three plus the `revoke_key` tombstone write, and drop the columns in a schema v5 migration. Until then a revoked *primary* app key stays revoked only because `revoke_key` tombstones those columns — do not remove that write in isolation.
+- **App-detail key minting has no expiry control.** `create_app_key_ui` (`seesee/routes/ui.py`) always passes `expires_at=None`, so keys minted from an app's page never expire, while the Settings page defaults management keys to 90 days. Defensible (app keys are long-lived deploy credentials) but inconsistent and undocumented in the UI. Either add the same expiry `<select>` to the app-detail form or add a line of helper text saying app keys do not expire.
+- **`last_used_at` costs a write transaction on every authenticated request.** `keys._record_use` runs an `UPDATE … WHERE last_used_at < cutoff` and commits on every successful key resolution. The 60-second debounce is in the `WHERE` clause, so the *row* is written at most once a minute, but the transaction and commit happen every request — a SQLite writer-lock acquisition per API call. Fine at current volume; revisit if ingest throughput ever becomes a concern (in-process debounce cache, or skip the commit when `rowcount == 0`).
+- **Plaintext keys are interpolated into a JS string literal in templates.** `copyToClipboard('{{ flash.new_app_key }}', this)` in `app_detail.html` and `settings.html` (and the older `created_credentials` block) put a value inside a JS string inside an HTML attribute, where Jinja's HTML autoescaping does not protect the JS context. Safe today because the interpolated value is always a generated URL-safe base64 key (`[A-Za-z0-9_-]`), but the pattern breaks the moment anything user-supplied — a key *label*, say — is copied the same way. Prefer `|tojson` (already used for the ENV-vars block) if this pattern spreads.
 - **CHANGELOG `[Unreleased]` needs a one-time consolidation.** The `[Unreleased]` section has accumulated several separately-prepended batches, leaving repeated `### Added`/`### Fixed`/`### Removed` subheadings and a stray `### Previously` group (all pre-dating the recent work). Before the next tagged release, consolidate `[Unreleased]` into a single Added/Changed/Fixed/Removed set and cut it into a versioned section. Low risk but should be a deliberate, careful edit — not folded into an unrelated change.
 
 ## Resolved (previously listed here)
 
+- ~~**No CSRF protection on UI form POSTs.**~~ Shipped in the 0.20.0 cycle: signed CSRF tokens bound to the session user on every session-authenticated POST handler (`seesee/csrf.py`), with `X-CSRF-Token` for `fetch()` callers. The 0.20.0 review closed the last gap (`POST /logout`).
 - ~~**Retention value of `0` displays literally.**~~ Fixed in v0.19.4-dev: the settings UI stores `0` as NULL, and the read view treats `0` (e.g. legacy API-stored values) as "System default".
 
 ## Current State
 
-- 295 tests passing (0 failures)
-- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, and complete copy-all-as-ENV-vars on app credentials
-- Full REST API, SMTP ingest, Web UI, retention, docs site
+- 420 tests passing (0 failures); `ruff check` and `ruff format --check` clean
+- All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, complete copy-all-as-ENV-vars on app credentials, and the 0.20.0 management-keys + MCP work
+- Full REST API, SMTP ingest, Web UI, retention, docs site, MCP server at `/mcp`
+- Scoped management API keys (`ss_mgmt_`) with expiry and revocation; multiple keys per app for zero-downtime rotation; CLI bootstrap via `python -m seesee.keys`
+- CSRF protection on all session-authenticated UI form POSTs
 - 21-theme color system with swatch picker on Settings page (4 accent, 8 developer, 4 light, 6 retro)
 - Provider webhook receivers for Resend and SendGrid
 - Graduated body degradation (full → text → preview over time)

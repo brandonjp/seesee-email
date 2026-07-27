@@ -20,6 +20,7 @@ from seesee.app_service import create_app_record
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.routes.ui import API_KEY_PLACEHOLDER, _build_env_vars
+from seesee.search import normalize_fts_query
 from seesee.timezone import iso_in_days
 
 # Single source of truth: drives BOTH tools/list filtering and dispatch checks.
@@ -82,7 +83,9 @@ class MCPAuthMiddleware:
             return await response(scope, receive, send)
         headers = dict(scope["headers"])
         auth = headers.get(b"authorization", b"").decode()
-        token = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
+        # RFC 7235: the auth scheme is case-insensitive.
+        scheme, _, credentials = auth.partition(" ")
+        token = credentials.strip() if scheme.lower() == "bearer" else ""
         principal = None
         detail = "Invalid or missing API key"
         if token:
@@ -122,16 +125,21 @@ async def search_emails(
     query: str = "", app_id: str = "", status: str = "", limit: int = 20
 ) -> str:
     """Search logged emails (FTS5 over subject/body/addresses). All filters
-    optional. Mirror the join/condition shape of routes/emails.py:list_emails —
-    the FTS table is joined UNALIASED because `emails_fts MATCH ?` names the
-    table."""
+    optional. Free-text queries are normalized (see seesee.search) so ordinary
+    input like an email address cannot raise an FTS5 syntax error. The FTS table
+    is joined UNALIASED because `emails_fts MATCH ?` names the table."""
     limit = max(1, min(int(limit), 100))
     conditions, params = [], []
     joins = ""
+    db = await get_db()
     if query:
+        match = await normalize_fts_query(db, query)
+        if match is None:
+            # No searchable term — nothing can match.
+            return json.dumps([])
         joins = "JOIN emails_fts ON emails_fts.rowid = e.rowid"
         conditions.append("emails_fts MATCH ?")
-        params.append(query)
+        params.append(match)
     if app_id:
         conditions.append("e.app_id = ?")
         params.append(app_id)
@@ -139,7 +147,6 @@ async def search_emails(
         conditions.append("e.status = ?")
         params.append(status)
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-    db = await get_db()
     cursor = await db.execute(
         f"SELECT {_EMAIL_SUMMARY_SELECT} "  # noqa: S608
         f"FROM emails e {joins} {where} ORDER BY e.logged_at DESC LIMIT ?",
@@ -192,6 +199,12 @@ async def create_app_key(
     """Mint an additional key for an app (safe rotation: mint, deploy, then
     revoke_app_key the old id). Plaintext is returned once."""
     principal = _current_principal.get()
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        # Without this the FK constraint fails and the agent gets a raw SQL
+        # error instead of an actionable one (REST returns 404 here).
+        raise ValueError(f"No app with id {app_id!r}")
     expires_at = iso_in_days(expires_days) if expires_days else None
     key_id, plaintext = await keys.create_key(
         label=label,

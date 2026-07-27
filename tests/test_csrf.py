@@ -60,3 +60,38 @@ async def test_bearer_rest_unaffected(client, admin_auth_header):
         "/api/v1/apps", json={"name": "No CSRF Needed"}, headers=admin_auth_header
     )
     assert response.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# Logout (code review 2026-07-27)
+# ---------------------------------------------------------------------------
+
+
+async def test_logout_without_token_rejected(client):
+    """base.html ships a token on the logout form; the handler must check it."""
+    await _login(client)
+    response = await client.post("/logout")
+    assert response.status_code == 403
+
+
+async def test_logout_with_token_accepted(client):
+    await _login(client)
+    page = await client.get("/")
+    token = _extract_meta_csrf(page.text)
+    response = await client.post("/logout", data={CSRF_FIELD_NAME: token})
+    assert response.status_code == 303
+
+
+async def test_logout_without_session_still_works(client):
+    """A visitor whose session already expired must not be stranded behind a
+    logout button that 403s — there is nothing left to protect."""
+    response = await client.post("/logout")
+    assert response.status_code == 303
+
+
+def _extract_meta_csrf(html: str) -> str:
+    import re
+
+    match = re.search(r'name="csrf-token" content="([^"]+)"', html)
+    assert match, "base.html should expose a csrf-token meta tag"
+    return match.group(1)

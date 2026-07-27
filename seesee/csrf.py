@@ -54,6 +54,24 @@ async def require_csrf(request: Request) -> None:
     username = _validate_session_cookie(request)
     if username is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
+    await _check_token(request, username)
+
+
+async def require_csrf_if_session(request: Request) -> None:
+    """CSRF for handlers that must still work without a valid session.
+
+    Logout is the case: a forged logout against an already-unauthenticated
+    visitor achieves nothing, so there is nothing to protect — but 403-ing
+    would strand a user whose session expired while the page was open behind a
+    logout button that no longer works.
+    """
+    username = _validate_session_cookie(request)
+    if username is None:
+        return
+    await _check_token(request, username)
+
+
+async def _check_token(request: Request, username: str) -> None:
     token = request.headers.get(CSRF_HEADER_NAME)
     if not token:
         form = await request.form()

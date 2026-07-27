@@ -2,12 +2,18 @@
 
 import pytest
 
+from seesee import keys
+from seesee.auth import verify_secret
+from seesee.database import get_db
 from seesee.keys import (
+    KeyExpiredError,
+    KeyRevokedError,
     extract_prefix,
     generate_key,
     key_is_active,
     validate_scopes,
 )
+from tests.conftest import create_test_app
 
 
 def test_generate_key_formats():
@@ -71,3 +77,136 @@ def test_validate_scopes_matrix():
     # Empty list always invalid
     with pytest.raises(ValueError):
         validate_scopes([], None)
+
+
+@pytest.mark.asyncio
+async def test_create_and_resolve_management_key():
+    key_id, plaintext = await keys.create_key(
+        label="ci", app_id=None, scopes=["apps:read"], expires_at=None, created_by="cli"
+    )
+    principal = await keys.resolve_key(plaintext)
+    assert principal is not None
+    assert principal.key_id == key_id
+    assert principal.app_id is None
+    assert principal.scopes == frozenset({"apps:read"})
+
+
+@pytest.mark.asyncio
+async def test_create_and_resolve_app_key(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    key_id, plaintext = await keys.create_key(
+        label="second",
+        app_id=app_data["id"],
+        scopes=["emails:read"],
+        expires_at=None,
+        created_by="admin",
+    )
+    principal = await keys.resolve_key(plaintext)
+    assert principal is not None
+    assert principal.key_id == key_id
+    assert principal.app_id == app_data["id"]
+    assert principal.scopes == frozenset({"emails:read"})
+
+
+@pytest.mark.asyncio
+async def test_resolve_unknown_returns_none():
+    assert await keys.resolve_key(generate_key()) is None
+
+
+@pytest.mark.asyncio
+async def test_revoked_key_raises():
+    key_id, plaintext = await keys.create_key(
+        label="revoke-me", app_id=None, scopes=["apps:read"], expires_at=None, created_by="cli"
+    )
+    assert await keys.revoke_key(key_id) is True
+    with pytest.raises(KeyRevokedError):
+        await keys.resolve_key(plaintext)
+
+
+@pytest.mark.asyncio
+async def test_expired_key_raises():
+    _, plaintext = await keys.create_key(
+        label="expired",
+        app_id=None,
+        scopes=["apps:read"],
+        expires_at="2000-01-01T00:00:00",
+        created_by="cli",
+    )
+    with pytest.raises(KeyExpiredError):
+        await keys.resolve_key(plaintext)
+
+
+@pytest.mark.asyncio
+async def test_last_used_debounce():
+    key_id, plaintext = await keys.create_key(
+        label="debounce", app_id=None, scopes=["apps:read"], expires_at=None, created_by="cli"
+    )
+    db = await get_db()
+
+    await keys.resolve_key(plaintext)
+    cursor = await db.execute("SELECT last_used_at FROM api_keys WHERE id = ?", (key_id,))
+    first = (await cursor.fetchone())["last_used_at"]
+
+    await keys.resolve_key(plaintext)
+    cursor = await db.execute("SELECT last_used_at FROM api_keys WHERE id = ?", (key_id,))
+    second = (await cursor.fetchone())["last_used_at"]
+
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_create_key_validates_matrix():
+    with pytest.raises(ValueError):
+        await keys.create_key(
+            label="bad", app_id="x", scopes=["apps:write"], expires_at=None, created_by="admin"
+        )
+
+
+@pytest.mark.asyncio
+async def test_revoke_primary_tombstones_legacy(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    plaintext = app_data["api_key"]
+
+    principal = await keys.resolve_key(plaintext)
+    assert principal is not None
+
+    assert await keys.revoke_key(principal.key_id) is True
+
+    db = await get_db()
+    cursor = await db.execute("SELECT api_key FROM apps WHERE id = ?", (app_data["id"],))
+    row = await cursor.fetchone()
+    assert not verify_secret(plaintext, row["api_key"])
+
+    with pytest.raises(KeyRevokedError):
+        await keys.resolve_key(plaintext)
+
+
+@pytest.mark.asyncio
+async def test_legacy_fallback_lazy_migrates(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    plaintext = app_data["api_key"]
+
+    db = await get_db()
+    await db.execute("DELETE FROM api_keys WHERE app_id = ?", (app_data["id"],))
+    await db.commit()
+
+    principal = await keys.resolve_key(plaintext)
+    assert principal is not None
+    assert principal.app_id == app_data["id"]
+
+    cursor = await db.execute(
+        "SELECT COUNT(*) AS c FROM api_keys WHERE app_id = ?", (app_data["id"],)
+    )
+    row = await cursor.fetchone()
+    assert row["c"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_keys_never_leaks_hashes():
+    await keys.create_key(
+        label="listed", app_id=None, scopes=["apps:read"], expires_at=None, created_by="cli"
+    )
+    result = await keys.list_keys(None)
+    assert len(result) >= 1
+    for item in result:
+        assert "key_hash" not in item

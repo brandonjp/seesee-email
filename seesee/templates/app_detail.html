@@ -47,6 +47,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                     </button>
                     <form x-show="editingName" x-cloak action="/apps/{{ app.id }}/rename" method="post" class="flex items-center gap-2" @keydown.escape="editingName = false">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                         <input x-ref="nameInput" type="text" name="name" x-model="newName" required
                                class="text-xl font-bold bg-transparent border-b-2 border-accent focus:outline-none px-0 py-0 w-auto min-w-[200px]">
                         <button type="submit" class="p-1 text-accent hover:text-accent/80 transition-colors" aria-label="Save" title="Save">
@@ -311,6 +312,7 @@ echo $response;</code></pre>
         <!-- Edit mode -->
         <form x-show="editingSettings" x-cloak action="/apps/{{ app.id }}/settings" method="post"
               class="space-y-4" @keydown.escape="editingSettings = false">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
             <div>
                 <label class="block text-sm font-medium mb-1">Storage mode</label>
                 <select name="body_storage_mode"
@@ -395,6 +397,7 @@ echo $response;</code></pre>
                 <button @click="confirmRotate = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/rotate-key" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Rotate Key</button>
                 </form>
@@ -412,6 +415,7 @@ echo $response;</code></pre>
                 <button @click="confirmPurge = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/purge" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Purge All</button>
                 </form>
@@ -429,6 +433,7 @@ echo $response;</code></pre>
                 <button @click="confirmDelete = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/delete" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete App</button>
                 </form>

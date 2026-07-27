@@ -579,6 +579,7 @@ import httpx
 SEESEE_URL = "https://seesee.example.com"
 SEESEE_KEY = "ss_abc123def456"
 
+
 def log_email(to, subject, body_text, provider="resend", status="sent", **kwargs):
     httpx.post(
         f"{SEESEE_URL}/api/v1/log",

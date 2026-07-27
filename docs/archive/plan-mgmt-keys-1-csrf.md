@@ -43,9 +43,7 @@ def make_csrf_token(username: str, secret_key: str) -> str:
     return serializer.dumps({"u": username})
 
 
-def validate_csrf_token(
-    token: str, username: str, secret_key: str, max_age_seconds: int
-) -> bool:
+def validate_csrf_token(token: str, username: str, secret_key: str, max_age_seconds: int) -> bool:
     """Return True if the token is validly signed and bound to this username."""
     serializer = URLSafeTimedSerializer(secret_key, salt=_CSRF_SALT)
     try:
@@ -76,9 +74,7 @@ async def require_csrf(request: Request) -> None:
     """
     username = _validate_session_cookie(request)
     if username is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
     token = request.headers.get(CSRF_HEADER_NAME)
     if not token:
         form = await request.form()
@@ -214,9 +210,7 @@ from tests.conftest import create_test_app
 
 
 async def _login(client: AsyncClient) -> None:
-    response = await client.post(
-        "/login", data={"username": "admin", "password": "testpassword"}
-    )
+    response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
     assert response.status_code == 303
 
 
@@ -224,9 +218,7 @@ async def _login(client: AsyncClient) -> None:
 async def test_session_post_without_token_rejected(client, admin_auth_header):
     app_data = await create_test_app(client, admin_auth_header)
     await _login(client)
-    response = await client.post(
-        f"/apps/{app_data['id']}/rename", data={"name": "Renamed"}
-    )
+    response = await client.post(f"/apps/{app_data['id']}/rename", data={"name": "Renamed"})
     assert response.status_code == 403
 
 

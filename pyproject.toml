@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seesee"
-version = "0.20.2-dev"
+version = "0.20.3-dev"
 description = "Lightweight, self-hosted sent email log aggregator with search UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -44,7 +44,14 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.27.0",
-    "ruff>=0.6.0",
+    # PINNED, not a floor. `ruff format` output changes between releases, and
+    # CI runs `ruff format --check .` as a gating step — an unpinned range means
+    # a new ruff can fail the build on untouched files and (because the Docker
+    # build job declares `needs: test`) silently skip the image publish. This
+    # has bitten the project twice: 0.19.16-dev, and again when 0.16.0 began
+    # formatting code blocks inside Markdown. Bump deliberately, reformatting in
+    # the same commit.
+    "ruff==0.16.0",
     "coverage>=7.6.0",
 ]
 

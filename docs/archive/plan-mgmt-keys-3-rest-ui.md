@@ -46,12 +46,8 @@ def require_scope(*required_scopes: str):
     """
 
     async def _dep(
-        credentials: Annotated[
-            HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
-        ],
-        basic_credentials: Annotated[
-            HTTPBasicCredentials | None, Depends(basic_scheme_optional)
-        ],
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+        basic_credentials: Annotated[HTTPBasicCredentials | None, Depends(basic_scheme_optional)],
     ) -> keys.Principal:
         username = _verify_basic_admin(basic_credentials)
         if username is not None:
@@ -75,9 +71,7 @@ def require_scope(*required_scopes: str):
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired"
             ) from exc
         if principal is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
         missing = [s for s in required_scopes if s not in principal.scopes]
         if missing:
             raise HTTPException(
@@ -338,9 +332,7 @@ async def revoke_mgmt_key_ui(
     """Revoke a management key. Only management keys — app keys are revoked
     from their app's detail page."""
     db = await get_db()
-    cursor = await db.execute(
-        "SELECT id FROM api_keys WHERE id = ? AND app_id IS NULL", (key_id,)
-    )
+    cursor = await db.execute("SELECT id FROM api_keys WHERE id = ? AND app_id IS NULL", (key_id,))
     if await cursor.fetchone() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
     await keys.revoke_key(key_id)

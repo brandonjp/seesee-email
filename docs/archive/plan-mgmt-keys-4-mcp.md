@@ -125,9 +125,7 @@ class MCPAuthMiddleware:
         if principal.app_id is not None:
             # App keys are hard-bound to one app; MCP tools are instance-wide.
             # Kind comes from the ROW (app_id), never the token's text.
-            response = JSONResponse(
-                {"detail": "Management API key required"}, status_code=401
-            )
+            response = JSONResponse({"detail": "Management API key required"}, status_code=401)
             return await response(scope, receive, send)
         var_token = _current_principal.set(principal)
         try:
@@ -144,9 +142,7 @@ _EMAIL_SUMMARY_COLUMNS = (
 
 # emails_fts duplicates several emails column names (subject, to_addresses, ...),
 # so every selected column must be e.-prefixed when the FTS join is present.
-_EMAIL_SUMMARY_SELECT = ", ".join(
-    f"e.{col.strip()}" for col in _EMAIL_SUMMARY_COLUMNS.split(",")
-)
+_EMAIL_SUMMARY_SELECT = ", ".join(f"e.{col.strip()}" for col in _EMAIL_SUMMARY_COLUMNS.split(","))
 
 
 async def search_emails(
@@ -345,9 +341,7 @@ class MCPHarness:
     async def __aenter__(self):
         self._sm = self.server.session_manager.run()
         await self._sm.__aenter__()
-        self.client = AsyncClient(
-            transport=ASGITransport(app=self.app), base_url="http://test"
-        )
+        self.client = AsyncClient(transport=ASGITransport(app=self.app), base_url="http://test")
         return self
 
     async def __aexit__(self, *exc):
@@ -474,14 +468,13 @@ async def get_app(app_id: str) -> str:
     """One app record plus its key METADATA (never hashes or plaintext)."""
     db = await get_db()
     cursor = await db.execute(
-        f"SELECT {_APP_COLUMNS} FROM apps WHERE id = ?", (app_id,)  # noqa: S608
+        f"SELECT {_APP_COLUMNS} FROM apps WHERE id = ?",
+        (app_id,),  # noqa: S608
     )
     row = await cursor.fetchone()
     if row is None:
         raise ValueError(f"No app with id {app_id!r}")
-    return json.dumps(
-        {**dict(row), "keys": await keys.list_keys(app_id)}, default=str
-    )
+    return json.dumps({**dict(row), "keys": await keys.list_keys(app_id)}, default=str)
 
 
 async def get_integration_env(app_id: str) -> str:

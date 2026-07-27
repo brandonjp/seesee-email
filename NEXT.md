@@ -1,9 +1,11 @@
 # Next Steps — SeeSee
 
-**Version:** 0.20.2-dev
+**Version:** 0.20.3-dev
 **Updated:** 2026-07-27
 
 ## Just Completed
+
+- **`ruff` pinned to `==0.16.0`** (v0.20.3-dev) — CI installed an unpinned `ruff>=0.6.0`, resolved to 0.16.0, which started formatting Python code blocks inside Markdown. `ruff format --check .` failed on six untouched docs files and, because the Docker `build` job declares `needs: test`, the image publish was skipped. Second time an unpinned formatter has blocked the publish, so the version is now pinned rather than floored; bump it deliberately and reformat in the same commit. Only Markdown code blocks were reformatted — no Python source changed.
 
 - **Session and flash cookies marked `Secure` on HTTPS deployments** (v0.20.2-dev) — both previously travelled in the clear over plain HTTP, and the flash cookie briefly carries a **plaintext API key** on the redirect after minting one. `cookies_are_secure()` derives the flag from `SEESEE_BASE_URL` rather than adding a setting: an `https://` base URL gets secure cookies automatically, while HTTP-only installs keep working (a hard-coded `Secure` would lock the admin out silently, since the browser just drops the cookie). No config change needed on deploy.
 
@@ -79,7 +81,7 @@
 
 ### Cut the 0.20.0 release
 
-All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), the work has passed a full code review, and **`feature/management-keys-mcp` is merged to `main`** (merge commit `7f092f8`, 2026-07-27). `main` currently sits at `0.20.2-dev` with 423 tests passing.
+All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), the work has passed a full code review, and **`feature/management-keys-mcp` is merged to `main`** (merge commit `7f092f8`, 2026-07-27). `main` currently sits at `0.20.3-dev` with 423 tests passing.
 
 What remains is the deliberate, manual release cut — explicitly kept out of any loop:
 

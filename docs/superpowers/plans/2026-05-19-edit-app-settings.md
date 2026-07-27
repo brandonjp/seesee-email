@@ -194,8 +194,6 @@ async def test_apps_update_settings_rejects_negative_retention(
     listed = await client.get("/api/v1/apps", headers=admin_auth_header)
     updated = next(a for a in listed.json() if a["id"] == app_id)
     assert updated["retention_max_count"] == 100  # unchanged
-
-
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**

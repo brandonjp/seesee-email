@@ -157,9 +157,7 @@ def validate_scopes(scopes: list[str], app_id: str | None) -> None:
     invalid = requested - allowed
     if invalid:
         kind = "app" if app_id is not None else "management"
-        raise ValueError(
-            f"Invalid scope(s) for {kind} key: {', '.join(sorted(invalid))}"
-        )
+        raise ValueError(f"Invalid scope(s) for {kind} key: {', '.join(sorted(invalid))}")
 ```
 
 - [x] Step 2: Create `tests/test_api_keys.py` with sync unit tests:
@@ -209,9 +207,7 @@ def _debounce_cutoff(now_iso: str) -> str:
     from datetime import datetime, timedelta
 
     now = datetime.strptime(now_iso, "%Y-%m-%dT%H:%M:%S")
-    return (now - timedelta(seconds=_LAST_USED_DEBOUNCE_SECONDS)).strftime(
-        "%Y-%m-%dT%H:%M:%S"
-    )
+    return (now - timedelta(seconds=_LAST_USED_DEBOUNCE_SECONDS)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 async def _record_use(key_id: str, now_iso: str) -> None:
@@ -347,9 +343,7 @@ async def revoke_key(key_id: str) -> bool:
     now = utc_now_iso()
     await db.execute("UPDATE api_keys SET revoked_at = ? WHERE id = ?", (now, key_id))
     if row["app_id"] is not None:
-        cursor = await db.execute(
-            "SELECT api_key FROM apps WHERE id = ?", (row["app_id"],)
-        )
+        cursor = await db.execute("SELECT api_key FROM apps WHERE id = ?", (row["app_id"],))
         app_row = await cursor.fetchone()
         if app_row is not None and app_row["api_key"] == row["key_hash"]:
             tombstone = hash_secret(secrets.token_urlsafe(KEY_RANDOM_BYTES))
@@ -449,20 +443,14 @@ async def get_current_app(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired"
         ) from exc
     if principal is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
     if principal.app_id is None or "emails:write" not in principal.scopes:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="App API key required"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="App API key required")
     db = await get_db()
     cursor = await db.execute("SELECT * FROM apps WHERE id = ?", (principal.app_id,))
     row = await cursor.fetchone()
     if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
     return dict(row)
 ```
 
@@ -534,9 +522,7 @@ def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
         ).fetchone()
         if app_row is None:
             return None
-        rows = db.execute(
-            "SELECT * FROM api_keys WHERE app_id = ?", (app_row["id"],)
-        ).fetchall()
+        rows = db.execute("SELECT * FROM api_keys WHERE app_id = ?", (app_row["id"],)).fetchall()
         for row in rows:
             active, _reason = key_is_active(row, now)
             if not active:
@@ -613,9 +599,9 @@ def _cli_create(args) -> int:
     if args.expires_days is not None:
         from datetime import datetime, timedelta, timezone
 
-        expires_at = (
-            datetime.now(tz=timezone.utc) + timedelta(days=args.expires_days)
-        ).strftime("%Y-%m-%dT%H:%M:%S")
+        expires_at = (datetime.now(tz=timezone.utc) + timedelta(days=args.expires_days)).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        )
     plaintext = generate_key(management=True)
     prefix = plaintext[len(MGMT_KEY_MARKER) : len(MGMT_KEY_MARKER) + PREFIX_LEN]
     with closing(sqlite3.connect(settings.db_path)) as db:

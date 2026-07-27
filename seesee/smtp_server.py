@@ -10,19 +10,17 @@ import email
 import email.policy
 import json
 import logging
-import sqlite3
 import uuid
 import warnings
-from contextlib import closing
 from email.message import EmailMessage
 
 from aiosmtpd.controller import Controller
 from aiosmtpd.smtp import SMTP, AuthResult, Envelope, LoginPassword, Session
 
-from seesee.auth import verify_secret
 from seesee.config import settings
 from seesee.database import get_db
 from seesee.helpers import apply_body_storage_mode
+from seesee.keys import resolve_smtp_password
 from seesee.timezone import utc_now_iso
 
 logger = logging.getLogger("seesee.smtp")
@@ -93,26 +91,13 @@ class SmtpAuthenticator:
         )
 
         try:
-            with closing(sqlite3.connect(settings.db_path)) as db:
-                db.row_factory = sqlite3.Row
-                app_row = db.execute(
-                    "SELECT * FROM apps WHERE smtp_username = ?",
-                    (username,),
-                ).fetchone()
-
+            app_row = resolve_smtp_password(username, password)
             if app_row is None:
-                logger.warning("SMTP AUTH failed: unknown username %r", username)
+                logger.warning("SMTP AUTH failed for %r", username)
                 return AuthResult(success=False, handled=False)
-
-            if not verify_secret(password, app_row["api_key"]):
-                logger.warning("SMTP AUTH failed: wrong password for %r", username)
-                return AuthResult(success=False, handled=False)
-
-            # Store the authenticated app on the session for later use
-            session.app = dict(app_row)  # type: ignore[attr-defined]
+            session.app = app_row  # type: ignore[attr-defined]
             logger.info("SMTP AUTH success for app %r (id=%s)", app_row["name"], app_row["id"])
             return AuthResult(success=True)
-
         except Exception:
             logger.exception("SMTP AUTH error")
             return AuthResult(success=False, handled=False)

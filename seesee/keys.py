@@ -2,10 +2,13 @@
 
 import json
 import secrets
+import sqlite3
 import uuid
+from contextlib import closing
 from dataclasses import dataclass
 
 from seesee.auth import hash_secret, verify_secret
+from seesee.config import settings
 from seesee.database import get_db
 from seesee.timezone import utc_now_iso
 
@@ -269,3 +272,44 @@ async def list_keys(app_id: str | None) -> list[dict]:
         item["scopes"] = json.loads(item["scopes"])
         result.append(item)
     return result
+
+
+def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
+    """SYNC resolver for the SMTP authenticator (aiosmtpd cannot await).
+
+    Returns the app row dict on success, None on failure. A password matching
+    ANY active emails:write key for the app authenticates — this is what makes
+    non-destructive rotation work over SMTP. Shares the pure helpers with the
+    async resolver so the two cannot drift.
+    """
+    import json as _json
+
+    now = utc_now_iso()
+    with closing(sqlite3.connect(settings.db_path, timeout=5)) as db:
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA busy_timeout=5000")
+        app_row = db.execute(
+            "SELECT * FROM apps WHERE smtp_username = ?", (smtp_username,)
+        ).fetchone()
+        if app_row is None:
+            return None
+        rows = db.execute("SELECT * FROM api_keys WHERE app_id = ?", (app_row["id"],)).fetchall()
+        for row in rows:
+            active, _reason = key_is_active(row, now)
+            if not active:
+                continue
+            if "emails:write" not in _json.loads(row["scopes"]):
+                continue
+            if verify_secret(password, row["key_hash"]):
+                db.execute(
+                    "UPDATE api_keys SET last_used_at = ? "
+                    "WHERE id = ? AND (last_used_at IS NULL OR last_used_at < ?)",
+                    (now, row["id"], _debounce_cutoff(now)),
+                )
+                db.commit()
+                return dict(app_row)
+        # 0.20.0 legacy fallback (delete in 0.21.0): app created by an old
+        # container after the backfill — verify against apps.api_key directly.
+        if verify_secret(password, app_row["api_key"]):
+            return dict(app_row)
+        return None

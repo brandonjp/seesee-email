@@ -16,7 +16,7 @@ Sub-plan 1 of 4 for the 0.20.0 management-keys + MCP feature. Adds signed CSRF t
 
 Create the token helpers and dependency; register a template-callable token generator.
 
-- [ ] Step 1: Create `seesee/csrf.py`:
+- [x] Step 1: Create `seesee/csrf.py`:
 
 ```python
 """Signed CSRF tokens for session-authenticated UI form POSTs.
@@ -91,7 +91,7 @@ async def require_csrf(request: Request) -> None:
         )
 ```
 
-- [ ] Step 2: In `seesee/main.py`, inside the `if _templates_dir.is_dir():` block (right after the `templates.env.globals["build_display"] = ...` assignment), add:
+- [x] Step 2: In `seesee/main.py`, inside the `if _templates_dir.is_dir():` block (right after the `templates.env.globals["build_display"] = ...` assignment), add:
 
 ```python
     from seesee.csrf import csrf_token_for
@@ -99,7 +99,7 @@ async def require_csrf(request: Request) -> None:
     templates.env.globals["csrf_token_for"] = csrf_token_for
 ```
 
-- [ ] Step 3: Create `tests/test_csrf.py` with unit tests for the token round-trip (endpoint tests come in Chunk 4):
+- [x] Step 3: Create `tests/test_csrf.py` with unit tests for the token round-trip (endpoint tests come in Chunk 4):
 
 ```python
 """CSRF token tests — unit round-trip now; endpoint enforcement tests below."""
@@ -126,9 +126,9 @@ def test_csrf_garbage_rejected():
     assert not validate_csrf_token("not-a-token", "admin", "sekrit", 3600)
 ```
 
-- [ ] Step 4: Run `python -m pytest -x -q` — full suite passes (no behavior change yet).
-- [ ] Step 5: Run `ruff check . && ruff format --check .` — clean.
-- [ ] Step 6: Commit: `git add seesee/csrf.py seesee/main.py tests/test_csrf.py && git commit -m "feat(csrf): signed CSRF token module and template helper"`
+- [x] Step 4: Run `python -m pytest -x -q` — full suite passes (no behavior change yet).
+- [x] Step 5: Run `ruff check . && ruff format --check .` — clean.
+- [x] Step 6: Commit: `git add seesee/csrf.py seesee/main.py tests/test_csrf.py && git commit -m "feat(csrf): signed CSRF token module and template helper"`
 
 ### ✅ Review Checkpoint — Chunk 1
 - [ ] `python -c "from seesee.csrf import make_csrf_token, validate_csrf_token, csrf_token_for, require_csrf"` succeeds
@@ -145,12 +145,12 @@ def test_csrf_garbage_rejected():
 
 Embed tokens in forms. Inert until Chunk 4 enforces validation, so tests stay green.
 
-- [ ] Step 1: In `base.html`, add inside `<head>` (near the other meta tags): `<meta name="csrf-token" content="{{ csrf_token_for(request) }}">`
-- [ ] Step 2: In `base.html`, inside the logout form (`<form method="post" action="/logout">`, ~line 100), add as its first child: `<input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">` (logout is not validated, but the uniform field keeps templates consistent).
-- [ ] Step 3: In `apps.html`, add the same hidden input as the first child of all three POST forms: the create form (`action="/apps"`, ~line 103), the rotate-confirm form (`:action="'/apps/' + confirmRotate + '/rotate-key'"`, ~line 143), and the delete-confirm form (`:action="'/apps/' + confirmDelete + '/delete'"`, ~line 160).
-- [ ] Step 4: In `app_detail.html`, add the same hidden input as the first child of all five POST forms: rename (~line 49), settings (~line 312), rotate-key (~line 397), purge (~line 414), delete (~line 431).
-- [ ] Step 5: Run `python -m pytest -x -q` — full suite passes.
-- [ ] Step 6: Commit: `git add seesee/templates && git commit -m "feat(csrf): embed CSRF tokens in base, apps, and app_detail forms"`
+- [x] Step 1: In `base.html`, add inside `<head>` (near the other meta tags): `<meta name="csrf-token" content="{{ csrf_token_for(request) }}">`
+- [x] Step 2: In `base.html`, inside the logout form (`<form method="post" action="/logout">`, ~line 100), add as its first child: `<input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">` (logout is not validated, but the uniform field keeps templates consistent).
+- [x] Step 3: In `apps.html`, add the same hidden input as the first child of all three POST forms: the create form (`action="/apps"`, ~line 103), the rotate-confirm form (`:action="'/apps/' + confirmRotate + '/rotate-key'"`, ~line 143), and the delete-confirm form (`:action="'/apps/' + confirmDelete + '/delete'"`, ~line 160).
+- [x] Step 4: In `app_detail.html`, add the same hidden input as the first child of all five POST forms: rename (~line 49), settings (~line 312), rotate-key (~line 397), purge (~line 414), delete (~line 431).
+- [x] Step 5: Run `python -m pytest -x -q` — full suite passes.
+- [x] Step 6: Commit: `git add seesee/templates && git commit -m "feat(csrf): embed CSRF tokens in base, apps, and app_detail forms"`
 
 ### ✅ Review Checkpoint — Chunk 2
 - [ ] `grep -c "csrf_token" seesee/templates/apps.html` returns 3; `grep -c "csrf_token" seesee/templates/app_detail.html` returns 5
@@ -164,16 +164,16 @@ Embed tokens in forms. Inert until Chunk 4 enforces validation, so tests stay gr
 
 ## Chunk 3: Hidden token fields, part B (`seesee/templates/emails.html`, `seesee/templates/email_detail.html`, `seesee/templates/settings.html`)
 
-- [ ] Step 1: In `emails.html`, add the hidden input as the first child of the bulk-delete form (`action="/emails/bulk-delete"`, ~line 79).
-- [ ] Step 2: In `email_detail.html`, add the hidden input as the first child of the delete form (`action="/emails/{{ email.id }}/delete"`, ~line 64).
-- [ ] Step 3: In `settings.html`, the cleanup button (~line 136) POSTs via `fetch('/settings/cleanup', { method: 'POST' })`. Change the fetch options to send the token from the meta tag as a header:
+- [x] Step 1: In `emails.html`, add the hidden input as the first child of the bulk-delete form (`action="/emails/bulk-delete"`, ~line 79).
+- [x] Step 2: In `email_detail.html`, add the hidden input as the first child of the delete form (`action="/emails/{{ email.id }}/delete"`, ~line 64).
+- [x] Step 3: In `settings.html`, the cleanup button (~line 136) POSTs via `fetch('/settings/cleanup', { method: 'POST' })`. Change the fetch options to send the token from the meta tag as a header:
 
 ```
 fetch('/settings/cleanup', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name=csrf-token]').content } })
 ```
 
-- [ ] Step 4: Run `python -m pytest -x -q` — full suite passes.
-- [ ] Step 5: Commit: `git add seesee/templates && git commit -m "feat(csrf): embed CSRF tokens in emails, email_detail, settings"`
+- [x] Step 4: Run `python -m pytest -x -q` — full suite passes.
+- [x] Step 5: Commit: `git add seesee/templates && git commit -m "feat(csrf): embed CSRF tokens in emails, email_detail, settings"`
 
 ### ✅ Review Checkpoint — Chunk 3
 - [ ] `grep -c "csrf_token" seesee/templates/emails.html` returns 1; same for `email_detail.html`
@@ -188,9 +188,9 @@ fetch('/settings/cleanup', { method: 'POST', headers: { 'X-CSRF-Token': document
 
 Turn validation on for all nine session-authenticated POST handlers, and plumb tokens through the UI tests.
 
-- [ ] Step 1: In `seesee/routes/ui.py`, add to the imports: `from seesee.csrf import require_csrf`.
-- [ ] Step 2: Add the parameter `_csrf: None = Depends(require_csrf),` immediately after the `user: str = Depends(require_session),` parameter in exactly these nine handlers: `create_app_ui`, `rotate_key_ui`, `rename_app_ui`, `update_app_settings_ui`, `purge_app_emails_ui`, `delete_app_ui`, `bulk_delete_emails_ui`, `delete_email_ui`, `run_cleanup_ui`. Do NOT touch `login_submit` or `logout`.
-- [ ] Step 3: In `tests/test_ui.py`, add near the top (after existing imports):
+- [x] Step 1: In `seesee/routes/ui.py`, add to the imports: `from seesee.csrf import require_csrf`.
+- [x] Step 2: Add the parameter `_csrf: None = Depends(require_csrf),` immediately after the `user: str = Depends(require_session),` parameter in exactly these nine handlers: `create_app_ui`, `rotate_key_ui`, `rename_app_ui`, `update_app_settings_ui`, `purge_app_emails_ui`, `delete_app_ui`, `bulk_delete_emails_ui`, `delete_email_ui`, `run_cleanup_ui`. Do NOT touch `login_submit` or `logout`.
+- [x] Step 3: In `tests/test_ui.py`, add near the top (after existing imports):
 
 ```python
 from seesee.csrf import CSRF_FIELD_NAME, make_csrf_token
@@ -202,8 +202,8 @@ def csrf_form(data: dict | None = None) -> dict:
     return {**(data or {}), CSRF_FIELD_NAME: token}
 ```
 
-- [ ] Step 4: In `tests/test_ui.py`, for every `client.post(...)` to a session-authenticated UI route (all POSTs except `/login` and `/logout`), wrap the existing `data=` argument: `data={...}` becomes `data=csrf_form({...})`, and calls with no `data=` argument gain `data=csrf_form()`. Change nothing else — no assertion, status code, or fixture changes.
-- [ ] Step 5: Append endpoint tests to `tests/test_csrf.py`:
+- [x] Step 4: In `tests/test_ui.py`, for every `client.post(...)` to a session-authenticated UI route (all POSTs except `/login` and `/logout`), wrap the existing `data=` argument: `data={...}` becomes `data=csrf_form({...})`, and calls with no `data=` argument gain `data=csrf_form()`. Change nothing else — no assertion, status code, or fixture changes.
+- [x] Step 5: Append endpoint tests to `tests/test_csrf.py`:
 
 ```python
 import pytest
@@ -260,9 +260,9 @@ async def test_bearer_rest_unaffected(client, admin_auth_header):
 
 (Adjust the `pytest.mark.anyio` marker to match whatever marker/asyncio mode the existing test files use — copy the pattern from `tests/test_ui.py` exactly.)
 
-- [ ] Step 6: Run `python -m pytest -x -q` — full suite passes.
-- [ ] Step 7: Run `git diff tests/test_ui.py` and confirm the diff contains ONLY the helper block and `csrf_form(` wrappings — no assertion or status-code changes.
-- [ ] Step 8: Commit: `git add seesee/routes/ui.py tests/test_csrf.py tests/test_ui.py && git commit -m "feat(csrf): enforce CSRF validation on session POST handlers"`
+- [x] Step 6: Run `python -m pytest -x -q` — full suite passes.
+- [x] Step 7: Run `git diff tests/test_ui.py` and confirm the diff contains ONLY the helper block and `csrf_form(` wrappings — no assertion or status-code changes.
+- [x] Step 8: Commit: `git add seesee/routes/ui.py tests/test_csrf.py tests/test_ui.py && git commit -m "feat(csrf): enforce CSRF validation on session POST handlers"`
 
 ### ✅ Review Checkpoint — Chunk 4
 - [ ] `grep -c "Depends(require_csrf)" seesee/routes/ui.py` returns 9
@@ -277,11 +277,11 @@ async def test_bearer_rest_unaffected(client, admin_auth_header):
 
 ## Chunk 5: Version + docs (`pyproject.toml`, `seesee/__init__.py`, `CHANGELOG.md`, `ROADMAP.md`)
 
-- [ ] Step 1: Bump version to `0.19.17-dev` in BOTH `pyproject.toml` (`version = "0.19.17-dev"`) and `seesee/__init__.py` (`__version__ = "0.19.17-dev"`). (`tests/test_version_sync.py` enforces they match.)
-- [ ] Step 2: In `CHANGELOG.md` under `## [Unreleased]`, add under `### Added` (create the subheading under `[Unreleased]` only if not present): `- CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; fetch() callers send X-CSRF-Token)`
-- [ ] Step 3: In `ROADMAP.md`, find the CSRF line (~line 154, listed as a Phase 3.0 known gap) and mark it complete with a `✅` and the text `(shipped in 0.20.0 cycle — CSRF tokens on all session POST handlers)`.
-- [ ] Step 4: Run `python -m pytest -x -q` — full suite passes (including `test_version_sync.py`).
-- [ ] Step 5: Commit: `git add pyproject.toml seesee/__init__.py CHANGELOG.md ROADMAP.md && git commit -m "chore: bump to 0.19.17-dev; changelog + roadmap for CSRF"`
+- [x] Step 1: Bump version to `0.19.17-dev` in BOTH `pyproject.toml` (`version = "0.19.17-dev"`) and `seesee/__init__.py` (`__version__ = "0.19.17-dev"`). (`tests/test_version_sync.py` enforces they match.)
+- [x] Step 2: In `CHANGELOG.md` under `## [Unreleased]`, add under `### Added` (create the subheading under `[Unreleased]` only if not present): `- CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; fetch() callers send X-CSRF-Token)`
+- [x] Step 3: In `ROADMAP.md`, find the CSRF line (~line 154, listed as a Phase 3.0 known gap) and mark it complete with a `✅` and the text `(shipped in 0.20.0 cycle — CSRF tokens on all session POST handlers)`.
+- [x] Step 4: Run `python -m pytest -x -q` — full suite passes (including `test_version_sync.py`).
+- [x] Step 5: Commit: `git add pyproject.toml seesee/__init__.py CHANGELOG.md ROADMAP.md && git commit -m "chore: bump to 0.19.17-dev; changelog + roadmap for CSRF"`
 
 ### ✅ Review Checkpoint — Chunk 5
 - [ ] `grep version pyproject.toml | head -1` and `grep __version__ seesee/__init__.py` both show `0.19.17-dev`

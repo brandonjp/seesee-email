@@ -1,7 +1,7 @@
 # Next Steps — SeeSee
 
 **Version:** 0.19.16-dev
-**Updated:** 2026-07-26
+**Updated:** 2026-07-27
 
 ## Just Completed
 
@@ -65,23 +65,26 @@
 
 ## Highest Priority Next Task
 
-### Management API Keys + MCP Server (0.20.0) — spec approved, awaiting Fable review
+### Management API Keys + MCP Server (0.20.0) — READY TO LAUNCH (Ralph plans written)
 
-Design spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (branch `feature/management-keys-mcp`, commit `5003a0f`). Read the spec first — it is the source of truth; this is a pointer, not a summary.
+Design spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (branch `feature/management-keys-mcp`). Read the spec first — it is the source of truth; this is a pointer, not a summary.
 
 Gives agents/automation a scoped, revocable credential for managing an instance, and exposes provisioning + email debugging over MCP. Unified `api_keys` table (schema v4) covering both app and management keys, five-scope vocabulary, multi-key-per-app (fixes today's destructive rotate), `/mcp` server, key management UI, CSRF on session POSTs.
 
-**Status:** Fable review complete — verdict **ship with changes** (`docs/superpowers/specs/2026-07-26-management-keys-mcp-review.md`). Five blocking spec edits (B1–B5: no session-cookie auth on `require_scope`, legacy-column write policy, scope-validity matrix, MCP rejects app-bound principals normatively, sync/async resolver split for SMTP) plus regression-bar and SCHEMA_SQL fixes (N1, N2) must be applied to the design spec before the Ralph specs are written. Review also recommends hoisting CSRF into its own small spec run first, adding a `created_by` column, and defaulting UI key expiry to 90 days.
+**Status (2026-07-27):** All required review edits applied to the design spec — B1 (`require_scope` never reads session cookies), B2 (legacy-column dual-write/tombstone policy, §1a), B3 (kind/scope validity matrix + belongs-to-app revoke), B4 (MCP rejects app-bound principals normatively, per-request resolution), B5 (sync/async resolver split for SMTP), N1 (regression bar restated: whole suite + frozen files + per-spec test-change budgets), N2 (`SCHEMA_SQL` gains `api_keys`; single INSERT…SELECT backfill). Adopted recommendations: CSRF hoisted to its own spec run first, `created_by` provenance column, 90-day UI expiry default, lazy legacy fallback (N3), `TOOL_SCOPES` single source of truth (N5), guarded `last_used_at` UPDATE (N6), pre-SDK auth middleware + both-occurrence redaction (N8).
 
-Planned as three sequential Ralph specs (dependency-ordered — do not merge into one loop; the auth foundation must be verified correct before anything sits on it):
+Both launch hazards are resolved:
+- `tests/test_smtp_integration.py` verified stable in isolation: 3 consecutive clean runs (~1.4s each) on 2026-07-27.
+- The `mcp` SDK surface was verified against installed `mcp==1.26.0` by a running end-to-end experiment (mount, lifespan, stateless auth, contextvar propagation, scope-filtered `tools/list`, trailing-slash behavior, once-per-instance `session_manager.run()`). The verified facts are prescriptive in design §6 and baked into Ralph sub-plan 4.
 
-1. **Foundation** — schema v4, `seesee/keys.py`, migration, rewire `get_current_app` / `require_admin_or_app` / SMTP auth. Exit gate: `test_apps.py`, `test_auth.py`, `test_ingest.py`, `test_smtp.py` pass **unmodified**, plus new `test_api_keys.py` + `test_migration_v4.py`.
-2. **REST + scopes + UI + CSRF** — management key endpoints, `require_scope`, Keys UI, CSRF tokens.
-3. **MCP server** — `/mcp`, scope-filtered tool list, the nine tools.
+Four sequential Ralph sub-plans, one shared branch (`feature/management-keys-mcp`), one runner invocation — queued in `~/.ralph-queue/queue-2026-07-27.sh`:
 
-Two known hazards before running these unattended:
-- Spec 1 touches the SMTP auth path, exercised by `tests/test_smtp_integration.py` against a real aiosmtpd instance. If that test is flaky unattended, a Ralph loop will burn iterations chasing it. Verify it is stable in isolation first.
-- Spec 3 depends on the `mcp` Python SDK's FastAPI/Starlette mounting API, **which has not been verified against any installed version**. Pin down the actual SDK surface and make spec 3 prescriptive about it before looping, or run spec 3 interactively.
+1. `docs/plan-mgmt-keys-1-csrf.md` — CSRF tokens on all session POST handlers (lands first so key forms are born protected).
+2. `docs/plan-mgmt-keys-2-foundation.md` — schema v4, `seesee/keys.py`, migration + backfill, REST/SMTP auth rewire, dual-write policy, CLI bootstrap.
+3. `docs/plan-mgmt-keys-3-rest-ui.md` — `require_scope`, scope-mapped app routes, key CRUD endpoints, Keys UI (Settings + app detail).
+4. `docs/plan-mgmt-keys-4-mcp.md` — `/mcp` mount per the verified SDK surface, auth middleware, the nine tools, docs-site page, bump to 0.20.0-dev.
+
+After all four complete: cut the `0.20.0` release manually — that's when the CHANGELOG `[Unreleased]` one-time consolidation (see Known Issues) happens, deliberately, not inside a loop.
 
 ### CSV/JSON Search Export
 

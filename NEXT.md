@@ -5,6 +5,8 @@
 
 ## Just Completed
 
+- **Session and flash cookies marked `Secure` on HTTPS deployments** (v0.20.2-dev) — both previously travelled in the clear over plain HTTP, and the flash cookie briefly carries a **plaintext API key** on the redirect after minting one. `cookies_are_secure()` derives the flag from `SEESEE_BASE_URL` rather than adding a setting: an `https://` base URL gets secure cookies automatically, while HTTP-only installs keep working (a hard-coded `Secure` would lock the admin out silently, since the browser just drops the cookie). No config change needed on deploy.
+
 - **Full branch code review before the 0.20.0 release** (v0.20.1-dev) — reviewed all 40 files touched by `feature/management-keys-mcp`. Findings and fixes:
   - **Search 500'd on any email address** (and on a stray `"`, `(`, or `-`). FTS5's `MATCH` operand is a query language, not a literal, so `sqlite3.OperationalError` escaped the route. Affected five call sites: REST list, REST bulk delete, UI search box, UI bulk delete, and the new MCP `search_emails`. New `seesee/search.py` normalizes queries; well-formed advanced syntax is unchanged, malformed input degrades to a term search, and a no-term query matches nothing instead of dropping the filter (which would have returned *every* email — and, in bulk delete, deleted them). **Pre-existing and project-wide, not introduced by this branch.**
   - UI app-key mint against an unknown app 500'd on the FK constraint; now 404, matching the REST route

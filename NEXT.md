@@ -1,7 +1,7 @@
 # Next Steps — SeeSee
 
-**Version:** 0.19.15-dev
-**Updated:** 2026-07-02
+**Version:** 0.19.16-dev
+**Updated:** 2026-07-26
 
 ## Just Completed
 
@@ -65,9 +65,27 @@
 
 ## Highest Priority Next Task
 
+### Management API Keys + MCP Server (0.20.0) — spec approved, awaiting Fable review
+
+Design spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (branch `feature/management-keys-mcp`, commit `5003a0f`). Read the spec first — it is the source of truth; this is a pointer, not a summary.
+
+Gives agents/automation a scoped, revocable credential for managing an instance, and exposes provisioning + email debugging over MCP. Unified `api_keys` table (schema v4) covering both app and management keys, five-scope vocabulary, multi-key-per-app (fixes today's destructive rotate), `/mcp` server, key management UI, CSRF on session POSTs.
+
+**Status:** spec written and approved in-session; queued for a Fable second-opinion review before implementation begins.
+
+Planned as three sequential Ralph specs (dependency-ordered — do not merge into one loop; the auth foundation must be verified correct before anything sits on it):
+
+1. **Foundation** — schema v4, `seesee/keys.py`, migration, rewire `get_current_app` / `require_admin_or_app` / SMTP auth. Exit gate: `test_apps.py`, `test_auth.py`, `test_ingest.py`, `test_smtp.py` pass **unmodified**, plus new `test_api_keys.py` + `test_migration_v4.py`.
+2. **REST + scopes + UI + CSRF** — management key endpoints, `require_scope`, Keys UI, CSRF tokens.
+3. **MCP server** — `/mcp`, scope-filtered tool list, the nine tools.
+
+Two known hazards before running these unattended:
+- Spec 1 touches the SMTP auth path, exercised by `tests/test_smtp_integration.py` against a real aiosmtpd instance. If that test is flaky unattended, a Ralph loop will burn iterations chasing it. Verify it is stable in isolation first.
+- Spec 3 depends on the `mcp` Python SDK's FastAPI/Starlette mounting API, **which has not been verified against any installed version**. Pin down the actual SDK surface and make spec 3 prescriptive about it before looping, or run spec 3 interactively.
+
 ### CSV/JSON Search Export
 
-Add export buttons to the email search page that download the current filtered results as CSV or JSON files.
+Add export buttons to the email search page that download the current filtered results as CSV or JSON files. (Deprioritized below the 0.20.0 work above.)
 
 ## Other Candidates (from ROADMAP Phase 3.0)
 
@@ -81,7 +99,7 @@ Add export buttons to the email search page that download the current filtered r
 ## Known Issues
 
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
-- **No CSRF protection on UI form POSTs.** (Also on ROADMAP Phase 3.0.) `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but must be addressed before multi-user auth lands.
+- **No CSRF protection on UI form POSTs.** (Also on ROADMAP Phase 3.0.) `/apps/{id}/settings`, `/rename`, `/purge`, and key rotation are session-cookie-authenticated POSTs with no CSRF token. Pre-existing and project-wide — the new settings endpoint follows the existing pattern. Acceptable for a single-admin self-hosted tool, but must be addressed before multi-user auth lands. **Severity rises with the 0.20.0 management-keys work:** once a key-creation form exists, a forged POST mints a durable attacker-known credential that survives a password change and is invisible until someone reads the key list. CSRF is therefore in scope for 0.20.0 (Ralph spec 2), not deferred.
 - **CHANGELOG `[Unreleased]` needs a one-time consolidation.** The `[Unreleased]` section has accumulated several separately-prepended batches, leaving repeated `### Added`/`### Fixed`/`### Removed` subheadings and a stray `### Previously` group (all pre-dating the recent work). Before the next tagged release, consolidate `[Unreleased]` into a single Added/Changed/Fixed/Removed set and cut it into a versioned section. Low risk but should be a deliberate, careful edit — not folded into an unrelated change.
 
 ## Resolved (previously listed here)

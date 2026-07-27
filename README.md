@@ -74,6 +74,18 @@ curl -X POST http://localhost:8080/api/v1/log \
 
 See [examples/](examples/) for PHP/WordPress, Python, Node.js, and cURL integration snippets.
 
+## Management API keys
+
+Management API keys (`ss_mgmt_` Bearer credentials) authenticate automation and agents against the management REST API — minting/revoking app keys, listing apps, and other admin-scoped operations — separately from the per-app keys used for `POST /api/v1/log`. Bootstrap one headlessly from the CLI:
+
+```bash
+python -m seesee.keys create --label "my-agent" --scopes emails:read,apps:read --expires-days 90
+```
+
+To rotate a key with zero downtime: mint a new key, deploy it to the consumer, confirm it's working, then revoke the old key id.
+
+A key with `apps:write` can mint app keys and therefore transitively read all email in the instance — scope keys per agent and prefer read-only keys for debugging.
+
 ## Features
 
 - **REST API** — `POST /api/v1/log` from any language

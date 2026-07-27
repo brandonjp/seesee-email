@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seesee"
-version = "0.19.18-dev"
+version = "0.19.19-dev"
 description = "Lightweight, self-hosted sent email log aggregator with search UI"
 readme = "README.md"
 license = {text = "MIT"}

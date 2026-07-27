@@ -4,6 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from seesee import keys
 from seesee.auth import (
     API_KEY_PREFIX,
     generate_api_key,
@@ -19,9 +20,12 @@ from seesee.models import (
     AppCreateResponse,
     AppResponse,
     AppUpdateRequest,
+    KeyCreateRequest,
+    KeyCreateResponse,
+    KeyMetadata,
     KeyRotateResponse,
 )
-from seesee.timezone import utc_now, utc_now_iso
+from seesee.timezone import iso_in_days, utc_now, utc_now_iso
 
 router = APIRouter(prefix="/api/v1", tags=["apps"])
 
@@ -349,3 +353,72 @@ async def delete_app(app_id: str) -> dict:
     await db.commit()
 
     return {"message": f"Deleted app '{app['name']}' and {email_count} emails"}
+
+
+@router.get(
+    "/apps/{app_id}/keys",
+    response_model=list[KeyMetadata],
+    dependencies=[Depends(require_scope("apps:read"))],
+)
+async def list_app_keys(app_id: str) -> list[KeyMetadata]:
+    """List key metadata for an app. Requires apps:read."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    return [KeyMetadata(**k) for k in await keys.list_keys(app_id)]
+
+
+@router.post(
+    "/apps/{app_id}/keys",
+    response_model=KeyCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_app_key(
+    app_id: str,
+    request: KeyCreateRequest,
+    principal: Principal = Depends(require_scope("apps:write")),  # noqa: B008
+) -> KeyCreateResponse:
+    """Mint an additional key for an app (safe rotation: mint, deploy, revoke old)."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    expires_at = None
+    if request.expires_days is not None:
+        expires_at = iso_in_days(request.expires_days)
+    try:
+        key_id, plaintext = await keys.create_key(
+            label=request.label,
+            app_id=app_id,
+            scopes=request.scopes,
+            expires_at=expires_at,
+            created_by=principal.key_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    metadata = [k for k in await keys.list_keys(app_id) if k["id"] == key_id][0]
+    return KeyCreateResponse(**metadata, api_key=plaintext)
+
+
+@router.delete(
+    "/apps/{app_id}/keys/{key_id}",
+    dependencies=[Depends(require_scope("apps:write"))],
+)
+async def revoke_app_key(app_id: str, key_id: str) -> dict:
+    """Revoke one of an app's keys.
+
+    404 unless the key exists AND belongs to this app — revocation by bare
+    key_id would let apps:write revoke management keys (lockout/DoS). There
+    is deliberately no REST route that revokes a management key.
+    """
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id FROM api_keys WHERE id = ? AND app_id = ?", (key_id, app_id)
+    )
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    await keys.revoke_key(key_id)
+    return {"message": "Key revoked"}

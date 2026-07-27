@@ -54,6 +54,11 @@ def utc_cutoff_iso(days_ago: int) -> str:
     return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def iso_in_days(days: int) -> str:
+    """Return a UTC ISO string for N days from now (key expiry)."""
+    return (datetime.now(tz=UTC) + timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def get_display_tz() -> ZoneInfo:
     """Get the configured display timezone, falling back to UTC.
 

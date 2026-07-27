@@ -16,16 +16,16 @@ Sub-plan 4 of 4 for the 0.20.0 management-keys + MCP feature. Mounts a scope-awa
 
 ## Chunk 1: Gate + MCP module with email tools (`pyproject.toml`, `seesee/config.py`, `seesee/mcp_server.py`)
 
-- [ ] Step 1 (GATE): Run `grep -q "def require_scope" seesee/dependencies.py && test -f seesee/keys.py && echo GATE-OK`. If it does not print `GATE-OK`, **HALT** — sub-plan 3 has not run.
-- [ ] Step 2: In `pyproject.toml` `dependencies`, add `"mcp>=1.26,<2",` after the `itsdangerous` line. Run `pip install -e ".[dev]"` (or `pip install "mcp>=1.26,<2"`) so the SDK is importable.
-- [ ] Step 3: In `seesee/config.py`, add under the `# SMTP Ingest` block:
+- [x] Step 1 (GATE): Run `grep -q "def require_scope" seesee/dependencies.py && test -f seesee/keys.py && echo GATE-OK`. If it does not print `GATE-OK`, **HALT** — sub-plan 3 has not run.
+- [x] Step 2: In `pyproject.toml` `dependencies`, add `"mcp>=1.26,<2",` after the `itsdangerous` line. Run `pip install -e ".[dev]"` (or `pip install "mcp>=1.26,<2"`) so the SDK is importable.
+- [x] Step 3: In `seesee/config.py`, add under the `# SMTP Ingest` block:
 
 ```python
     # MCP server (mounted at /mcp; Bearer ss_mgmt_ keys only)
     mcp_enabled: bool = True
 ```
 
-- [ ] Step 4: Create `seesee/mcp_server.py`:
+- [x] Step 4: Create `seesee/mcp_server.py`:
 
 ```python
 """MCP server — provisioning and email debugging over the Model Context Protocol.
@@ -233,8 +233,8 @@ def build_mcp_asgi_app(server: ScopedFastMCP):
     return MCPAuthMiddleware(server.streamable_http_app())
 ```
 
-- [ ] Step 5: `python -c "from seesee.mcp_server import create_mcp_server, build_mcp_asgi_app, TOOL_SCOPES"`; then `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add pyproject.toml seesee/config.py seesee/mcp_server.py && git commit -m "feat(mcp): scoped MCP server module with email debugging tools"`
+- [x] Step 5: `python -c "from seesee.mcp_server import create_mcp_server, build_mcp_asgi_app, TOOL_SCOPES"`; then `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add pyproject.toml seesee/config.py seesee/mcp_server.py && git commit -m "feat(mcp): scoped MCP server module with email debugging tools"`
 
 ### ✅ Review Checkpoint — Chunk 1
 - [ ] `pyproject.toml` pins `mcp>=1.26,<2`
@@ -249,7 +249,7 @@ def build_mcp_asgi_app(server: ScopedFastMCP):
 
 ## Chunk 2: Mount + lifespan + wire tests (`seesee/main.py`, `tests/test_mcp.py`)
 
-- [ ] Step 1: In `seesee/main.py`, build and mount the server (module level, after the route registrations):
+- [x] Step 1: In `seesee/main.py`, build and mount the server (module level, after the route registrations):
 
 ```python
 from seesee.mcp_server import build_mcp_asgi_app, create_mcp_server
@@ -260,7 +260,7 @@ app.mount("/mcp", build_mcp_asgi_app(mcp_server))
 
 (Mount unconditionally; `MCPAuthMiddleware` returns 404 at request time when `settings.mcp_enabled` is false — this keeps the toggle runtime-testable.)
 
-- [ ] Step 2: Replace the `lifespan` function in `main.py` with exactly this (the `mcp_server` global is defined later in the module; the lifespan body only runs at startup, after the module has fully loaded):
+- [x] Step 2: Replace the `lifespan` function in `main.py` with exactly this (the `mcp_server` global is defined later in the module; the lifespan body only runs at startup, after the module has fully loaded):
 
 ```python
 @asynccontextmanager
@@ -278,7 +278,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await close_db()
 ```
 
-- [ ] Step 3: Add a pure-ASGI trailing-slash rewrite so `POST /mcp` (no slash) works — Starlette's Mount 307-redirects it otherwise, and MCP clients can't be assumed to follow redirects on POST. In `main.py` after the mount:
+- [x] Step 3: Add a pure-ASGI trailing-slash rewrite so `POST /mcp` (no slash) works — Starlette's Mount 307-redirects it otherwise, and MCP clients can't be assumed to follow redirects on POST. In `main.py` after the mount:
 
 ```python
 class _MCPPathRewrite:
@@ -297,7 +297,7 @@ class _MCPPathRewrite:
 app.add_middleware(_MCPPathRewrite)
 ```
 
-- [ ] Step 4: Create `tests/test_mcp.py`. Module-level helpers:
+- [x] Step 4: Create `tests/test_mcp.py`. Module-level helpers:
 
 ```python
 """MCP server tests. Each test builds a FRESH server instance because the
@@ -372,8 +372,8 @@ Tests (each uses `async with MCPHarness() as h:` after minting keys via the stan
   - `test_no_destructive_tools` — full-scope key (`["emails:read","apps:read","apps:write","apps:delete"]`): `delete_app` and `purge_emails` absent from `tools/list` AND `"delete_app" not in TOOL_SCOPES`.
   - `test_mcp_disabled_404` — `monkeypatch.setattr(settings, "mcp_enabled", False)` → any `/mcp/` request 404s.
   - `test_main_app_mount_both_slash_forms` — ONE test against the real `seesee.main.app` (the only test allowed to run ITS session manager: `from seesee.main import app as main_app, mcp_server`; `async with mcp_server.session_manager.run():`): `POST /mcp` and `POST /mcp/` with a valid key both return 200 for `initialize`. Mark this test to run once; if the session manager was already started by a previous run in the same process, skip with `pytest.skip("main app session manager already consumed")` guarded by a module-level flag.
-- [ ] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/main.py tests/test_mcp.py && git commit -m "feat(mcp): mount /mcp with lifespan session manager and no-redirect path rewrite"`
+- [x] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/main.py tests/test_mcp.py && git commit -m "feat(mcp): mount /mcp with lifespan session manager and no-redirect path rewrite"`
 
 ### ✅ Review Checkpoint — Chunk 2
 - [ ] `main.py` runs `mcp_server.session_manager.run()` inside `lifespan`
@@ -390,10 +390,10 @@ Tests (each uses `async with MCPHarness() as h:` after minting keys via the stan
 
 The MCP `create_app` tool must not duplicate the REST route's logic — extract it once.
 
-- [ ] Step 1: Create `seesee/app_service.py` containing `async def create_app_record(*, name, body_storage_mode="full", retention_max_count=None, retention_max_age_days=None, retention_degrade_to_text_days=None, retention_degrade_to_preview_days=None, created_by="admin") -> dict`. Move the ENTIRE body of `routes/apps.py:create_app` into it verbatim — the `VALID_BODY_STORAGE_MODES` check (raise `ValueError` instead of `HTTPException`), slug collision loop, credential generation, the `apps` INSERT, and the `api_keys` dual-write INSERT (using the `created_by` parameter) — returning a plain dict with every field `AppCreateResponse` needs plus `api_key` (plaintext) and `smtp_username`.
-- [ ] Step 2: Rewrite `routes/apps.py:create_app` to: call `create_app_record(**request.model_dump(), created_by=principal.key_id)`, catch `ValueError` → 422 with the message, and build `AppCreateResponse(**record)`. Behavior (status codes, response shape, dual-write) must be byte-identical — `tests/test_apps.py` and `tests/test_management_api.py` prove it.
-- [ ] Step 3: `python -m pytest -x -q` — full suite unmodified. `ruff check . && ruff format --check .`
-- [ ] Step 4: Commit: `git add seesee/app_service.py seesee/routes/apps.py && git commit -m "refactor: extract create_app_record service for REST + MCP reuse"`
+- [x] Step 1: Create `seesee/app_service.py` containing `async def create_app_record(*, name, body_storage_mode="full", retention_max_count=None, retention_max_age_days=None, retention_degrade_to_text_days=None, retention_degrade_to_preview_days=None, created_by="admin") -> dict`. Move the ENTIRE body of `routes/apps.py:create_app` into it verbatim — the `VALID_BODY_STORAGE_MODES` check (raise `ValueError` instead of `HTTPException`), slug collision loop, credential generation, the `apps` INSERT, and the `api_keys` dual-write INSERT (using the `created_by` parameter) — returning a plain dict with every field `AppCreateResponse` needs plus `api_key` (plaintext) and `smtp_username`.
+- [x] Step 2: Rewrite `routes/apps.py:create_app` to: call `create_app_record(**request.model_dump(), created_by=principal.key_id)`, catch `ValueError` → 422 with the message, and build `AppCreateResponse(**record)`. Behavior (status codes, response shape, dual-write) must be byte-identical — `tests/test_apps.py` and `tests/test_management_api.py` prove it.
+- [x] Step 3: `python -m pytest -x -q` — full suite unmodified. `ruff check . && ruff format --check .`
+- [x] Step 4: Commit: `git add seesee/app_service.py seesee/routes/apps.py && git commit -m "refactor: extract create_app_record service for REST + MCP reuse"`
 
 ### ✅ Review Checkpoint — Chunk 3
 - [ ] `routes/apps.py:create_app` contains no SQL — it delegates to the service
@@ -407,7 +407,7 @@ The MCP `create_app` tool must not duplicate the REST route's logic — extract 
 
 ## Chunk 4: App tools (`seesee/mcp_server.py`, `tests/test_mcp.py`)
 
-- [ ] Step 1: Add the six app tools to `seesee/mcp_server.py` and register them in `create_mcp_server()` (six more `server.tool()(...)` lines). Imports: `from seesee.app_service import create_app_record`, `from seesee.routes.ui import API_KEY_PLACEHOLDER, _build_env_vars`, `from seesee.timezone import iso_in_days`.
+- [x] Step 1: Add the six app tools to `seesee/mcp_server.py` and register them in `create_mcp_server()` (six more `server.tool()(...)` lines). Imports: `from seesee.app_service import create_app_record`, `from seesee.routes.ui import API_KEY_PLACEHOLDER, _build_env_vars`, `from seesee.timezone import iso_in_days`.
 
 ```python
 async def create_app(name: str, body_storage_mode: str = "full") -> str:
@@ -499,13 +499,13 @@ async def get_integration_env(app_id: str) -> str:
     )
 ```
 
-- [ ] Step 2: Extend `tests/test_mcp.py`:
+- [x] Step 2: Extend `tests/test_mcp.py`:
   - `test_create_app_roundtrip` — `apps:write` key → `tools/call create_app {"name": "Via MCP"}` → 200; parse the tool result JSON; the returned `api_key` plaintext successfully Bearer-ingests an email via REST; `env_vars` contains `MAIL_SEESEE_API_KEY=ss_`.
   - `test_create_and_revoke_app_key_tools` — mint via `create_app_key`, key works; `revoke_app_key` with mismatched app_id → `isError`; correct app_id → revoked, key 401s.
   - `test_get_integration_env_redacts_both` — result contains `API_KEY_PLACEHOLDER` exactly twice and NO `ss_`-prefixed 40+-char token (`import re; assert not re.search(r"ss_[A-Za-z0-9_-]{20,}", text)` — the placeholder itself is `ss_YOUR_API_KEY`, adjust the regex to exclude it: assert every `ss_` occurrence in the text is the placeholder).
   - `test_get_app_returns_key_metadata_only` — response includes `keys` list with `key_prefix` but no `key_hash`.
-- [ ] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 4: Commit: `git add seesee/mcp_server.py tests/test_mcp.py && git commit -m "feat(mcp): provisioning tools (create_app, keys, integration env)"`
+- [x] Step 3: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 4: Commit: `git add seesee/mcp_server.py tests/test_mcp.py && git commit -m "feat(mcp): provisioning tools (create_app, keys, integration env)"`
 
 ### ✅ Review Checkpoint — Chunk 4
 - [ ] All nine tools registered; `test_tool_scopes_covers_all_registered_tools` still passes
@@ -519,17 +519,17 @@ async def get_integration_env(app_id: str) -> str:
 
 ## Chunk 5: Docs + version 0.20.0-dev (`docs/src/content/docs/guides/mcp-server.md`, `docs/astro.config.mjs`, `README.md`, `CHANGELOG.md`, `pyproject.toml`, `seesee/__init__.py`)
 
-- [ ] Step 1: Create `docs/src/content/docs/guides/mcp-server.md` (Starlight frontmatter like the other guides: `title: MCP Server`, `description: Let agents provision apps and debug email over the Model Context Protocol`). Sections:
+- [x] Step 1: Create `docs/src/content/docs/guides/mcp-server.md` (Starlight frontmatter like the other guides: `title: MCP Server`, `description: Let agents provision apps and debug email over the Model Context Protocol`). Sections:
   - **What it is** — `/mcp` endpoint, streamable HTTP, authenticated by `ss_mgmt_` management keys minted on Settings → API Keys or via `python -m seesee.keys create`.
   - **Connect Claude Code** — the one-liner: `claude mcp add --transport http seesee https://seesee.example.com/mcp --header "Authorization: Bearer ss_mgmt_..."`.
   - **Tools and scopes** — the nine tools grouped by required scope (`emails:read`: search_emails, get_email, list_recent_failures; `apps:read`: list_apps, get_app, get_integration_env; `apps:write`: create_app, create_app_key, revoke_app_key). Note destructive operations are deliberately absent.
   - **Security notes** — verbatim points: `/mcp` is internet-facing by default (`SEESEE_MCP_ENABLED=false` disables it); granting `emails:read` grants the agent access to email contents (bodies can contain reset links and PII); email content is untrusted input to your agent — **use a read-only key (emails:read + apps:read) for debugging agents and a separate apps:write key for provisioning agents**; `apps:write` transitively grants access to all email; keys default to 90-day expiry in the UI.
-- [ ] Step 2: In `docs/astro.config.mjs`, add `{ label: "MCP Server", slug: "guides/mcp-server" },` after the Integrations entry in the Guides sidebar group.
-- [ ] Step 3: `README.md` — add an "MCP server" bullet/paragraph near the management-keys section added by sub-plan 3: endpoint, the `claude mcp add` one-liner, pointer to the docs page.
-- [ ] Step 4: `CHANGELOG.md` `[Unreleased]` → `### Added`: `- MCP server at /mcp (streamable HTTP): nine provisioning + email-debugging tools, scope-filtered tool list, management-key auth, SEESEE_MCP_ENABLED toggle`
-- [ ] Step 5: Bump version to `0.20.0-dev` in `pyproject.toml` and `seesee/__init__.py`. (The human cuts the final `0.20.0` release + CHANGELOG consolidation manually — do NOT create a release section.)
-- [ ] Step 6: `python -m pytest -x -q`.
-- [ ] Step 7: Commit: `git add docs/src docs/astro.config.mjs README.md CHANGELOG.md pyproject.toml seesee/__init__.py && git commit -m "docs(mcp): docs-site guide + README; bump 0.20.0-dev"`
+- [x] Step 2: In `docs/astro.config.mjs`, add `{ label: "MCP Server", slug: "guides/mcp-server" },` after the Integrations entry in the Guides sidebar group.
+- [x] Step 3: `README.md` — add an "MCP server" bullet/paragraph near the management-keys section added by sub-plan 3: endpoint, the `claude mcp add` one-liner, pointer to the docs page.
+- [x] Step 4: `CHANGELOG.md` `[Unreleased]` → `### Added`: `- MCP server at /mcp (streamable HTTP): nine provisioning + email-debugging tools, scope-filtered tool list, management-key auth, SEESEE_MCP_ENABLED toggle`
+- [x] Step 5: Bump version to `0.20.0-dev` in `pyproject.toml` and `seesee/__init__.py`. (The human cuts the final `0.20.0` release + CHANGELOG consolidation manually — do NOT create a release section.)
+- [x] Step 6: `python -m pytest -x -q`.
+- [x] Step 7: Commit: `git add docs/src docs/astro.config.mjs README.md CHANGELOG.md pyproject.toml seesee/__init__.py && git commit -m "docs(mcp): docs-site guide + README; bump 0.20.0-dev"`
 
 ### ✅ Review Checkpoint — Chunk 5
 - [ ] `grep -n "mcp-server" docs/astro.config.mjs` shows the sidebar entry

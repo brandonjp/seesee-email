@@ -71,7 +71,7 @@ Design spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (
 
 Gives agents/automation a scoped, revocable credential for managing an instance, and exposes provisioning + email debugging over MCP. Unified `api_keys` table (schema v4) covering both app and management keys, five-scope vocabulary, multi-key-per-app (fixes today's destructive rotate), `/mcp` server, key management UI, CSRF on session POSTs.
 
-**Status:** spec written and approved in-session; queued for a Fable second-opinion review before implementation begins.
+**Status:** Fable review complete — verdict **ship with changes** (`docs/superpowers/specs/2026-07-26-management-keys-mcp-review.md`). Five blocking spec edits (B1–B5: no session-cookie auth on `require_scope`, legacy-column write policy, scope-validity matrix, MCP rejects app-bound principals normatively, sync/async resolver split for SMTP) plus regression-bar and SCHEMA_SQL fixes (N1, N2) must be applied to the design spec before the Ralph specs are written. Review also recommends hoisting CSRF into its own small spec run first, adding a `created_by` column, and defaulting UI key expiry to 90 days.
 
 Planned as three sequential Ralph specs (dependency-ordered — do not merge into one loop; the auth foundation must be verified correct before anything sits on it):
 

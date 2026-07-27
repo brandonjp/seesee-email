@@ -79,12 +79,15 @@
 
 ### Cut the 0.20.0 release
 
-All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), and the branch has passed a full code review. What remains is the deliberate, manual release cut — explicitly kept out of any loop:
+All four Ralph sub-plans for Management API Keys + MCP are complete (archived in `docs/archive/plan-mgmt-keys-*.md`), the work has passed a full code review, and **`feature/management-keys-mcp` is merged to `main`** (merge commit `7f092f8`, 2026-07-27). `main` currently sits at `0.20.2-dev` with 423 tests passing.
 
-1. Merge `feature/management-keys-mcp` to `main`.
-2. Do the one-time CHANGELOG `[Unreleased]` consolidation (see Known Issues) — collapse the repeated `### Added`/`### Fixed`/`### Removed` batches and the stray `### Previously` group into a single Added/Changed/Fixed/Removed set.
-3. Cut `[Unreleased]` into a `## [0.20.0]` section, set `pyproject.toml` + `seesee/__init__.py` to `0.20.0`, tag, and let CI publish the image.
-4. **Upgrade smoke test before tagging:** start a container against a *pre-0.20.0* database file and confirm the v4 migration backfills one `api_keys` row per app and existing app keys still authenticate over both REST and SMTP. The migration is covered by `tests/test_migration_v4.py`, but it has never been exercised against a real, dirty production database.
+What remains is the deliberate, manual release cut — explicitly kept out of any loop:
+
+1. Do the one-time CHANGELOG `[Unreleased]` consolidation (see Known Issues) — collapse the repeated `### Added`/`### Fixed`/`### Removed` batches and the stray `### Previously` group into a single Added/Changed/Fixed/Removed set.
+2. Cut `[Unreleased]` into a `## [0.20.0]` section, set `pyproject.toml` + `seesee/__init__.py` to `0.20.0` (drop the `-dev` suffix), tag `v0.20.0`, and let CI publish the image.
+3. Do the work on a branch, not on `main` — a global pre-commit hook blocks edits to files in a repo sitting on `main`.
+
+Skipped deliberately: the pre-0.20.0 upgrade smoke test against a real database. There are no existing installs to migrate (single-user, redeployable from scratch), and `tests/test_migration_v4.py` now covers the v4 backfill including proof that a pre-upgrade key still authenticates over both REST and SMTP.
 
 Design spec (source of truth for the shipped behavior): `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md`.
 

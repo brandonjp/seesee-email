@@ -785,3 +785,103 @@ async def test_revoke_app_key_via_settings_404(
         follow_redirects=False,
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# App detail — per-app keys
+# ---------------------------------------------------------------------------
+
+
+async def test_app_detail_shows_keys_table(client: AsyncClient, admin_auth_header: dict) -> None:
+    """App detail page lists the app's default key by prefix."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Keys Table App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    key_prefix = (await keys.list_keys(app_id))[0]["key_prefix"]
+
+    token = _get_session_cookie()
+    resp = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    assert key_prefix in resp.text
+
+
+async def test_mint_app_key_ui_flow(client: AsyncClient, admin_auth_header: dict) -> None:
+    """POST /apps/{id}/keys mints an app key; the plaintext is flashed once."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Mint Key App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/apps/{app_id}/keys",
+        data=csrf_form({"label": "second-key", "scopes": ["emails:read", "emails:write"]}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/apps/{app_id}"
+
+    resp2 = await client.get(
+        f"/apps/{app_id}",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "ss_" in resp2.text
+    assert "second-key" in resp2.text
+
+    app_keys = await keys.list_keys(app_id)
+    assert len(app_keys) == 2
+
+
+async def test_revoke_app_key_ui(client: AsyncClient, admin_auth_header: dict) -> None:
+    """Revoking a minted app key via the app detail page marks it revoked."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Revoke Key App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+
+    token = _get_session_cookie()
+    await client.post(
+        f"/apps/{app_id}/keys",
+        data=csrf_form({"label": "revoke-me", "scopes": ["emails:read"]}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    key_id = [k["id"] for k in await keys.list_keys(app_id) if k["label"] == "revoke-me"][0]
+
+    resp = await client.post(
+        f"/apps/{app_id}/keys/{key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/apps/{app_id}"
+
+    resp2 = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp2.status_code == 200
+    assert "revoked" in resp2.text
+
+
+async def test_cross_app_revoke_ui_404(client: AsyncClient, admin_auth_header: dict) -> None:
+    """A key id from another app cannot be revoked via this app's route."""
+    app_a_resp = await client.post(
+        "/api/v1/apps", json={"name": "Cross Revoke App A"}, headers=admin_auth_header
+    )
+    app_a_id = app_a_resp.json()["id"]
+    app_b_resp = await client.post(
+        "/api/v1/apps", json={"name": "Cross Revoke App B"}, headers=admin_auth_header
+    )
+    app_b_id = app_b_resp.json()["id"]
+    app_a_key_id = (await keys.list_keys(app_a_id))[0]["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/apps/{app_b_id}/keys/{app_a_key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 404

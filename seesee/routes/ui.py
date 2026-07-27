@@ -657,11 +657,58 @@ async def app_detail(
                 "degrade_to_text_days": settings.retention_degrade_to_text_days,
                 "degrade_to_preview_days": settings.retention_degrade_to_preview_days,
             },
+            "app_keys": await keys.list_keys(app_id),
+            "flash": flash or {},
         },
     )
     if flash:
         response.delete_cookie(FLASH_COOKIE_NAME)
     return response
+
+
+@router.post("/apps/{app_id}/keys")
+async def create_app_key_ui(
+    app_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+    label: str = Form(...),
+    scopes: list[str] = Form([]),  # noqa: B008
+) -> RedirectResponse:
+    """Mint an additional key for an app. Plaintext flashed once."""
+    response = RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+    try:
+        _key_id, plaintext = await keys.create_key(
+            label=label,
+            app_id=app_id,
+            scopes=scopes,
+            expires_at=None,
+            created_by="admin",
+        )
+    except ValueError as exc:
+        _set_flash(response, {"key_error": str(exc)})
+        return response
+    _set_flash(response, {"new_app_key": plaintext, "new_app_key_label": label})
+    return response
+
+
+@router.post("/apps/{app_id}/keys/{key_id}/revoke")
+async def revoke_app_key_ui(
+    app_id: str,
+    key_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+) -> RedirectResponse:
+    """Revoke one of an app's keys."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id FROM api_keys WHERE id = ? AND app_id = ?", (key_id, app_id)
+    )
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    await keys.revoke_key(key_id)
+    return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
 
 
 @router.post("/apps/{app_id}/rename")

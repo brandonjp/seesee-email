@@ -11,7 +11,8 @@ from fastapi.security import (
     HTTPBearer,
 )
 
-from seesee.auth import API_KEY_PREFIX, SESSION_COOKIE_NAME, validate_session_token, verify_secret
+from seesee import keys
+from seesee.auth import API_KEY_PREFIX, SESSION_COOKIE_NAME, validate_session_token
 from seesee.config import settings
 from seesee.database import get_db
 
@@ -24,10 +25,11 @@ bearer_scheme = HTTPBearer(auto_error=False)
 async def get_current_app(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> dict:
-    """Validate API key and return the authenticated app row.
+    """Validate an app API key and return the authenticated app row.
 
-    Extracts the Bearer token, looks up by key_prefix for O(1) lookup,
-    then verifies the full key against the bcrypt hash.
+    Resolution lives in seesee.keys (unified api_keys table). This dependency
+    additionally requires an APP-bound key carrying emails:write — management
+    keys cannot ingest.
     """
     if credentials is None:
         raise HTTPException(
@@ -41,24 +43,26 @@ async def get_current_app(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key format",
         )
-
-    prefix = token[len(API_KEY_PREFIX) : len(API_KEY_PREFIX) + 8]
-
+    try:
+        principal = await keys.resolve_key(token)
+    except keys.KeyRevokedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="API key revoked"
+        ) from exc
+    except keys.KeyExpiredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired"
+        ) from exc
+    if principal is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+    if principal.app_id is None or "emails:write" not in principal.scopes:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="App API key required")
     db = await get_db()
-    cursor = await db.execute(
-        "SELECT * FROM apps WHERE key_prefix = ?",
-        (prefix,),
-    )
-    rows = await cursor.fetchall()
-
-    for row in rows:
-        if verify_secret(token, row["api_key"]):
-            return dict(row)
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid API key",
-    )
+    cursor = await db.execute("SELECT * FROM apps WHERE id = ?", (principal.app_id,))
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+    return dict(row)
 
 
 # ---------------------------------------------------------------------------

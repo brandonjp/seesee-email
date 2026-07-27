@@ -210,3 +210,93 @@ async def test_list_keys_never_leaks_hashes():
     assert len(result) >= 1
     for item in result:
         assert "key_hash" not in item
+
+
+@pytest.mark.asyncio
+async def test_rest_auth_via_api_keys_table(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    api_key = app_data["api_key"]
+
+    response = await client.post(
+        "/api/v1/log",
+        json={"to": ["user@example.com"], "from": "noreply@myapp.com", "subject": "Hi"},
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_revoked_key_gets_distinct_401(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    api_key = app_data["api_key"]
+
+    principal = await keys.resolve_key(api_key)
+    assert await keys.revoke_key(principal.key_id) is True
+
+    response = await client.post(
+        "/api/v1/log",
+        json={"to": ["user@example.com"], "from": "noreply@myapp.com", "subject": "Hi"},
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "API key revoked"
+
+    db = await get_db()
+    cursor = await db.execute("SELECT api_key FROM apps WHERE id = ?", (app_data["id"],))
+    row = await cursor.fetchone()
+    assert not verify_secret(api_key, row["api_key"])
+
+
+@pytest.mark.asyncio
+async def test_mgmt_key_cannot_ingest(client):
+    _, plaintext = await keys.create_key(
+        label="mgmt",
+        app_id=None,
+        scopes=["emails:read"],
+        expires_at=None,
+        created_by="cli",
+    )
+
+    response = await client.post(
+        "/api/v1/log",
+        json={"to": ["user@example.com"], "from": "noreply@myapp.com", "subject": "Hi"},
+        headers={"Authorization": f"Bearer {plaintext}"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "App API key required"
+
+
+@pytest.mark.asyncio
+async def test_rotate_key_dual_write(client, admin_auth_header):
+    app_data = await create_test_app(client, admin_auth_header)
+    old_key = app_data["api_key"]
+
+    response = await client.post(
+        f"/api/v1/apps/{app_data['id']}/rotate-key",
+        headers=admin_auth_header,
+    )
+    assert response.status_code == 200
+    new_key = response.json()["api_key"]
+
+    old_response = await client.post(
+        "/api/v1/log",
+        json={"to": ["user@example.com"], "from": "noreply@myapp.com", "subject": "Hi"},
+        headers={"Authorization": f"Bearer {old_key}"},
+    )
+    assert old_response.status_code == 401
+
+    new_response = await client.post(
+        "/api/v1/log",
+        json={"to": ["user@example.com"], "from": "noreply@myapp.com", "subject": "Hi"},
+        headers={"Authorization": f"Bearer {new_key}"},
+    )
+    assert new_response.status_code == 201
+
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT revoked_at FROM api_keys WHERE app_id = ? ORDER BY created_at", (app_data["id"],)
+    )
+    rows = await cursor.fetchall()
+    revoked_states = [row["revoked_at"] is not None for row in rows]
+    assert True in revoked_states
+    assert False in revoked_states

@@ -85,6 +85,22 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
             now_iso,
         ),
     )
+
+    await db.execute(
+        "INSERT INTO api_keys (id, key_hash, key_prefix, label, app_id, scopes, "
+        "created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            str(uuid.uuid4()),
+            api_key_hash,
+            key_prefix,
+            "default",
+            app_id,
+            '["emails:read","emails:write"]',
+            "admin",
+            now_iso,
+        ),
+    )
+
     await db.commit()
 
     return AppCreateResponse(
@@ -224,17 +240,39 @@ async def rotate_key(app_id: str) -> KeyRotateResponse:
     """Regenerate the API key for an app. Old key is immediately invalidated."""
     db = await get_db()
 
-    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
-    if await cursor.fetchone() is None:
+    cursor = await db.execute("SELECT id, api_key FROM apps WHERE id = ?", (app_id,))
+    row = await cursor.fetchone()
+    if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    old_hash = row["api_key"]
 
     new_key = generate_api_key()
     new_prefix = new_key[len(API_KEY_PREFIX) : len(API_KEY_PREFIX) + 8]
     new_hash = hash_secret(new_key)
+    now_iso = utc_now_iso()
 
     await db.execute(
         "UPDATE apps SET api_key = ?, key_prefix = ?, smtp_password = ? WHERE id = ?",
         (new_hash, new_prefix, new_hash, app_id),
+    )
+    await db.execute(
+        "UPDATE api_keys SET revoked_at = ? "
+        "WHERE app_id = ? AND key_hash = ? AND revoked_at IS NULL",
+        (now_iso, app_id, old_hash),
+    )
+    await db.execute(
+        "INSERT INTO api_keys (id, key_hash, key_prefix, label, app_id, scopes, "
+        "created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            str(uuid.uuid4()),
+            new_hash,
+            new_prefix,
+            "default",
+            app_id,
+            '["emails:read","emails:write"]',
+            "admin",
+            now_iso,
+        ),
     )
     await db.commit()
 
@@ -278,8 +316,9 @@ async def delete_app(app_id: str) -> dict:
     cursor = await db.execute("SELECT COUNT(*) as cnt FROM emails WHERE app_id = ?", (app_id,))
     email_count = (await cursor.fetchone())["cnt"]
 
-    # Delete emails first (FK constraint: no CASCADE), then the app
+    # Delete emails and api_keys first (FK constraint: no CASCADE), then the app
     await db.execute("DELETE FROM emails WHERE app_id = ?", (app_id,))
+    await db.execute("DELETE FROM api_keys WHERE app_id = ?", (app_id,))
     await db.execute("DELETE FROM apps WHERE id = ?", (app_id,))
     await db.commit()
 

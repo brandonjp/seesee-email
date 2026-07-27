@@ -1,11 +1,14 @@
 """API key lifecycle — generation, resolution, revocation. Sync helpers are shared by the async (REST/MCP) and sync (SMTP) resolvers."""
 
+import argparse
 import json
 import secrets
 import sqlite3
+import sys
 import uuid
 from contextlib import closing
 from dataclasses import dataclass
+from datetime import UTC
 
 from seesee.auth import hash_secret, verify_secret
 from seesee.config import settings
@@ -313,3 +316,113 @@ def resolve_smtp_password(smtp_username: str, password: str) -> dict | None:
         if verify_secret(password, app_row["api_key"]):
             return dict(app_row)
         return None
+
+
+def _cli_create(args) -> int:
+    scopes = [s.strip() for s in args.scopes.split(",") if s.strip()]
+    try:
+        validate_scopes(scopes, None)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    expires_at = None
+    if args.expires_days is not None:
+        from datetime import datetime, timedelta
+
+        expires_at = (datetime.now(tz=UTC) + timedelta(days=args.expires_days)).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        )
+    plaintext = generate_key(management=True)
+    prefix = plaintext[len(MGMT_KEY_MARKER) : len(MGMT_KEY_MARKER) + PREFIX_LEN]
+    try:
+        with closing(sqlite3.connect(settings.db_path)) as db:
+            db.execute(
+                "INSERT INTO api_keys (id, key_hash, key_prefix, label, app_id, scopes, "
+                "created_by, expires_at, created_at) VALUES (?, ?, ?, ?, NULL, ?, 'cli', ?, ?)",
+                (
+                    str(uuid.uuid4()),
+                    hash_secret(plaintext),
+                    prefix,
+                    args.label,
+                    json.dumps(sorted(set(scopes))),
+                    expires_at,
+                    utc_now_iso(),
+                ),
+            )
+            db.commit()
+    except sqlite3.OperationalError:
+        print("error: database not initialized — start SeeSee once first", file=sys.stderr)
+        return 3
+    print(plaintext)
+    print(
+        "Store this key now — it is shown once and cannot be recovered.",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _cli_list(args) -> int:
+    try:
+        with closing(sqlite3.connect(settings.db_path)) as db:
+            db.row_factory = sqlite3.Row
+            rows = db.execute(
+                f"SELECT {_KEY_METADATA_COLUMNS} FROM api_keys "  # noqa: S608
+                "WHERE app_id IS NULL ORDER BY created_at DESC"
+            ).fetchall()
+    except sqlite3.OperationalError:
+        print("error: database not initialized — start SeeSee once first", file=sys.stderr)
+        return 3
+    for row in rows:
+        state = "revoked" if row["revoked_at"] else "active"
+        print(
+            f"{row['id']}  {row['label']!r}  prefix={row['key_prefix']}  "
+            f"scopes={row['scopes']}  {state}  last_used={row['last_used_at']}"
+        )
+    return 0
+
+
+def _cli_revoke(args) -> int:
+    try:
+        with closing(sqlite3.connect(settings.db_path)) as db:
+            cursor = db.execute(
+                "UPDATE api_keys SET revoked_at = ? "
+                "WHERE id = ? AND app_id IS NULL AND revoked_at IS NULL",
+                (utc_now_iso(), args.key_id),
+            )
+            db.commit()
+    except sqlite3.OperationalError:
+        print("error: database not initialized — start SeeSee once first", file=sys.stderr)
+        return 3
+    if cursor.rowcount == 0:
+        print("error: no active management key with that id", file=sys.stderr)
+        return 1
+    print("revoked")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python -m seesee.keys",
+        description="Manage SeeSee management API keys (headless bootstrap).",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+    p_create = sub.add_parser("create", help="Mint a management key (printed once)")
+    p_create.add_argument("--label", required=True)
+    p_create.add_argument(
+        "--scopes",
+        required=True,
+        help="Comma-separated: emails:read,apps:read,apps:write,apps:delete",
+    )
+    p_create.add_argument("--expires-days", type=int, default=None)
+    p_create.set_defaults(func=_cli_create)
+    p_list = sub.add_parser("list", help="List management keys (metadata only)")
+    p_list.set_defaults(func=_cli_list)
+    p_revoke = sub.add_parser("revoke", help="Revoke a management key by id")
+    p_revoke.add_argument("key_id")
+    p_revoke.set_defaults(func=_cli_revoke)
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

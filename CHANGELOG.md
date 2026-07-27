@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Unified api_keys table (schema v4): multi-key-per-app, management keys (ss_mgmt_), scoped credentials, safe rotation over REST and SMTP, CLI bootstrap (python -m seesee.keys)
 - CSRF tokens on all session-authenticated UI form POSTs (signed with the session secret, bound to the session user; fetch() callers send X-CSRF-Token)
 - `GET /api/v1/emails` now also accepts an app-scoped Bearer API key (in addition to admin auth), hard-scoped to that app's own emails — any `app_id` filter passed by an app key is overridden by its own app ID, so an app can never read another app's emails. Fixes client apps (e.g. SplitGive) that call this endpoint with their `MAIL_SEESEE_API_KEY` to show recent emails in their own dashboards and got 401s because the route was admin-only. New `require_admin_or_app` dependency in `seesee/dependencies.py`; all other email routes remain admin-only
 - `GET /api/v1/emails/{id}/preview` now also accepts the admin session cookie (in addition to HTTP Basic), fixing the email-detail page's preview iframe: the iframe request carried the session cookie but no Basic header, so `HTTPBasic` 401'd with a `WWW-Authenticate: Basic` challenge and the browser popped a native login prompt instead of rendering the preview. New `require_admin_or_session` dependency checks the session cookie first, then falls back to Basic, without triggering the browser's native auth prompt for cookie-bearing requests

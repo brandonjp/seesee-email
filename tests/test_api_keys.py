@@ -300,3 +300,44 @@ async def test_rotate_key_dual_write(client, admin_auth_header):
     revoked_states = [row["revoked_at"] is not None for row in rows]
     assert True in revoked_states
     assert False in revoked_states
+
+
+@pytest.mark.asyncio
+async def test_cli_create_and_resolve(capsys):
+    await get_db()
+    exit_code = keys.main(["create", "--label", "ci", "--scopes", "apps:write,emails:read"])
+    assert exit_code == 0
+    plaintext = capsys.readouterr().out.strip()
+
+    principal = await keys.resolve_key(plaintext)
+    assert principal is not None
+    assert principal.app_id is None
+    assert principal.scopes == frozenset({"apps:write", "emails:read"})
+
+    db = await get_db()
+    cursor = await db.execute("SELECT created_by FROM api_keys WHERE id = ?", (principal.key_id,))
+    row = await cursor.fetchone()
+    assert row["created_by"] == "cli"
+
+
+def test_cli_create_invalid_scopes_exits_2():
+    exit_code = keys.main(["create", "--label", "x", "--scopes", "emails:write"])
+    assert exit_code == 2
+
+
+@pytest.mark.asyncio
+async def test_cli_list_and_revoke(capsys):
+    await get_db()
+    keys.main(["create", "--label", "listme", "--scopes", "apps:read"])
+    plaintext = capsys.readouterr().out.strip()
+    principal = await keys.resolve_key(plaintext)
+
+    keys.main(["list"])
+    output = capsys.readouterr().out
+    assert "listme" in output
+
+    exit_code = keys.main(["revoke", principal.key_id])
+    assert exit_code == 0
+
+    exit_code = keys.main(["revoke", principal.key_id])
+    assert exit_code == 1

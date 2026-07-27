@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 from seesee import __version__
 from seesee.config import settings
 from seesee.database import close_db, get_db, init_db
+from seesee.mcp_server import build_mcp_asgi_app, create_mcp_server
 from seesee.retention import start_retention_scheduler, stop_retention_scheduler
 from seesee.routes import admin, apps, emails, export, ingest, stats, ui, webhooks
 from seesee.smtp_server import start_smtp_server, stop_smtp_server
@@ -27,7 +28,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.smtp_enabled:
         await start_smtp_server()
     await start_retention_scheduler()
-    yield
+    async with mcp_server.session_manager.run():
+        yield
     await stop_retention_scheduler()
     if settings.smtp_enabled:
         await stop_smtp_server()
@@ -95,6 +97,25 @@ app.include_router(stats.router)
 app.include_router(admin.router)
 app.include_router(webhooks.router)
 app.include_router(ui.router)
+
+mcp_server = create_mcp_server()
+app.mount("/mcp", build_mcp_asgi_app(mcp_server))
+
+
+class _MCPPathRewrite:
+    """Serve POST /mcp without a trailing-slash 307 (mounted app lives at /mcp/)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"] == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(_MCPPathRewrite)
 
 
 @app.get("/api/v1/health")

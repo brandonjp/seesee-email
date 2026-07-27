@@ -143,5 +143,129 @@
             </button>
         </div>
     </div>
+
+    <!-- API Keys (management keys) -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">API Keys</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Management keys authenticate automation and agents against the REST API (<code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">ss_mgmt_</code> Bearer tokens). They are separate from per-app API keys.
+        </p>
+
+        {% if flash.new_mgmt_key %}
+        <div class="rounded-lg border-2 border-accent bg-accent/5 p-4 mb-4 space-y-2">
+            <p class="text-sm font-semibold text-accent">Key created for "{{ flash.new_mgmt_key_label }}" — shown once, store it now.</p>
+            <div class="flex items-center gap-2">
+                <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs break-all">{{ flash.new_mgmt_key }}</code>
+                <button onclick="copyToClipboard('{{ flash.new_mgmt_key }}', this)" class="p-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        {% if flash.key_error %}
+        <div class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4 mb-4">
+            <p class="text-sm text-red-600 dark:text-red-400">{{ flash.key_error }}</p>
+        </div>
+        {% endif %}
+
+        <div class="overflow-x-auto mb-5">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                        <th class="py-2 pr-3 font-medium">Label</th>
+                        <th class="py-2 pr-3 font-medium">Prefix</th>
+                        <th class="py-2 pr-3 font-medium">Scopes</th>
+                        <th class="py-2 pr-3 font-medium">Created By</th>
+                        <th class="py-2 pr-3 font-medium">Last Used</th>
+                        <th class="py-2 pr-3 font-medium">Expires</th>
+                        <th class="py-2 pr-3 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for key in mgmt_keys %}
+                    <tr class="{{ 'opacity-50' if key.revoked_at else '' }}">
+                        <td class="py-2 pr-3 font-medium">{{ key.label }}</td>
+                        <td class="py-2 pr-3"><code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">ss_mgmt_{{ key.key_prefix }}&hellip;</code></td>
+                        <td class="py-2 pr-3">
+                            <div class="flex flex-wrap gap-1">
+                                {% for scope in key.scopes %}
+                                <span class="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">{{ scope }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="py-2 pr-3 text-gray-500 dark:text-gray-400">{{ key.created_by }}</td>
+                        <td class="py-2 pr-3 text-gray-500 dark:text-gray-400">{{ key.last_used_at | display_dt if key.last_used_at else 'Never' }}</td>
+                        <td class="py-2 pr-3 text-gray-500 dark:text-gray-400">{{ key.expires_at | display_dt if key.expires_at else 'Never' }}</td>
+                        <td class="py-2 pr-3 text-right">
+                            {% if key.revoked_at %}
+                            <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">revoked</span>
+                            {% else %}
+                            <form action="/settings/keys/{{ key.id }}/revoke" method="post" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
+                                <button type="submit" class="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Revoke</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="py-4 text-center text-gray-400 dark:text-gray-500">No management keys yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <form action="/settings/keys" method="post" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
+            <div>
+                <label class="block text-sm font-medium mb-1">Label</label>
+                <input type="text" name="label" required
+                       class="block w-full max-w-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Scopes</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="scopes" value="emails:read" checked class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                        emails:read
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="scopes" value="apps:read" checked class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                        apps:read
+                    </label>
+                    <div>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="scopes" value="apps:write" class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                            apps:write
+                        </label>
+                        <p class="ml-6 text-xs text-gray-400 dark:text-gray-500">Can mint app keys — transitively grants access to all email in this instance</p>
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="scopes" value="apps:delete" class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                            apps:delete
+                        </label>
+                        <p class="ml-6 text-xs font-medium text-red-600 dark:text-red-400">Destructive: can delete apps and purge all their email</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Expires</label>
+                <select name="expires"
+                        class="block w-full max-w-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+                    <option value="30">30 days</option>
+                    <option value="90" selected>90 days</option>
+                    <option value="365">365 days</option>
+                    <option value="never">Never</option>
+                </select>
+            </div>
+            <div>
+                <button type="submit"
+                        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent/90 active:bg-accent/80 transition-colors">Create Key</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

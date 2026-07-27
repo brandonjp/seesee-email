@@ -6,12 +6,13 @@ import math
 import secrets
 import uuid
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.responses import Response
 
+from seesee import keys
 from seesee.auth import (
     API_KEY_PREFIX,
     SESSION_COOKIE_NAME,
@@ -26,7 +27,7 @@ from seesee.database import get_db
 from seesee.dependencies import require_session
 from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.retention import run_cleanup
-from seesee.timezone import utc_cutoff_iso, utc_now_iso
+from seesee.timezone import iso_in_days, utc_cutoff_iso, utc_now_iso
 
 router = APIRouter(tags=["ui"])
 
@@ -907,7 +908,9 @@ async def settings_page(
     row = await cursor.fetchone()
     db_size_bytes = row["size"] if row else 0
 
-    return tmpl.TemplateResponse(
+    flash = _pop_flash(request)
+
+    response = tmpl.TemplateResponse(
         request,
         "settings.html",
         {
@@ -917,8 +920,13 @@ async def settings_page(
             "email_count": email_count,
             "storage_bytes": storage_bytes,
             "db_size_bytes": db_size_bytes,
+            "mgmt_keys": await keys.list_keys(None),
+            "flash": flash or {},
         },
     )
+    if flash:
+        response.delete_cookie(FLASH_COOKIE_NAME)
+    return response
 
 
 @router.post("/settings/cleanup")
@@ -929,3 +937,55 @@ async def run_cleanup_ui(
     """Trigger an immediate retention cleanup via the web UI."""
     await run_cleanup()
     return RedirectResponse(url="/settings?cleanup=1", status_code=303)
+
+
+@router.post("/settings/keys")
+async def create_mgmt_key_ui(
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+    label: str = Form(...),
+    scopes: list[str] = Form([]),  # noqa: B008
+    expires: str = Form("90"),
+) -> RedirectResponse:
+    """Mint a management key from the Settings page. Plaintext flashed once."""
+    if expires == "never":
+        expires_at = None
+    else:
+        try:
+            expires_at = iso_in_days(int(expires))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid expiry"
+            ) from exc
+    response = RedirectResponse(url="/settings", status_code=303)
+    try:
+        _key_id, plaintext = await keys.create_key(
+            label=label,
+            app_id=None,
+            scopes=scopes,
+            expires_at=expires_at,
+            created_by="admin",
+        )
+    except ValueError as exc:
+        _set_flash(response, {"key_error": str(exc)})
+        return response
+    _set_flash(response, {"new_mgmt_key": plaintext, "new_mgmt_key_label": label})
+    return response
+
+
+@router.post("/settings/keys/{key_id}/revoke")
+async def revoke_mgmt_key_ui(
+    key_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+) -> RedirectResponse:
+    """Revoke a management key. Only management keys — app keys are revoked
+    from their app's detail page."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM api_keys WHERE id = ? AND app_id IS NULL", (key_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    await keys.revoke_key(key_id)
+    return RedirectResponse(url="/settings", status_code=303)

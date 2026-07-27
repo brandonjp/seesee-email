@@ -3,6 +3,7 @@
 from httpx import AsyncClient
 from itsdangerous import URLSafeTimedSerializer
 
+from seesee import keys
 from seesee.auth import SESSION_COOKIE_NAME, create_session_token
 from seesee.config import settings
 from seesee.csrf import CSRF_FIELD_NAME, make_csrf_token
@@ -685,3 +686,102 @@ async def test_app_detail_smtp_tab_env_vars(client: AsyncClient, admin_auth_head
     assert "MAIL_SEESEE_APP_URL=" in resp.text
     assert "MAIL_SEESEE_LOG_URL=" in resp.text
     assert "MAIL_SEESEE_SMTP_ENCRYPTION=null" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Settings — management keys
+# ---------------------------------------------------------------------------
+
+
+async def test_settings_shows_keys_section(client: AsyncClient) -> None:
+    """Settings page renders the API Keys card."""
+    token = _get_session_cookie()
+    resp = await client.get("/settings", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    assert "API Keys" in resp.text
+
+
+async def test_create_mgmt_key_ui_flow(client: AsyncClient) -> None:
+    """POST /settings/keys mints a management key; the plaintext is flashed once."""
+    token = _get_session_cookie()
+    resp = await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "agent", "scopes": ["emails:read", "apps:read"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings"
+
+    resp2 = await client.get(
+        "/settings",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "ss_mgmt_" in resp2.text
+    assert "agent" in resp2.text
+
+
+async def test_create_mgmt_key_invalid_scope_shows_error(client: AsyncClient) -> None:
+    """An invalid scope for a management key flashes an error and creates nothing."""
+    token = _get_session_cookie()
+    resp = await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "bad-agent", "scopes": ["emails:write"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    resp2 = await client.get(
+        "/settings",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "Invalid scope" in resp2.text
+    assert "bad-agent" not in resp2.text
+
+
+async def test_revoke_mgmt_key_ui(client: AsyncClient) -> None:
+    """Revoking a management key via Settings marks it revoked in the table."""
+    token = _get_session_cookie()
+    await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "revoke-me", "scopes": ["emails:read"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    key_id = [k["id"] for k in await keys.list_keys(None) if k["label"] == "revoke-me"][0]
+
+    resp = await client.post(
+        f"/settings/keys/{key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings"
+
+    resp2 = await client.get("/settings", cookies={SESSION_COOKIE_NAME: token})
+    assert resp2.status_code == 200
+    assert "revoked" in resp2.text
+
+
+async def test_revoke_app_key_via_settings_404(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """An app key's id cannot be revoked via the management-keys settings route."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Settings Revoke App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    app_key_id = (await keys.list_keys(app_id))[0]["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/settings/keys/{app_key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 404

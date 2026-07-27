@@ -17,7 +17,7 @@ logger = logging.getLogger("seesee")
 _db: aiosqlite.Connection | None = None
 _startup_time: float = 0.0
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS metadata (
@@ -102,6 +102,23 @@ CREATE TRIGGER IF NOT EXISTS emails_au AFTER UPDATE ON emails BEGIN
     INSERT INTO emails_fts(rowid, subject, body_text, body_preview, to_addresses, from_address, error_message)
     VALUES (NEW.rowid, NEW.subject, NEW.body_text, NEW.body_preview, NEW.to_addresses, NEW.from_address, NEW.error_message);
 END;
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id           TEXT PRIMARY KEY,
+    key_hash     TEXT NOT NULL,
+    key_prefix   TEXT NOT NULL,
+    label        TEXT NOT NULL,
+    app_id       TEXT REFERENCES apps(id),
+    scopes       TEXT NOT NULL,
+    created_by   TEXT NOT NULL,
+    expires_at   DATETIME,
+    last_used_at DATETIME,
+    revoked_at   DATETIME,
+    created_at   DATETIME NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
+CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
 """
 
 
@@ -201,6 +218,23 @@ async def _run_migrations() -> None:
         current_version = 3
         await _db.commit()
         logger.info("Database migrated to schema version 3")
+
+    if current_version < 4:
+        # Backfill one api_keys row per existing app. Single INSERT..SELECT:
+        # idempotent (NOT EXISTS) and atomic under SQLite's writer lock, so a
+        # deploy-overlap re-run can neither duplicate nor interleave.
+        await _db.execute(
+            """INSERT INTO api_keys
+                   (id, key_hash, key_prefix, label, app_id, scopes, created_by, created_at)
+               SELECT lower(hex(randomblob(16))), a.api_key, COALESCE(a.key_prefix, ''),
+                      'default', a.id, '["emails:read","emails:write"]', 'migration',
+                      a.created_at
+               FROM apps a
+               WHERE NOT EXISTS (SELECT 1 FROM api_keys k WHERE k.app_id = a.id)"""
+        )
+        current_version = 4
+        await _db.commit()
+        logger.info("Database migrated to schema version 4")
 
     await _db.execute(
         "UPDATE metadata SET value = ? WHERE key = 'schema_version'",

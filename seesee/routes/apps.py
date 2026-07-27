@@ -11,8 +11,9 @@ from seesee.auth import (
     hash_secret,
 )
 from seesee.database import get_db
-from seesee.dependencies import require_admin, require_scope
+from seesee.dependencies import require_scope
 from seesee.helpers import VALID_BODY_STORAGE_MODES
+from seesee.keys import Principal
 from seesee.models import (
     AppCreateRequest,
     AppCreateResponse,
@@ -29,9 +30,11 @@ router = APIRouter(prefix="/api/v1", tags=["apps"])
     "/apps",
     response_model=AppCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_admin)],
 )
-async def create_app(request: AppCreateRequest) -> AppCreateResponse:
+async def create_app(
+    request: AppCreateRequest,
+    principal: Principal = Depends(require_scope("apps:write")),  # noqa: B008
+) -> AppCreateResponse:
     """Register a new application. Returns API key and SMTP credentials (shown once)."""
     if request.body_storage_mode not in VALID_BODY_STORAGE_MODES:
         raise HTTPException(
@@ -96,7 +99,7 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
             "default",
             app_id,
             '["emails:read","emails:write"]',
-            "admin",
+            principal.key_id,
             now_iso,
         ),
     )
@@ -151,10 +154,31 @@ async def list_apps() -> list[AppResponse]:
     ]
 
 
+@router.get(
+    "/apps/{app_id}",
+    response_model=AppResponse,
+    dependencies=[Depends(require_scope("apps:read"))],
+)
+async def get_app(app_id: str) -> AppResponse:
+    """Fetch a single app record. Requires apps:read."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id, name, slug, body_storage_mode, retention_max_count, "
+        "retention_max_age_days, retention_degrade_to_text_days, "
+        "retention_degrade_to_preview_days, created_at, last_activity_at "
+        "FROM apps WHERE id = ?",
+        (app_id,),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    return AppResponse(**dict(row))
+
+
 @router.patch(
     "/apps/{app_id}",
     response_model=AppResponse,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_scope("apps:write"))],
 )
 async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
     """Update an app's settings. Requires admin auth."""
@@ -234,9 +258,11 @@ async def update_app(app_id: str, request: AppUpdateRequest) -> AppResponse:
 @router.post(
     "/apps/{app_id}/rotate-key",
     response_model=KeyRotateResponse,
-    dependencies=[Depends(require_admin)],
 )
-async def rotate_key(app_id: str) -> KeyRotateResponse:
+async def rotate_key(
+    app_id: str,
+    principal: Principal = Depends(require_scope("apps:write")),  # noqa: B008
+) -> KeyRotateResponse:
     """Regenerate the API key for an app. Old key is immediately invalidated."""
     db = await get_db()
 
@@ -270,7 +296,7 @@ async def rotate_key(app_id: str) -> KeyRotateResponse:
             "default",
             app_id,
             '["emails:read","emails:write"]',
-            "admin",
+            principal.key_id,
             now_iso,
         ),
     )
@@ -281,7 +307,7 @@ async def rotate_key(app_id: str) -> KeyRotateResponse:
 
 @router.delete(
     "/apps/{app_id}/emails",
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_scope("apps:delete"))],
 )
 async def purge_app_emails(app_id: str) -> dict:
     """Delete all emails for an app. Requires admin auth."""
@@ -302,7 +328,7 @@ async def purge_app_emails(app_id: str) -> dict:
 
 @router.delete(
     "/apps/{app_id}",
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_scope("apps:delete"))],
 )
 async def delete_app(app_id: str) -> dict:
     """Delete an app and all its emails. Requires admin auth."""

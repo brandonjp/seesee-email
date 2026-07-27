@@ -11,7 +11,7 @@ from seesee.auth import (
     hash_secret,
 )
 from seesee.database import get_db
-from seesee.dependencies import require_admin
+from seesee.dependencies import require_admin, require_scope
 from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.models import (
     AppCreateRequest,
@@ -122,7 +122,7 @@ async def create_app(request: AppCreateRequest) -> AppCreateResponse:
 @router.get(
     "/apps",
     response_model=list[AppResponse],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_scope("apps:read"))],
 )
 async def list_apps() -> list[AppResponse]:
     """List all registered applications. Requires admin auth."""

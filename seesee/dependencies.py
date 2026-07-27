@@ -192,6 +192,69 @@ async def require_admin_or_session(
     )
 
 
+def _verify_basic_admin(basic_credentials: HTTPBasicCredentials | None) -> str | None:
+    """Constant-time Basic admin check. Returns username or None."""
+    if basic_credentials is None or not settings.admin_password:
+        return None
+    username_correct = secrets.compare_digest(
+        basic_credentials.username.lower().encode("utf-8"),
+        settings.admin_username.lower().encode("utf-8"),
+    )
+    password_correct = secrets.compare_digest(
+        basic_credentials.password.encode("utf-8"),
+        settings.admin_password.encode("utf-8"),
+    )
+    return basic_credentials.username if (username_correct and password_correct) else None
+
+
+def require_scope(*required_scopes: str):
+    """Dependency factory: management-key Bearer OR HTTP Basic admin.
+
+    NEVER reads the session cookie — state-changing API routes must not be
+    reachable with an ambient credential (design review B1). UI forms post to
+    ui.py handlers (session + CSRF) which share service code with these routes.
+    Basic admin implicitly holds all scopes. 401 = unresolvable credential;
+    403 = resolved key missing a scope.
+    """
+
+    async def _dep(
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+        basic_credentials: Annotated[HTTPBasicCredentials | None, Depends(basic_scheme_optional)],
+    ) -> keys.Principal:
+        username = _verify_basic_admin(basic_credentials)
+        if username is not None:
+            return keys.Principal(
+                key_id="admin", app_id=None, scopes=keys.ALL_SCOPES, label="admin"
+            )
+        if credentials is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        try:
+            principal = await keys.resolve_key(credentials.credentials)
+        except keys.KeyRevokedError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="API key revoked"
+            ) from exc
+        except keys.KeyExpiredError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired"
+            ) from exc
+        if principal is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        missing = [s for s in required_scopes if s not in principal.scopes]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required scope: {', '.join(missing)}",
+            )
+        return principal
+
+    return _dep
+
+
 async def require_admin_or_app(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],

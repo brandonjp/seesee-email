@@ -16,8 +16,8 @@ Sub-plan 3 of 4 for the 0.20.0 management-keys + MCP feature. Adds `require_scop
 
 ## Chunk 1: Gate + `require_scope` (`seesee/dependencies.py`, `seesee/routes/apps.py`, `tests/test_management_api.py`)
 
-- [ ] Step 1 (GATE): Run `test -f seesee/keys.py && grep -q "resolve_key" seesee/dependencies.py && echo GATE-OK`. If it does not print `GATE-OK`, **HALT** — sub-plan 2 has not run.
-- [ ] Step 2: Add to `seesee/dependencies.py`:
+- [x] Step 1 (GATE): Run `test -f seesee/keys.py && grep -q "resolve_key" seesee/dependencies.py && echo GATE-OK`. If it does not print `GATE-OK`, **HALT** — sub-plan 2 has not run.
+- [x] Step 2: Add to `seesee/dependencies.py`:
 
 ```python
 def _verify_basic_admin(basic_credentials: HTTPBasicCredentials | None) -> str | None:
@@ -89,8 +89,8 @@ def require_scope(*required_scopes: str):
     return _dep
 ```
 
-- [ ] Step 3: In `seesee/routes/apps.py`, change `list_apps`'s decorator from `dependencies=[Depends(require_admin)]` to `dependencies=[Depends(require_scope("apps:read"))]` (import `require_scope` from `seesee.dependencies`).
-- [ ] Step 4: Create `tests/test_management_api.py` with a module-level helper (mirroring `conftest.create_test_app` style):
+- [x] Step 3: In `seesee/routes/apps.py`, change `list_apps`'s decorator from `dependencies=[Depends(require_admin)]` to `dependencies=[Depends(require_scope("apps:read"))]` (import `require_scope` from `seesee.dependencies`).
+- [x] Step 4: Create `tests/test_management_api.py` with a module-level helper (mirroring `conftest.create_test_app` style):
 
 ```python
 async def create_mgmt_key(scopes: list[str]) -> str:
@@ -110,8 +110,8 @@ Tests:
   - `test_app_key_403_on_apps_read` — app key (create app, use its plaintext) → 403 (app keys can never hold `apps:*`).
   - `test_session_cookie_never_authenticates_api` — login via `POST /login` (session cookie now on the client), then `GET /api/v1/apps` with NO Authorization header → 401. **This is the B1 regression test.**
   - `test_no_credentials_401` — bare request → 401.
-- [ ] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/dependencies.py seesee/routes/apps.py tests/test_management_api.py && git commit -m "feat(scopes): require_scope dependency (Bearer/Basic only, no cookies)"`
+- [x] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/dependencies.py seesee/routes/apps.py tests/test_management_api.py && git commit -m "feat(scopes): require_scope dependency (Bearer/Basic only, no cookies)"`
 
 ### ✅ Review Checkpoint — Chunk 1
 - [ ] `require_scope`'s inner dependency takes NO `Request` parameter and never calls `_validate_session_cookie`: `grep -A8 "async def _dep" seesee/dependencies.py`
@@ -125,9 +125,9 @@ Tests:
 
 ## Chunk 2: Scope-map remaining app routes + `GET /apps/{id}` (`seesee/routes/apps.py`, `tests/test_management_api.py`)
 
-- [ ] Step 1: In `seesee/routes/apps.py`, replace `dependencies=[Depends(require_admin)]` route-by-route: `create_app` and `update_app` and `rotate_key` → `require_scope("apps:write")`; `purge_app_emails` and `delete_app` → `require_scope("apps:delete")`. Remove the now-unused `require_admin` import ONLY if no route in the file still uses it.
-- [ ] Step 2: In `create_app`, capture the minting principal for provenance: change the decorator-only dependency to a parameter `principal: Principal = Depends(require_scope("apps:write"))` (import `Principal` from `seesee.keys`), and in the `api_keys` INSERT added by sub-plan 2, replace the hardcoded `"admin"` `created_by` value with `principal.key_id` (Basic admin yields `"admin"`, a management key yields its key id). Do the same in `rotate_key`.
-- [ ] Step 3: Add `GET /api/v1/apps/{app_id}` (place it after `list_apps`; note FastAPI matches literal paths in registration order — `/apps/{app_id}` must not shadow anything since all other app routes have suffixes or different methods):
+- [x] Step 1: In `seesee/routes/apps.py`, replace `dependencies=[Depends(require_admin)]` route-by-route: `create_app` and `update_app` and `rotate_key` → `require_scope("apps:write")`; `purge_app_emails` and `delete_app` → `require_scope("apps:delete")`. Remove the now-unused `require_admin` import ONLY if no route in the file still uses it.
+- [x] Step 2: In `create_app`, capture the minting principal for provenance: change the decorator-only dependency to a parameter `principal: Principal = Depends(require_scope("apps:write"))` (import `Principal` from `seesee.keys`), and in the `api_keys` INSERT added by sub-plan 2, replace the hardcoded `"admin"` `created_by` value with `principal.key_id` (Basic admin yields `"admin"`, a management key yields its key id). Do the same in `rotate_key`.
+- [x] Step 3: Add `GET /api/v1/apps/{app_id}` (place it after `list_apps`; note FastAPI matches literal paths in registration order — `/apps/{app_id}` must not shadow anything since all other app routes have suffixes or different methods):
 
 ```python
 @router.get(
@@ -151,13 +151,13 @@ async def get_app(app_id: str) -> AppResponse:
     return AppResponse(**dict(row))
 ```
 
-- [ ] Step 4: Extend `tests/test_management_api.py`:
+- [x] Step 4: Extend `tests/test_management_api.py`:
   - `test_mgmt_key_creates_app` — key with `["apps:write"]` → `POST /api/v1/apps` 201, response contains a working `api_key` (Bearer-ingest one email with it); the created app's `api_keys` row has `created_by` equal to the management key's id (query the db).
   - `test_apps_write_cannot_delete` — same key → `DELETE /api/v1/apps/{id}` 403.
   - `test_apps_delete_can_delete` — key with `["apps:delete"]` → `DELETE` 200.
   - `test_get_single_app` — `GET /api/v1/apps/{id}` with `["apps:read"]` key → 200 with the app's fields; unknown id → 404.
-- [ ] Step 5: `python -m pytest -x -q` — full suite unmodified (`test_apps.py` proves Basic admin still works everywhere). `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/routes/apps.py tests/test_management_api.py && git commit -m "feat(scopes): scope-map app routes; GET /api/v1/apps/{id}; created_by provenance"`
+- [x] Step 5: `python -m pytest -x -q` — full suite unmodified (`test_apps.py` proves Basic admin still works everywhere). `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/routes/apps.py tests/test_management_api.py && git commit -m "feat(scopes): scope-map app routes; GET /api/v1/apps/{id}; created_by provenance"`
 
 ### ✅ Review Checkpoint — Chunk 2
 - [ ] `grep -c "require_scope" seesee/routes/apps.py` ≥ 6 (list, create, update, rotate, purge, delete, get)
@@ -171,7 +171,7 @@ async def get_app(app_id: str) -> AppResponse:
 
 ## Chunk 3: Key CRUD REST (`seesee/routes/apps.py`, `seesee/models.py`, `seesee/timezone.py`, `tests/test_management_api.py`)
 
-- [ ] Step 1: Add to `seesee/models.py` (following its existing pydantic model style):
+- [x] Step 1: Add to `seesee/models.py` (following its existing pydantic model style):
 
 ```python
 class KeyCreateRequest(BaseModel):
@@ -202,7 +202,7 @@ class KeyCreateResponse(KeyMetadata):
     api_key: str
 ```
 
-- [ ] Step 2: Add three routes to `seesee/routes/apps.py`:
+- [x] Step 2: Add three routes to `seesee/routes/apps.py`:
 
 ```python
 @router.get(
@@ -276,15 +276,15 @@ async def revoke_app_key(app_id: str, key_id: str) -> dict:
 
 Add a tiny helper `iso_in_days(days: int) -> str` to `seesee/timezone.py` (UTC now + N days in `%Y-%m-%dT%H:%M:%S`), implemented with `datetime.now(tz=timezone.utc) + timedelta(days=days)`; import it in `apps.py`. Import `keys`, `Principal`, and the new models.
 
-- [ ] Step 3: Extend `tests/test_management_api.py`:
+- [x] Step 3: Extend `tests/test_management_api.py`:
   - `test_mint_and_use_app_key` — POST keys → 201 with `api_key` plaintext + metadata; new key ingests an email.
   - `test_two_step_rotation` — mint new key, verify BOTH keys work simultaneously (overlap window), revoke the old key id via DELETE, old 401s, new still works.
   - `test_cross_app_revoke_404` — two apps; revoking app A's key via app B's path → 404, key still active.
   - `test_mgmt_key_not_revocable_via_rest` — DELETE `/apps/{id}/keys/{mgmt_key_id}` → 404 (management keys have `app_id NULL`, can never match).
   - `test_matrix_422` — POST keys with `scopes=["apps:write"]` → 422 naming the scope.
   - `test_key_metadata_never_leaks` — GET keys response has no `key_hash`/`api_key` fields; `expires_days` round-trips to a future `expires_at`.
-- [ ] Step 4: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 5: Commit: `git add seesee/routes/apps.py seesee/models.py seesee/timezone.py tests/test_management_api.py && git commit -m "feat(keys): app-key CRUD endpoints with validity matrix + belongs-to-app revoke"`
+- [x] Step 4: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 5: Commit: `git add seesee/routes/apps.py seesee/models.py seesee/timezone.py tests/test_management_api.py && git commit -m "feat(keys): app-key CRUD endpoints with validity matrix + belongs-to-app revoke"`
 
 ### ✅ Review Checkpoint — Chunk 3
 - [ ] `revoke_app_key` matches `id = ? AND app_id = ?` in SQL (belongs-to-app enforced)
@@ -297,8 +297,8 @@ Add a tiny helper `iso_in_days(days: int) -> str` to `seesee/timezone.py` (UTC n
 
 ## Chunk 4: Settings UI — management keys (`seesee/routes/ui.py`, `seesee/templates/settings.html`, `tests/test_ui.py`)
 
-- [ ] Step 1: In `seesee/routes/ui.py` `settings_page`, add to the template context: `mgmt_keys=await keys.list_keys(None)` and the flash (existing `_pop_flash` already flows through). Import `keys` and `iso_in_days`.
-- [ ] Step 2: Add two session+CSRF handlers to `ui.py`:
+- [x] Step 1: In `seesee/routes/ui.py` `settings_page`, add to the template context: `mgmt_keys=await keys.list_keys(None)` and the flash (existing `_pop_flash` already flows through). Import `keys` and `iso_in_days`.
+- [x] Step 2: Add two session+CSRF handlers to `ui.py`:
 
 ```python
 @router.post("/settings/keys")
@@ -349,18 +349,18 @@ async def revoke_mgmt_key_ui(
 
 (`expires` select values: `"30"`, `"90"`, `"365"`, `"never"`. Guard `int(expires)` with a try/except ValueError → 422 HTTPException.)
 
-- [ ] Step 3: In `seesee/templates/settings.html`, add an "API Keys" card (match the page's existing card markup/classes; include the CSRF hidden input in both forms):
+- [x] Step 3: In `seesee/templates/settings.html`, add an "API Keys" card (match the page's existing card markup/classes; include the CSRF hidden input in both forms):
   - Flash display: if `flash.new_mgmt_key`, show the plaintext in a copyable `<code>` block with the standing warning "Shown once — store it now." If `flash.key_error`, show the error.
   - Table over `mgmt_keys`: label, `key_prefix` rendered as `ss_mgmt_{{ key.key_prefix }}…`, scopes (badges), created_by, last_used_at, expires_at, and a revoke button (its own small form POSTing to `/settings/keys/{{ key.id }}/revoke`) for rows where `revoked_at` is none. Revoked rows render muted with a "revoked" badge.
   - Create form POSTing to `/settings/keys`: label text input (required); four checkboxes — `emails:read` (checked), `apps:read` (checked), `apps:write` (unchecked, helper text: **"Can mint app keys — transitively grants access to all email in this instance"**), `apps:delete` (unchecked, helper text: **"Destructive: can delete apps and purge all their email"** styled as a warning); expiry `<select name="expires">` with options 30 / **90 (selected)** / 365 / never.
-- [ ] Step 4: Add tests to `tests/test_ui.py` (ADD only — do not touch existing tests; reuse the `csrf_form` helper):
+- [x] Step 4: Add tests to `tests/test_ui.py` (ADD only — do not touch existing tests; reuse the `csrf_form` helper):
   - `test_settings_shows_keys_section` — logged-in GET `/settings` contains `API Keys`.
   - `test_create_mgmt_key_ui_flow` — POST `/settings/keys` with `csrf_form({"label": "agent", "scopes": ["emails:read", "apps:read"], "expires": "90"})` → 303; following GET `/settings` shows an `ss_mgmt_` plaintext once (flash), and the table lists the label.
   - `test_create_mgmt_key_invalid_scope_shows_error` — scopes `["emails:write"]` → flash error rendered, no key created.
   - `test_revoke_mgmt_key_ui` — create, then POST revoke → 303; row shows revoked.
   - `test_revoke_app_key_via_settings_404` — an app's key id POSTed to `/settings/keys/{id}/revoke` → 404.
-- [ ] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
-- [ ] Step 6: Commit: `git add seesee/routes/ui.py seesee/templates/settings.html tests/test_ui.py && git commit -m "feat(keys): management-keys UI on Settings (90-day default, scope warnings)"`
+- [x] Step 5: `python -m pytest -x -q`; `ruff check . && ruff format --check .`
+- [x] Step 6: Commit: `git add seesee/routes/ui.py seesee/templates/settings.html tests/test_ui.py && git commit -m "feat(keys): management-keys UI on Settings (90-day default, scope warnings)"`
 
 ### ✅ Review Checkpoint — Chunk 4
 - [ ] The expiry select defaults to 90 days (`selected` on the 90 option)
@@ -375,12 +375,12 @@ async def revoke_mgmt_key_ui(
 
 ## Chunk 5: App detail keys UI (`seesee/routes/ui.py`, `seesee/templates/app_detail.html`, `tests/test_ui.py`)
 
-- [ ] Step 1: In `ui.py` `app_detail`, add `app_keys=await keys.list_keys(app_id)` to the template context.
-- [ ] Step 2: Add two handlers mirroring Chunk 4's shape: `POST /apps/{app_id}/keys` (`create_app_key_ui`: label + scope checkboxes limited to `emails:read`/`emails:write`, no expiry select — app keys default to no expiry; flash `{"new_app_key": plaintext}`; redirect to `/apps/{app_id}`) and `POST /apps/{app_id}/keys/{key_id}/revoke` (`revoke_app_key_ui`: 404 unless `SELECT id FROM api_keys WHERE id = ? AND app_id = ?` matches; redirect back). Both: `require_session` + `require_csrf`, `created_by="admin"`, ValueError → flash error.
-- [ ] Step 3: In `app_detail.html`:
+- [x] Step 1: In `ui.py` `app_detail`, add `app_keys=await keys.list_keys(app_id)` to the template context.
+- [x] Step 2: Add two handlers mirroring Chunk 4's shape: `POST /apps/{app_id}/keys` (`create_app_key_ui`: label + scope checkboxes limited to `emails:read`/`emails:write`, no expiry select — app keys default to no expiry; flash `{"new_app_key": plaintext}`; redirect to `/apps/{app_id}`) and `POST /apps/{app_id}/keys/{key_id}/revoke` (`revoke_app_key_ui`: 404 unless `SELECT id FROM api_keys WHERE id = ? AND app_id = ?` matches; redirect back). Both: `require_session` + `require_csrf`, `created_by="admin"`, ValueError → flash error.
+- [x] Step 3: In `app_detail.html`:
   - Add an "API Keys" card above the existing danger-zone/rotate area: table over `app_keys` (label, `ss_{{ key.key_prefix }}…`, scopes, created_by, last used, revoke button forms) + a mint form (label input; `emails:read`/`emails:write` checkboxes, both checked by default). Include CSRF hidden inputs. Flash display for `new_app_key` plaintext (copyable, shown once).
   - Relabel the existing rotate button text to `Rotate key (immediately invalidates the current key)` and add helper text pointing at the keys table: `Prefer minting a second key, deploying it, then revoking the old one — zero-downtime rotation.`
-- [ ] Step 4: Add tests to `tests/test_ui.py`:
+- [x] Step 4: Add tests to `tests/test_ui.py`:
   - `test_app_detail_shows_keys_table` — app detail GET lists the default key's prefix.
   - `test_mint_app_key_ui_flow` — POST mint → 303 → flash shows `ss_` plaintext; table gains a row.
   - `test_revoke_app_key_ui` — revoke the minted key → row shows revoked; SMTP/REST rejection is covered by sub-plan 2 tests.
@@ -400,11 +400,11 @@ async def revoke_mgmt_key_ui(
 
 ## Chunk 6: Version + docs (`pyproject.toml`, `seesee/__init__.py`, `CHANGELOG.md`, `README.md`)
 
-- [ ] Step 1: Bump to `0.19.19-dev` in `pyproject.toml` and `seesee/__init__.py`.
-- [ ] Step 2: `CHANGELOG.md` `[Unreleased]` → `### Added`: `- Management API keys: scoped (emails:read/apps:read/apps:write/apps:delete), labeled, expiring, individually revocable; key CRUD REST endpoints; Keys UI on Settings and app detail; safe two-step rotation`
-- [ ] Step 3: In `README.md`, add a short "Management API keys" subsection under the existing API/usage docs: what they are (`ss_mgmt_` Bearer credentials for automation/agents), the CLI bootstrap one-liner, the two-step rotation flow, and the sentence: `A key with apps:write can mint app keys and therefore transitively read all email in the instance — scope keys per agent and prefer read-only keys for debugging.`
-- [ ] Step 4: `python -m pytest -x -q`.
-- [ ] Step 5: Commit: `git add pyproject.toml seesee/__init__.py CHANGELOG.md README.md && git commit -m "chore: bump 0.19.19-dev; changelog + README for management keys"`
+- [x] Step 1: Bump to `0.19.19-dev` in `pyproject.toml` and `seesee/__init__.py`.
+- [x] Step 2: `CHANGELOG.md` `[Unreleased]` → `### Added`: `- Management API keys: scoped (emails:read/apps:read/apps:write/apps:delete), labeled, expiring, individually revocable; key CRUD REST endpoints; Keys UI on Settings and app detail; safe two-step rotation`
+- [x] Step 3: In `README.md`, add a short "Management API keys" subsection under the existing API/usage docs: what they are (`ss_mgmt_` Bearer credentials for automation/agents), the CLI bootstrap one-liner, the two-step rotation flow, and the sentence: `A key with apps:write can mint app keys and therefore transitively read all email in the instance — scope keys per agent and prefer read-only keys for debugging.`
+- [x] Step 4: `python -m pytest -x -q`.
+- [x] Step 5: Commit: `git add pyproject.toml seesee/__init__.py CHANGELOG.md README.md && git commit -m "chore: bump 0.19.19-dev; changelog + README for management keys"`
 
 ### ✅ Review Checkpoint — Chunk 6
 - [ ] Versions match: `python -m pytest tests/test_version_sync.py -q`

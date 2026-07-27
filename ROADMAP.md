@@ -149,9 +149,10 @@
 - [x] Theme selector UI on settings page — 10 themes (4 accent, 3 developer, 1 light, 2 retro) with swatch grid picker
 - [x] Expanded theme catalog — 21 themes (4 accent, 8 developer, 4 light, 6 retro) with scoped CSS overrides for Blueprint, VHS, OS 9, Rad
 - [x] Edit app settings from the detail page — storage mode + the four retention overrides ("Settings" card)
+- [x] ✅ **Management API keys + MCP server (0.20.0)** — scoped, revocable machine credentials (`ss_mgmt_`) and an MCP server at `/mcp` for provisioning + email debugging. Unified `api_keys` table (schema v4) also fixes the destructive key rotation by allowing multiple keys per app. Spec: `docs/superpowers/specs/2026-07-26-management-keys-mcp-design.md` (implemented and code-reviewed; release cut pending — see NEXT.md)
 - [ ] CSV/JSON search export
 - [ ] Per-app "disable degradation" override — needs a design decision: the retention engine treats a per-app `0`/NULL as "inherit global", so an app cannot opt out of a globally enabled degradation schedule (see NEXT.md Known Issues)
-- [ ] CSRF protection for session-authenticated UI form POSTs (settings, rename, purge, key rotation) — acceptable for single-admin self-hosted use today; required before multi-user auth lands
+- [x] ✅ CSRF protection for session-authenticated UI form POSTs (settings, rename, purge, key rotation) — acceptable for single-admin self-hosted use today; required before multi-user auth lands (shipped in 0.20.0 cycle — CSRF tokens on all session POST handlers)
 - [ ] Prometheus metrics endpoint
 - [ ] Multi-user auth with roles
 - [ ] WordPress plugin with settings page

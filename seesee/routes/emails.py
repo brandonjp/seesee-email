@@ -16,6 +16,7 @@ from seesee.models import (
     EmailSummary,
     StatusUpdateRequest,
 )
+from seesee.search import normalize_fts_query
 
 router = APIRouter(prefix="/api/v1", tags=["emails"])
 
@@ -128,8 +129,14 @@ async def list_emails(
     params: list[str | int] = []
 
     if q:
-        conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # No searchable term — match nothing rather than silently dropping
+            # the condition, which would return every email.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("e.app_id = ?")
         params.append(app_id)
@@ -207,8 +214,13 @@ async def bulk_delete_emails(
     params: list[str | int] = []
 
     if q:
-        conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # A search that cannot match must delete nothing.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("app_id = ?")
         params.append(app_id)

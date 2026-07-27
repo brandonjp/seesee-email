@@ -101,6 +101,7 @@
                 </button>
             </div>
             <form method="post" action="/apps" class="space-y-4" x-data="{ submitting: false }" @submit="submitting = true">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                 <div>
                     <label class="block text-sm font-medium mb-1">App Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" required placeholder="My Application"
@@ -141,6 +142,7 @@
                 <button @click="confirmRotate = null"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form :action="'/apps/' + confirmRotate + '/rotate-key'" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Rotate Key</button>
                 </form>
@@ -158,6 +160,7 @@
                 <button @click="confirmDelete = null"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form :action="'/apps/' + confirmDelete + '/delete'" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete App</button>
                 </form>

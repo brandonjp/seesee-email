@@ -6,12 +6,13 @@ import math
 import secrets
 import uuid
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.responses import Response
 
+from seesee import keys
 from seesee.auth import (
     API_KEY_PREFIX,
     SESSION_COOKIE_NAME,
@@ -21,11 +22,13 @@ from seesee.auth import (
     hash_secret,
 )
 from seesee.config import settings
+from seesee.csrf import require_csrf, require_csrf_if_session
 from seesee.database import get_db
 from seesee.dependencies import require_session
 from seesee.helpers import VALID_BODY_STORAGE_MODES
 from seesee.retention import run_cleanup
-from seesee.timezone import utc_cutoff_iso, utc_now_iso
+from seesee.search import normalize_fts_query
+from seesee.timezone import iso_in_days, utc_cutoff_iso, utc_now_iso
 
 router = APIRouter(tags=["ui"])
 
@@ -97,6 +100,19 @@ def _get_secret_key() -> str:
     return settings.secret_key or settings.admin_password
 
 
+def cookies_are_secure() -> bool:
+    """Whether to mark cookies `Secure` (HTTPS-only).
+
+    Derived from base_url rather than a separate setting, because the two can
+    never sensibly disagree: if SeeSee is reachable over HTTPS, its cookies
+    should never travel in the clear, and if it is only reachable over HTTP
+    (localhost, a LAN box) a Secure cookie would simply be dropped and lock the
+    admin out of the UI. This matters most for the flash cookie, which briefly
+    carries a PLAINTEXT API key on the redirect after minting one.
+    """
+    return settings.base_url.lower().startswith("https://")
+
+
 def _set_flash(response: Response, data: dict) -> None:
     """Store flash data in a signed, short-lived cookie."""
     serializer = URLSafeTimedSerializer(_get_secret_key(), salt="seesee-flash")
@@ -106,6 +122,7 @@ def _set_flash(response: Response, data: dict) -> None:
         max_age=_FLASH_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=cookies_are_secure(),
     )
 
 
@@ -175,15 +192,18 @@ async def login_submit(
         max_age=settings.session_max_age_days * 86400,
         httponly=True,
         samesite="lax",
+        secure=cookies_are_secure(),
     )
     return response
 
 
 @router.post("/logout")
-async def logout() -> RedirectResponse:
+async def logout(_csrf: None = Depends(require_csrf_if_session)) -> RedirectResponse:
     """Clear session cookie and redirect to login."""
     response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie(SESSION_COOKIE_NAME)
+    response.delete_cookie(
+        SESSION_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+    )
     return response
 
 
@@ -307,8 +327,14 @@ async def email_list(
     params: list[str | int] = []
 
     if q:
-        conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # No searchable term — match nothing rather than silently dropping
+            # the condition, which would list every email.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("e.app_id = ?")
         params.append(app_id)
@@ -475,7 +501,9 @@ async def app_list(
         },
     )
     if flash:
-        response.delete_cookie(FLASH_COOKIE_NAME)
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
     return response
 
 
@@ -483,6 +511,7 @@ async def app_list(
 async def create_app_ui(
     request: Request,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     name: str = Form(...),
     body_storage_mode: str = Form("full"),
 ) -> RedirectResponse:
@@ -551,6 +580,7 @@ async def create_app_ui(
 async def rotate_key_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Rotate an app's API key via the web UI."""
     db = await get_db()
@@ -653,17 +683,73 @@ async def app_detail(
                 "degrade_to_text_days": settings.retention_degrade_to_text_days,
                 "degrade_to_preview_days": settings.retention_degrade_to_preview_days,
             },
+            "app_keys": await keys.list_keys(app_id),
+            "flash": flash or {},
         },
     )
     if flash:
-        response.delete_cookie(FLASH_COOKIE_NAME)
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
     return response
+
+
+@router.post("/apps/{app_id}/keys")
+async def create_app_key_ui(
+    app_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+    label: str = Form(...),
+    scopes: list[str] = Form([]),  # noqa: B008
+) -> RedirectResponse:
+    """Mint an additional key for an app. Plaintext flashed once."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM apps WHERE id = ?", (app_id,))
+    if await cursor.fetchone() is None:
+        # Without this the FK constraint raises IntegrityError and the request
+        # 500s (the REST route returns 404 here).
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
+    response = RedirectResponse(url=f"/apps/{app_id}", status_code=303)
+    try:
+        _key_id, plaintext = await keys.create_key(
+            label=label,
+            app_id=app_id,
+            scopes=scopes,
+            expires_at=None,
+            created_by="admin",
+        )
+    except ValueError as exc:
+        _set_flash(response, {"key_error": str(exc)})
+        return response
+    _set_flash(response, {"new_app_key": plaintext, "new_app_key_label": label})
+    return response
+
+
+@router.post("/apps/{app_id}/keys/{key_id}/revoke")
+async def revoke_app_key_ui(
+    app_id: str,
+    key_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+) -> RedirectResponse:
+    """Revoke one of an app's keys."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id FROM api_keys WHERE id = ? AND app_id = ?", (key_id, app_id)
+    )
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    await keys.revoke_key(key_id)
+    return RedirectResponse(url=f"/apps/{app_id}", status_code=303)
 
 
 @router.post("/apps/{app_id}/rename")
 async def rename_app_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     name: str = Form(...),
 ) -> RedirectResponse:
     """Rename an app via the web UI."""
@@ -687,6 +773,7 @@ async def rename_app_ui(
 async def update_app_settings_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     body_storage_mode: str = Form(...),
     retention_max_count: str = Form(""),
     retention_max_age_days: str = Form(""),
@@ -751,6 +838,7 @@ async def update_app_settings_ui(
 async def purge_app_emails_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Purge all emails for an app via the web UI."""
     db = await get_db()
@@ -769,6 +857,7 @@ async def purge_app_emails_ui(
 async def delete_app_ui(
     app_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Delete an app and all its emails via the web UI."""
     db = await get_db()
@@ -803,6 +892,7 @@ async def delete_app_ui(
 async def bulk_delete_emails_ui(
     request: Request,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
     q: str = Form(""),
     app_id: str = Form(""),
     status_val: str = Form("", alias="status"),
@@ -818,8 +908,13 @@ async def bulk_delete_emails_ui(
     params: list[str | int] = []
 
     if q:
-        conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
-        params.append(q)
+        match = await normalize_fts_query(db, q)
+        if match is None:
+            # A search that cannot match must delete nothing.
+            conditions.append("1 = 0")
+        else:
+            conditions.append("rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)")
+            params.append(match)
     if app_id:
         conditions.append("app_id = ?")
         params.append(app_id)
@@ -856,6 +951,7 @@ async def bulk_delete_emails_ui(
 async def delete_email_ui(
     email_id: str,
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Delete a single email via the web UI."""
     db = await get_db()
@@ -898,7 +994,9 @@ async def settings_page(
     row = await cursor.fetchone()
     db_size_bytes = row["size"] if row else 0
 
-    return tmpl.TemplateResponse(
+    flash = _pop_flash(request)
+
+    response = tmpl.TemplateResponse(
         request,
         "settings.html",
         {
@@ -908,14 +1006,74 @@ async def settings_page(
             "email_count": email_count,
             "storage_bytes": storage_bytes,
             "db_size_bytes": db_size_bytes,
+            "mgmt_keys": await keys.list_keys(None),
+            "flash": flash or {},
         },
     )
+    if flash:
+        response.delete_cookie(
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        )
+    return response
 
 
 @router.post("/settings/cleanup")
 async def run_cleanup_ui(
     user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
 ) -> RedirectResponse:
     """Trigger an immediate retention cleanup via the web UI."""
     await run_cleanup()
     return RedirectResponse(url="/settings?cleanup=1", status_code=303)
+
+
+@router.post("/settings/keys")
+async def create_mgmt_key_ui(
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+    label: str = Form(...),
+    scopes: list[str] = Form([]),  # noqa: B008
+    expires: str = Form("90"),
+) -> RedirectResponse:
+    """Mint a management key from the Settings page. Plaintext flashed once."""
+    if expires == "never":
+        expires_at = None
+    else:
+        try:
+            expires_at = iso_in_days(int(expires))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid expiry"
+            ) from exc
+    response = RedirectResponse(url="/settings", status_code=303)
+    try:
+        _key_id, plaintext = await keys.create_key(
+            label=label,
+            app_id=None,
+            scopes=scopes,
+            expires_at=expires_at,
+            created_by="admin",
+        )
+    except ValueError as exc:
+        _set_flash(response, {"key_error": str(exc)})
+        return response
+    _set_flash(response, {"new_mgmt_key": plaintext, "new_mgmt_key_label": label})
+    return response
+
+
+@router.post("/settings/keys/{key_id}/revoke")
+async def revoke_mgmt_key_ui(
+    key_id: str,
+    request: Request,
+    user: str = Depends(require_session),
+    _csrf: None = Depends(require_csrf),
+) -> RedirectResponse:
+    """Revoke a management key. Only management keys — app keys are revoked
+    from their app's detail page."""
+    db = await get_db()
+    cursor = await db.execute("SELECT id FROM api_keys WHERE id = ? AND app_id IS NULL", (key_id,))
+    if await cursor.fetchone() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    await keys.revoke_key(key_id)
+    return RedirectResponse(url="/settings", status_code=303)

@@ -449,7 +449,9 @@ curl "http://localhost:8080/api/v1/emails?q=welcome&status=sent&per_page=10" \
 ```
 
 :::tip
-Full-text search uses SQLite FTS5. Use `*` for prefix matching: `pass*` matches "password", "passport", etc.
+Full-text search uses SQLite FTS5. Use `*` for prefix matching: `pass*` matches "password", "passport", etc. The other FTS5 operators work too — `"exact phrase"`, `subject:welcome`, `welcome AND receipt`.
+
+Anything FTS5 can't parse as a query — an email address, an unbalanced quote, a stray bracket — is automatically treated as a plain term search instead, so `q=user@example.com` searches for "user", "example" and "com" together rather than erroring. A query with no searchable characters at all (`q=***`) matches nothing.
 :::
 
 ### Get email detail

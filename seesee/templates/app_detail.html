@@ -47,6 +47,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                     </button>
                     <form x-show="editingName" x-cloak action="/apps/{{ app.id }}/rename" method="post" class="flex items-center gap-2" @keydown.escape="editingName = false">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                         <input x-ref="nameInput" type="text" name="name" x-model="newName" required
                                class="text-xl font-bold bg-transparent border-b-2 border-accent focus:outline-none px-0 py-0 w-auto min-w-[200px]">
                         <button type="submit" class="p-1 text-accent hover:text-accent/80 transition-colors" aria-label="Save" title="Save">
@@ -311,6 +312,7 @@ echo $response;</code></pre>
         <!-- Edit mode -->
         <form x-show="editingSettings" x-cloak action="/apps/{{ app.id }}/settings" method="post"
               class="space-y-4" @keydown.escape="editingSettings = false">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
             <div>
                 <label class="block text-sm font-medium mb-1">Storage mode</label>
                 <select name="body_storage_mode"
@@ -363,15 +365,113 @@ echo $response;</code></pre>
         </form>
     </div>
 
+    <!-- API Keys -->
+    <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">API Keys</h2>
+
+        {% if flash.new_app_key %}
+        <div class="rounded-lg border-2 border-accent bg-accent/5 p-4 mb-4 space-y-2">
+            <p class="text-sm font-semibold text-accent">Key created for "{{ flash.new_app_key_label }}" — shown once, store it now.</p>
+            <div class="flex items-center gap-2">
+                <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs break-all">{{ flash.new_app_key }}</code>
+                <button onclick="copyToClipboard('{{ flash.new_app_key }}', this)" class="p-1.5 text-gray-400 hover:text-accent active:text-accent transition-colors shrink-0" aria-label="Copy to clipboard" title="Copy">
+                    <svg class="w-3.5 h-3.5 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 check-icon hidden text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        {% if flash.key_error %}
+        <div class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4 mb-4">
+            <p class="text-sm text-red-600 dark:text-red-400">{{ flash.key_error }}</p>
+        </div>
+        {% endif %}
+
+        <div class="overflow-x-auto mb-5">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                        <th class="py-2 pr-3 font-medium">Label</th>
+                        <th class="py-2 pr-3 font-medium">Prefix</th>
+                        <th class="py-2 pr-3 font-medium">Scopes</th>
+                        <th class="py-2 pr-3 font-medium">Created By</th>
+                        <th class="py-2 pr-3 font-medium">Last Used</th>
+                        <th class="py-2 pr-3 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for key in app_keys %}
+                    <tr class="{{ 'opacity-50' if key.revoked_at else '' }}">
+                        <td class="py-2 pr-3 font-medium">{{ key.label }}</td>
+                        <td class="py-2 pr-3"><code class="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">ss_{{ key.key_prefix }}&hellip;</code></td>
+                        <td class="py-2 pr-3">
+                            <div class="flex flex-wrap gap-1">
+                                {% for scope in key.scopes %}
+                                <span class="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">{{ scope }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="py-2 pr-3 text-gray-500 dark:text-gray-400">{{ key.created_by }}</td>
+                        <td class="py-2 pr-3 text-gray-500 dark:text-gray-400">{{ key.last_used_at | display_dt if key.last_used_at else 'Never' }}</td>
+                        <td class="py-2 pr-3 text-right">
+                            {% if key.revoked_at %}
+                            <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">revoked</span>
+                            {% else %}
+                            <form action="/apps/{{ app.id }}/keys/{{ key.id }}/revoke" method="post" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
+                                <button type="submit" class="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Revoke</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-4 text-center text-gray-400 dark:text-gray-500">No keys yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <form action="/apps/{{ app.id }}/keys" method="post" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
+            <div>
+                <label class="block text-sm font-medium mb-1">Label</label>
+                <input type="text" name="label" required
+                       class="block w-full max-w-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Scopes</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="scopes" value="emails:read" checked class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                        emails:read
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="scopes" value="emails:write" checked class="rounded border-gray-300 dark:border-gray-600 text-accent focus:ring-accent">
+                        emails:write
+                    </label>
+                </div>
+            </div>
+            <div>
+                <button type="submit"
+                        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent/90 active:bg-accent/80 transition-colors">Create Key</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Actions -->
     <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Actions</h2>
         <div class="flex flex-wrap gap-3">
-            <button @click="confirmRotate = true"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Rotate Key
-            </button>
+            <div>
+                <button @click="confirmRotate = true"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Rotate key (immediately invalidates the current key)
+                </button>
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Prefer minting a second key above, deploying it, then revoking the old one — zero-downtime rotation.</p>
+            </div>
             <button @click="confirmPurge = true"
                     class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-900/20 dark:active:bg-red-900/30 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -395,6 +495,7 @@ echo $response;</code></pre>
                 <button @click="confirmRotate = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/rotate-key" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Rotate Key</button>
                 </form>
@@ -412,6 +513,7 @@ echo $response;</code></pre>
                 <button @click="confirmPurge = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/purge" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Purge All</button>
                 </form>
@@ -429,6 +531,7 @@ echo $response;</code></pre>
                 <button @click="confirmDelete = false"
                         class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-700 transition-colors">Cancel</button>
                 <form action="/apps/{{ app.id }}/delete" method="post" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_for(request) }}">
                     <button type="submit"
                             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800 transition-colors">Delete App</button>
                 </form>

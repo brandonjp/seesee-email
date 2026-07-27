@@ -3,9 +3,17 @@
 from httpx import AsyncClient
 from itsdangerous import URLSafeTimedSerializer
 
+from seesee import keys
 from seesee.auth import SESSION_COOKIE_NAME, create_session_token
 from seesee.config import settings
+from seesee.csrf import CSRF_FIELD_NAME, make_csrf_token
 from seesee.routes.ui import FLASH_COOKIE_NAME, _build_env_vars
+
+
+def csrf_form(data: dict | None = None) -> dict:
+    """Merge a valid CSRF token into form data for session-authenticated POSTs."""
+    token = make_csrf_token("admin", "testpassword")
+    return {**(data or {}), CSRF_FIELD_NAME: token}
 
 
 def _get_session_cookie(username: str = "admin") -> str:
@@ -324,7 +332,7 @@ async def test_apps_create_via_form(client: AsyncClient) -> None:
     token = _get_session_cookie()
     resp = await client.post(
         "/apps",
-        data={"name": "Form Created App", "body_storage_mode": "full"},
+        data=csrf_form({"name": "Form Created App", "body_storage_mode": "full"}),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -350,6 +358,7 @@ async def test_apps_rotate_key(client: AsyncClient, admin_auth_header: dict) -> 
     token = _get_session_cookie()
     resp = await client.post(
         f"/apps/{app_id}/rotate-key",
+        data=csrf_form(),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -371,13 +380,15 @@ async def test_apps_update_settings(client: AsyncClient, admin_auth_header: dict
 
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "preview",
-            "retention_max_count": "250",
-            "retention_max_age_days": "30",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "preview",
+                "retention_max_count": "250",
+                "retention_max_age_days": "30",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -404,26 +415,30 @@ async def test_apps_update_settings_clears_retention(
     # First set overrides
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "500",
-            "retention_max_age_days": "45",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "500",
+                "retention_max_age_days": "45",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     # Then clear them
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -447,13 +462,15 @@ async def test_apps_update_settings_rejects_invalid_mode(
 
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "bogus",
-            "retention_max_count": "",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "bogus",
+                "retention_max_count": "",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -477,26 +494,30 @@ async def test_apps_update_settings_rejects_negative_retention(
     # Set a known value first
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "100",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "100",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     # Negative value must be rejected
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "-5",
-            "retention_max_age_days": "",
-            "retention_degrade_to_text_days": "",
-            "retention_degrade_to_preview_days": "",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "-5",
+                "retention_max_age_days": "",
+                "retention_degrade_to_text_days": "",
+                "retention_degrade_to_preview_days": "",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -520,25 +541,29 @@ async def test_apps_update_settings_zero_means_system_default(
     # Set real overrides first so the coercion has something to clear
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "100",
-            "retention_max_age_days": "30",
-            "retention_degrade_to_text_days": "7",
-            "retention_degrade_to_preview_days": "14",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "100",
+                "retention_max_age_days": "30",
+                "retention_degrade_to_text_days": "7",
+                "retention_degrade_to_preview_days": "14",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
     resp = await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "full",
-            "retention_max_count": "0",
-            "retention_max_age_days": "0",
-            "retention_degrade_to_text_days": "0",
-            "retention_degrade_to_preview_days": "0",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "full",
+                "retention_max_count": "0",
+                "retention_max_age_days": "0",
+                "retention_degrade_to_text_days": "0",
+                "retention_degrade_to_preview_days": "0",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -566,13 +591,15 @@ async def test_app_detail_settings_card(client: AsyncClient, admin_auth_header: 
 
     await client.post(
         f"/apps/{app_id}/settings",
-        data={
-            "body_storage_mode": "preview",
-            "retention_max_count": "111",
-            "retention_max_age_days": "22",
-            "retention_degrade_to_text_days": "7",
-            "retention_degrade_to_preview_days": "14",
-        },
+        data=csrf_form(
+            {
+                "body_storage_mode": "preview",
+                "retention_max_count": "111",
+                "retention_max_age_days": "22",
+                "retention_degrade_to_text_days": "7",
+                "retention_degrade_to_preview_days": "14",
+            }
+        ),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -622,7 +649,7 @@ async def test_apps_create_flash_includes_env_vars(client: AsyncClient) -> None:
     token = _get_session_cookie()
     resp = await client.post(
         "/apps",
-        data={"name": "Env Block App", "body_storage_mode": "full"},
+        data=csrf_form({"name": "Env Block App", "body_storage_mode": "full"}),
         cookies={SESSION_COOKIE_NAME: token},
         follow_redirects=False,
     )
@@ -659,3 +686,277 @@ async def test_app_detail_smtp_tab_env_vars(client: AsyncClient, admin_auth_head
     assert "MAIL_SEESEE_APP_URL=" in resp.text
     assert "MAIL_SEESEE_LOG_URL=" in resp.text
     assert "MAIL_SEESEE_SMTP_ENCRYPTION=null" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Settings — management keys
+# ---------------------------------------------------------------------------
+
+
+async def test_settings_shows_keys_section(client: AsyncClient) -> None:
+    """Settings page renders the API Keys card."""
+    token = _get_session_cookie()
+    resp = await client.get("/settings", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    assert "API Keys" in resp.text
+
+
+async def test_create_mgmt_key_ui_flow(client: AsyncClient) -> None:
+    """POST /settings/keys mints a management key; the plaintext is flashed once."""
+    token = _get_session_cookie()
+    resp = await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "agent", "scopes": ["emails:read", "apps:read"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings"
+
+    resp2 = await client.get(
+        "/settings",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "ss_mgmt_" in resp2.text
+    assert "agent" in resp2.text
+
+
+async def test_create_mgmt_key_invalid_scope_shows_error(client: AsyncClient) -> None:
+    """An invalid scope for a management key flashes an error and creates nothing."""
+    token = _get_session_cookie()
+    resp = await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "bad-agent", "scopes": ["emails:write"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    resp2 = await client.get(
+        "/settings",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "Invalid scope" in resp2.text
+    assert "bad-agent" not in resp2.text
+
+
+async def test_revoke_mgmt_key_ui(client: AsyncClient) -> None:
+    """Revoking a management key via Settings marks it revoked in the table."""
+    token = _get_session_cookie()
+    await client.post(
+        "/settings/keys",
+        data=csrf_form({"label": "revoke-me", "scopes": ["emails:read"], "expires": "90"}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    key_id = [k["id"] for k in await keys.list_keys(None) if k["label"] == "revoke-me"][0]
+
+    resp = await client.post(
+        f"/settings/keys/{key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings"
+
+    resp2 = await client.get("/settings", cookies={SESSION_COOKIE_NAME: token})
+    assert resp2.status_code == 200
+    assert "revoked" in resp2.text
+
+
+async def test_revoke_app_key_via_settings_404(
+    client: AsyncClient, admin_auth_header: dict
+) -> None:
+    """An app key's id cannot be revoked via the management-keys settings route."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Settings Revoke App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    app_key_id = (await keys.list_keys(app_id))[0]["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/settings/keys/{app_key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# App detail — per-app keys
+# ---------------------------------------------------------------------------
+
+
+async def test_app_detail_shows_keys_table(client: AsyncClient, admin_auth_header: dict) -> None:
+    """App detail page lists the app's default key by prefix."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Keys Table App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+    key_prefix = (await keys.list_keys(app_id))[0]["key_prefix"]
+
+    token = _get_session_cookie()
+    resp = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp.status_code == 200
+    assert key_prefix in resp.text
+
+
+async def test_mint_app_key_ui_flow(client: AsyncClient, admin_auth_header: dict) -> None:
+    """POST /apps/{id}/keys mints an app key; the plaintext is flashed once."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Mint Key App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/apps/{app_id}/keys",
+        data=csrf_form({"label": "second-key", "scopes": ["emails:read", "emails:write"]}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/apps/{app_id}"
+
+    resp2 = await client.get(
+        f"/apps/{app_id}",
+        cookies={SESSION_COOKIE_NAME: token, FLASH_COOKIE_NAME: resp.cookies[FLASH_COOKIE_NAME]},
+    )
+    assert resp2.status_code == 200
+    assert "ss_" in resp2.text
+    assert "second-key" in resp2.text
+
+    app_keys = await keys.list_keys(app_id)
+    assert len(app_keys) == 2
+
+
+async def test_revoke_app_key_ui(client: AsyncClient, admin_auth_header: dict) -> None:
+    """Revoking a minted app key via the app detail page marks it revoked."""
+    app_resp = await client.post(
+        "/api/v1/apps", json={"name": "Revoke Key App"}, headers=admin_auth_header
+    )
+    app_id = app_resp.json()["id"]
+
+    token = _get_session_cookie()
+    await client.post(
+        f"/apps/{app_id}/keys",
+        data=csrf_form({"label": "revoke-me", "scopes": ["emails:read"]}),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    key_id = [k["id"] for k in await keys.list_keys(app_id) if k["label"] == "revoke-me"][0]
+
+    resp = await client.post(
+        f"/apps/{app_id}/keys/{key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/apps/{app_id}"
+
+    resp2 = await client.get(f"/apps/{app_id}", cookies={SESSION_COOKIE_NAME: token})
+    assert resp2.status_code == 200
+    assert "revoked" in resp2.text
+
+
+async def test_cross_app_revoke_ui_404(client: AsyncClient, admin_auth_header: dict) -> None:
+    """A key id from another app cannot be revoked via this app's route."""
+    app_a_resp = await client.post(
+        "/api/v1/apps", json={"name": "Cross Revoke App A"}, headers=admin_auth_header
+    )
+    app_a_id = app_a_resp.json()["id"]
+    app_b_resp = await client.post(
+        "/api/v1/apps", json={"name": "Cross Revoke App B"}, headers=admin_auth_header
+    )
+    app_b_id = app_b_resp.json()["id"]
+    app_a_key_id = (await keys.list_keys(app_a_id))[0]["id"]
+
+    token = _get_session_cookie()
+    resp = await client.post(
+        f"/apps/{app_b_id}/keys/{app_a_key_id}/revoke",
+        data=csrf_form(),
+        cookies={SESSION_COOKIE_NAME: token},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 404
+
+
+async def test_ui_create_app_key_unknown_app_404(client):
+    """Minting against a nonexistent app hit the FK constraint and 500'd."""
+    await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    page = await client.get("/settings")
+    import re
+
+    token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
+    response = await client.post(
+        "/apps/does-not-exist/keys",
+        data={"label": "x", "scopes": ["emails:read"], "csrf_token": token},
+    )
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Cookie Secure flag — derived from base_url (code review 2026-07-27)
+# ---------------------------------------------------------------------------
+
+
+async def test_cookies_not_secure_over_plain_http(client, monkeypatch):
+    """A Secure cookie on an http:// deployment is dropped by the browser and
+    would lock the admin out of the UI entirely."""
+    from seesee.config import settings
+
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
+    response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    assert response.status_code == 303
+    assert "secure" not in response.headers["set-cookie"].lower()
+
+
+async def test_cookies_secure_over_https(client, monkeypatch):
+    from seesee.config import settings
+
+    monkeypatch.setattr(settings, "base_url", "https://seesee.example.com")
+    response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
+    assert response.status_code == 303
+    assert "secure" in response.headers["set-cookie"].lower()
+
+
+async def test_flash_cookie_carrying_a_plaintext_key_is_secure_over_https(monkeypatch):
+    """The flash cookie briefly holds a plaintext API key — it must not travel
+    in the clear on an HTTPS deployment.
+
+    Uses its own https:// client: a Secure cookie is not stored by a client on
+    a plain-http origin, so the shared fixture could never stay logged in here.
+    """
+    import re
+
+    from httpx import ASGITransport, AsyncClient
+
+    from seesee.config import settings
+    from seesee.main import app
+
+    monkeypatch.setattr(settings, "base_url", "https://seesee.example.com")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="https://seesee.example.com"
+    ) as https_client:
+        await https_client.post("/login", data={"username": "admin", "password": "testpassword"})
+        page = await https_client.get("/settings")
+        token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
+        response = await https_client.post(
+            "/settings/keys",
+            data={
+                "label": "agent",
+                "scopes": ["apps:read"],
+                "expires": "90",
+                "csrf_token": token,
+            },
+        )
+        assert response.status_code == 303
+        flash = [c for c in response.headers.get_list("set-cookie") if "seesee_flash" in c]
+        assert flash, "minting a key should set the flash cookie"
+        assert "secure" in flash[0].lower()

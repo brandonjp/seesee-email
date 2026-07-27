@@ -182,6 +182,39 @@ class KeyRotateResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Key management models
+# ---------------------------------------------------------------------------
+
+
+class KeyCreateRequest(BaseModel):
+    """Mint a new key for an app."""
+
+    label: str = Field(..., min_length=1, max_length=100)
+    scopes: list[str] = Field(default=["emails:read", "emails:write"])
+    expires_days: int | None = Field(default=None, ge=1, le=3650)
+
+
+class KeyMetadata(BaseModel):
+    """Key metadata — never includes hashes or plaintext."""
+
+    id: str
+    label: str
+    key_prefix: str
+    scopes: list[str]
+    created_by: str
+    created_at: str
+    last_used_at: str | None
+    expires_at: str | None
+    revoked_at: str | None
+
+
+class KeyCreateResponse(KeyMetadata):
+    """Returned once at mint time — the only time plaintext is available."""
+
+    api_key: str
+
+
+# ---------------------------------------------------------------------------
 # Stats models
 # ---------------------------------------------------------------------------
 

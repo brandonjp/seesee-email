@@ -118,6 +118,7 @@ export default defineConfig({
             { label: "Docker Deployment", slug: "guides/docker-deployment" },
             { label: "Coolify Deployment", slug: "guides/coolify-deployment" },
             { label: "Integrations", slug: "guides/integrations" },
+            { label: "MCP Server", slug: "guides/mcp-server" },
           ],
         },
         {

@@ -144,6 +144,10 @@ Deliberately skipped at the 0.20.0 cut: the pre-upgrade smoke test against a rea
 - STARTTLS support for SMTP ingest
 - Notification alerts ("App X hasn't sent email in 24 hours")
 
+## Waiting on Other Repos
+
+- **Join the shared-ai-docs sync as its first `local-only` repo** — blocked until shared-ai-docs implements the public-repo-safety spec (`docs/superpowers/specs/2026-07-27-sync-public-repo-safety-design.md` in that repo; also on its TODO board, ⮕ OPUS). This repo is PUBLIC, so it was deliberately kept out of the sync config; the new mode syncs shared docs/commands into the working tree but gitignores them so nothing internal gets published. Once the feature ships, per spec §7: add the config entry (content `docs`+`commands`, `synced_content: local-only`), run the sync, then in THIS repo `git rm --cached` the 7 stale shared commands already tracked in `.claude/commands/` (audit, dev, ralph-spec, review-template, session-close, setup-dev-guide, whats-next — old copies stay in public git history; accepted, no secrets in them) and commit. Until then, those 7 commands keep drifting stale — don't hand-update them; the sync will replace them.
+
 ## Known Issues
 
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.

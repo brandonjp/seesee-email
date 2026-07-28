@@ -1,9 +1,23 @@
 # Next Steps — SeeSee
 
-**Version:** 0.20.2-dev
+**Version:** 0.21.0-dev
 **Updated:** 2026-07-27
 
+> **Dev-label collision, resolved.** The post-0.20.0 series restarted at `0.20.1-dev`,
+> reusing labels from the pre-release `0.8.0-dev`–`0.20.3-dev` series that 0.20.0
+> superseded — so `CHANGELOG.md` briefly said "`0.20.3-dev` is superseded by 0.20.0"
+> while also labelling new work `0.20.3-dev`. The series moved to `0.21.0-dev`, which
+> is independently the right bump: a default that changes behaviour plus a raised
+> dependency floor is a minor, not a patch. Entries below dated `0.20.1-dev` /
+> `0.20.2-dev` still carry the colliding labels and ship under `0.21.0`.
+
 ## Just Completed
+
+- **`SEESEE_FORWARDED_ALLOW_IPS` default narrowed from `*` to private ranges** (v0.21.0-dev). Decision recorded in `docs/decisions/2026-07-27-forwarded-allow-ips-default.md`. The `*` default shipped one commit earlier was flagged in review as a real trust widening and the call was made to prioritize security; the private-range list (`127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7`) keeps every containerized deployment working unchanged while not trusting arbitrary clients.
+  - **Why it mattered:** `*` lets any client that can reach SeeSee's HTTP port forge `X-Forwarded-For`, so a directly-exposed instance would have an attacker-controlled access log. Nothing in SeeSee reads the client IP, so the blast radius was log integrity — not an auth or rate-limit bypass — but the safer default costs nothing on a normal deploy.
+  - **Required a dependency floor bump:** `uvicorn[standard]>=0.31.0`. CIDR notation in `forwarded_allow_ips` landed in 0.31.0 — verified by downloading 0.30.0/0.30.6/0.31.0 and diffing `proxy_headers.py`, not by reading release notes. On 0.30.x every CIDR entry falls through to literal string matching and matches nothing, which would have silently reintroduced the insecure-cookie bug.
+  - **Operator-visible edge case:** a proxy that reaches SeeSee from a *public* address is no longer trusted by default and must set the variable explicitly. Cookies stay `Secure` in that case only through an `https://` `SEESEE_BASE_URL`; the existing startup warning covers it. Documented in the docs-site config reference under its own heading with a caution block.
+  - Two tests: the forwarded-proto test now asserts three directions (loopback-only → insecure, private proxy under the new default → secure, public client → insecure), plus `test_forwarded_allow_ips_default_covers_container_networks`, which parses every entry through uvicorn's own `_TrustedHosts` and fails if any lands in `trusted_literals` — the silent-narrowing failure mode.
 
 - **`Secure` cookies no longer depend on `SEESEE_BASE_URL` being set** (v0.20.2-dev). Closes the gap found reviewing the 0.20.0 cookie fix: the flag came from `base_url` alone, which defaults to `http://localhost:8080`, so deploying behind HTTPS without setting it produced insecure cookies with no error and no symptom. `cookies_are_secure()` now takes the `Request` and is true if *either* `base_url` is `https://` **or** the request arrived over HTTPS.
   - **The request-scheme half needed a second fix to work at all.** `uvicorn.run()` never set `forwarded_allow_ips`, so it used uvicorn's default of `127.0.0.1` — which never matches a reverse proxy in a separate container. Behind Coolify, `X-Forwarded-Proto` was being dropped and `request.url.scheme` stayed `http`, meaning the request-scheme check would itself have been a silent no-op in exactly the deployment it was written for. New `SEESEE_FORWARDED_ALLOW_IPS` (default `*`) plus `proxy_headers=True`; the trust tradeoff is documented in `seesee/config.py` and the docs-site config reference.

@@ -17,8 +17,9 @@ def main() -> None:
         # reports "https" behind TLS termination. Without this, uvicorn's
         # default forwarded_allow_ips="127.0.0.1" never matches a proxy in a
         # separate container, the header is dropped, and session/flash cookies
-        # lose their Secure flag on an HTTPS deployment. See the setting's
-        # comment in seesee/config.py for the trust tradeoff.
+        # lose their Secure flag on an HTTPS deployment. The default trusts the
+        # private ranges a containerized proxy connects from, not everything —
+        # see the setting's comment in seesee/config.py.
         proxy_headers=True,
         forwarded_allow_ips=settings.forwarded_allow_ips,
     )

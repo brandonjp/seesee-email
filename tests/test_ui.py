@@ -994,7 +994,7 @@ async def test_forwarded_proto_is_trusted_from_a_containerized_proxy(monkeypatch
     would have been a no-op in exactly the deployment it was written for.
 
     Drives uvicorn's own ProxyHeadersMiddleware from a non-loopback client
-    address to prove both directions, since `uvicorn.run()` kwargs are not
+    address to prove all three directions, since `uvicorn.run()` kwargs are not
     otherwise exercised by any test.
     """
     from httpx import ASGITransport
@@ -1004,12 +1004,11 @@ async def test_forwarded_proto_is_trusted_from_a_containerized_proxy(monkeypatch
     from seesee.main import app
 
     monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
-    proxy_addr = ("10.0.1.5", 54321)  # a proxy container, not loopback
 
-    async def login_over_forwarded_https(trusted_hosts: str) -> str:
+    async def login_over_forwarded_https(trusted_hosts: str, client_addr: tuple) -> str:
         transport = ASGITransport(
             app=ProxyHeadersMiddleware(app, trusted_hosts=trusted_hosts),
-            client=proxy_addr,
+            client=client_addr,
         )
         async with _AsyncClient(transport=transport, base_url="http://test") as c:
             response = await c.post(
@@ -1019,10 +1018,39 @@ async def test_forwarded_proto_is_trusted_from_a_containerized_proxy(monkeypatch
             )
         return _session_cookie(response).lower()
 
+    proxy_addr = ("10.0.1.5", 54321)  # a proxy container, not loopback
+    default = settings.forwarded_allow_ips
+
     # uvicorn's default: proxy is not trusted, header ignored, cookie in the clear
-    assert "secure" not in await login_over_forwarded_https("127.0.0.1")
-    # what SEESEE_FORWARDED_ALLOW_IPS now configures
-    assert "secure" in await login_over_forwarded_https("*")
+    assert "secure" not in await login_over_forwarded_https("127.0.0.1", proxy_addr)
+    # SeeSee's default does trust a proxy on a private network — the whole point
+    assert "secure" in await login_over_forwarded_https(default, proxy_addr)
+    # ...but not an arbitrary public client, which is why the default is not "*".
+    # A directly-exposed instance would otherwise let anyone forge X-Forwarded-For
+    # and choose what the access log records as the source of their requests.
+    assert "secure" not in await login_over_forwarded_https(default, ("203.0.113.7", 41234))
+
+
+def test_forwarded_allow_ips_default_covers_container_networks():
+    """Each entry has to parse as an IP or CIDR under uvicorn's `_TrustedHosts`.
+
+    A malformed entry is not an error there — it falls through to a literal
+    string match that can never match a real client address, so the trust would
+    silently narrow to nothing and un-Secure cookies with no symptom. Needs
+    uvicorn >= 0.31; on 0.30.x every one of these is treated as a literal.
+    """
+    from uvicorn.middleware.proxy_headers import _TrustedHosts
+
+    trusted = _TrustedHosts(settings.forwarded_allow_ips)
+    assert not trusted.always_trust
+    assert not trusted.trusted_literals, "an entry failed to parse as an IP/CIDR"
+
+    # the addresses real container runtimes put a reverse proxy on
+    for private in ("127.0.0.1", "::1", "10.0.1.5", "172.17.0.3", "192.168.1.2", "100.64.0.9"):
+        assert private in trusted, private
+    # ...and not the public internet
+    for public in ("203.0.113.7", "8.8.8.8", "2001:db8::1"):
+        assert public not in trusted, public
 
 
 def test_startup_warns_when_base_url_is_http_on_a_real_host(monkeypatch, caplog):

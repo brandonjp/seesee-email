@@ -13,7 +13,27 @@ Copy `.env.example` from the repository as a starting template.
 |----------|------|---------|-------------|
 | `SEESEE_PORT` | int | `8080` | HTTP server port |
 | `SEESEE_BASE_URL` | string | `http://localhost:8080` | Public base URL of the service. Set this to your `https://` URL on a real deployment — it builds the integration ENV vars, and it is the fallback that marks cookies `Secure` if the proxy's forwarded scheme is not trusted |
-| `SEESEE_FORWARDED_ALLOW_IPS` | string | `*` | Which client IPs may set `X-Forwarded-Proto` / `X-Forwarded-For`. The default trusts any client, because SeeSee expects a reverse proxy in front and uvicorn's own default (`127.0.0.1`) never matches a proxy in a separate container. Narrow it to the proxy's address if SeeSee is exposed directly to untrusted clients |
+| `SEESEE_FORWARDED_ALLOW_IPS` | string | *(private ranges — see below)* | Which client IPs may set `X-Forwarded-Proto` / `X-Forwarded-For` |
+
+### `SEESEE_FORWARDED_ALLOW_IPS`
+
+SeeSee runs behind a reverse proxy that terminates TLS, and it has to trust that proxy's `X-Forwarded-Proto` — otherwise it can't tell an HTTPS request from an HTTP one, and session and flash cookies lose their `Secure` flag. uvicorn's own default (`127.0.0.1`) never matches a proxy running in a separate container, which is every containerized deployment: Coolify, Docker Compose, and Kubernetes all connect from a private network address.
+
+The default therefore trusts the private ranges a containerized proxy actually connects from, and nothing else:
+
+```
+127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7
+```
+
+Accepts a comma-separated list of IP addresses and CIDR networks, or `*` to trust every client.
+
+:::caution
+Prefer narrowing this over widening it. `*` trusts any client that can open a connection to SeeSee's HTTP port, which on a directly-exposed instance means an attacker can forge `X-Forwarded-For` and control what the access log records as the source of every request. If you know your proxy's address, set it explicitly — `SEESEE_FORWARDED_ALLOW_IPS=10.0.1.5` is tighter than the default.
+:::
+
+**Set this explicitly if your proxy reaches SeeSee over a public address** (a proxy on a different host, with no private network between them). Nothing in the default list will match it, the forwarded scheme will be dropped, and cookies will only stay `Secure` because `SEESEE_BASE_URL` is an `https://` URL — so make sure it is. SeeSee logs a startup warning when it isn't.
+
+Requires uvicorn ≥ 0.31 for CIDR support; the pinned dependency already covers this.
 
 ## Authentication
 

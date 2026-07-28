@@ -18,19 +18,34 @@ class SeeSeeSettings(BaseSettings):
     # Which client IPs may set X-Forwarded-Proto / X-Forwarded-For. Passed
     # straight to uvicorn's `forwarded_allow_ips`.
     #
-    # Defaults to "*" because SeeSee is designed to run behind a reverse proxy
-    # that terminates TLS (aiosmtpd speaks no TLS, so the proxy is not
-    # optional), and uvicorn's own default of "127.0.0.1" never matches a proxy
-    # running in a separate container — Coolify, Docker Compose, and Kubernetes
-    # all connect from a private network address. With the default ignored, the
-    # forwarded scheme is dropped and cookies silently lose their Secure flag.
+    # SeeSee is designed to run behind a reverse proxy that terminates TLS
+    # (aiosmtpd speaks no TLS, so the proxy is not optional), and uvicorn's own
+    # default of "127.0.0.1" never matches a proxy running in a separate
+    # container — Coolify, Docker Compose, and Kubernetes all connect from a
+    # private network address. With the default ignored the forwarded scheme is
+    # dropped and cookies silently lose their Secure flag, so the default has to
+    # cover the containerized case to be useful at all.
     #
-    # Narrow this to the proxy's address if SeeSee is ever exposed directly to
-    # untrusted clients. The blast radius of a spoofed header is small — a
-    # forged X-Forwarded-Proto only affects the sender's own response (it can
-    # mark that one response's cookie Secure) — but the logged client IP comes
-    # from X-Forwarded-For and would become attacker-controlled.
-    forwarded_allow_ips: str = "*"
+    # It covers it by listing the private ranges a containerized proxy actually
+    # connects from, rather than "*". "*" would also work, and did until
+    # 0.20.3-dev — but it trusts *any* client that can open a TCP connection to
+    # this port, so on a directly-exposed instance an attacker could forge
+    # X-Forwarded-For and make every entry in the access log say whatever they
+    # want, destroying the audit trail exactly when it matters. Private ranges
+    # cost nothing on a normal deploy and remove that.
+    #
+    # Set this explicitly if the proxy reaches SeeSee from a public address
+    # (a proxy on a different host, no private network between them) — nothing
+    # here will match it and the forwarded scheme will be dropped. Cookies stay
+    # Secure in that case only because `cookies_are_secure()` also honours an
+    # https:// SEESEE_BASE_URL, which the startup warning in main.py nags about.
+    # "*" is still accepted for anyone who wants the old behaviour back.
+    #
+    # Requires uvicorn >= 0.31 (older versions compare these as plain strings
+    # and would match nothing) — pinned in pyproject.toml.
+    forwarded_allow_ips: str = (
+        "127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7"
+    )
 
     # Auth
     admin_username: str = "admin"

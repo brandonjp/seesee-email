@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seesee"
-version = "0.20.3-dev"
+version = "0.21.0-dev"
 description = "Lightweight, self-hosted sent email log aggregator with search UI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -28,7 +28,7 @@ dependencies = [
     "fastapi>=0.115.0",
     # >=0.31 for CIDR support in forwarded_allow_ips — 0.30.x compares trusted
     # hosts as plain strings, so the private-range default in seesee/config.py
-    # would silently match nothing. See CHANGELOG 0.20.3-dev.
+    # would silently match nothing. See CHANGELOG 0.21.0-dev.
     "uvicorn[standard]>=0.31.0",
     "aiosmtpd>=1.4.6",
     "aiosqlite>=0.20.0",

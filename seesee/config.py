@@ -28,7 +28,7 @@ class SeeSeeSettings(BaseSettings):
     #
     # It covers it by listing the private ranges a containerized proxy actually
     # connects from, rather than "*". "*" would also work, and did until
-    # 0.20.3-dev — but it trusts *any* client that can open a TCP connection to
+    # 0.21.0-dev — but it trusts *any* client that can open a TCP connection to
     # this port, so on a directly-exposed instance an attacker could forge
     # X-Forwarded-For and make every entry in the access log say whatever they
     # want, destroying the audit trail exactly when it matters. Private ranges

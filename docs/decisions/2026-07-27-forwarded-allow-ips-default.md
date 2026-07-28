@@ -1,7 +1,7 @@
 # Decision: `SEESEE_FORWARDED_ALLOW_IPS` defaults to private ranges, not `*`
 
 **Date:** 2026-07-27
-**Version:** 0.20.3-dev
+**Version:** 0.21.0-dev
 **Status:** Decided and implemented
 **Supersedes:** the `*` default introduced in 0.20.2-dev
 

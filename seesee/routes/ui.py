@@ -100,20 +100,34 @@ def _get_secret_key() -> str:
     return settings.secret_key or settings.admin_password
 
 
-def cookies_are_secure() -> bool:
+def cookies_are_secure(request: Request) -> bool:
     """Whether to mark cookies `Secure` (HTTPS-only).
 
-    Derived from base_url rather than a separate setting, because the two can
-    never sensibly disagree: if SeeSee is reachable over HTTPS, its cookies
-    should never travel in the clear, and if it is only reachable over HTTP
-    (localhost, a LAN box) a Secure cookie would simply be dropped and lock the
-    admin out of the UI. This matters most for the flash cookie, which briefly
-    carries a PLAINTEXT API key on the redirect after minting one.
+    True if EITHER the configured base_url is https, OR this particular request
+    arrived over https. The second half is what makes the flag reliable: it is
+    derived from how the client is actually talking to us, so an operator who
+    never sets SEESEE_BASE_URL still gets secure cookies on an HTTPS
+    deployment. Config alone was not enough — base_url defaults to
+    `http://localhost:8080`, and leaving it at the default produced insecure
+    cookies with no error and no visible symptom.
+
+    Behind a TLS-terminating reverse proxy, `request.url.scheme` reflects
+    X-Forwarded-Proto only because the server trusts the proxy to set it; see
+    `forwarded_allow_ips` in seesee/config.py. base_url is kept as the first
+    check so the flag is still correct if that trust is ever narrowed.
+
+    Not hard-coded to True because a Secure cookie on an http:// origin is
+    silently dropped by the browser, which would lock the admin out of an
+    HTTP-only install (localhost, a LAN box) with no way to tell why. This
+    matters most for the flash cookie, which briefly carries a PLAINTEXT API
+    key on the redirect after minting one.
     """
-    return settings.base_url.lower().startswith("https://")
+    if settings.base_url.lower().startswith("https://"):
+        return True
+    return request.url.scheme == "https"
 
 
-def _set_flash(response: Response, data: dict) -> None:
+def _set_flash(request: Request, response: Response, data: dict) -> None:
     """Store flash data in a signed, short-lived cookie."""
     serializer = URLSafeTimedSerializer(_get_secret_key(), salt="seesee-flash")
     response.set_cookie(
@@ -122,7 +136,7 @@ def _set_flash(response: Response, data: dict) -> None:
         max_age=_FLASH_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=cookies_are_secure(),
+        secure=cookies_are_secure(request),
     )
 
 
@@ -192,17 +206,19 @@ async def login_submit(
         max_age=settings.session_max_age_days * 86400,
         httponly=True,
         samesite="lax",
-        secure=cookies_are_secure(),
+        secure=cookies_are_secure(request),
     )
     return response
 
 
 @router.post("/logout")
-async def logout(_csrf: None = Depends(require_csrf_if_session)) -> RedirectResponse:
+async def logout(
+    request: Request, _csrf: None = Depends(require_csrf_if_session)
+) -> RedirectResponse:
     """Clear session cookie and redirect to login."""
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(
-        SESSION_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+        SESSION_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure(request)
     )
     return response
 
@@ -502,7 +518,7 @@ async def app_list(
     )
     if flash:
         response.delete_cookie(
-            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure(request)
         )
     return response
 
@@ -562,6 +578,7 @@ async def create_app_ui(
     # Flash credentials via signed cookie (consumed on next page load)
     response = RedirectResponse(url="/apps", status_code=303)
     _set_flash(
+        request,
         response,
         {
             "created_credentials": {
@@ -578,6 +595,7 @@ async def create_app_ui(
 
 @router.post("/apps/{app_id}/rotate-key")
 async def rotate_key_ui(
+    request: Request,
     app_id: str,
     user: str = Depends(require_session),
     _csrf: None = Depends(require_csrf),
@@ -600,7 +618,7 @@ async def rotate_key_ui(
     await db.commit()
 
     response = RedirectResponse(url="/apps", status_code=303)
-    _set_flash(response, {"rotated_key": new_key})
+    _set_flash(request, response, {"rotated_key": new_key})
     return response
 
 
@@ -689,7 +707,7 @@ async def app_detail(
     )
     if flash:
         response.delete_cookie(
-            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure(request)
         )
     return response
 
@@ -720,9 +738,9 @@ async def create_app_key_ui(
             created_by="admin",
         )
     except ValueError as exc:
-        _set_flash(response, {"key_error": str(exc)})
+        _set_flash(request, response, {"key_error": str(exc)})
         return response
-    _set_flash(response, {"new_app_key": plaintext, "new_app_key_label": label})
+    _set_flash(request, response, {"new_app_key": plaintext, "new_app_key_label": label})
     return response
 
 
@@ -855,6 +873,7 @@ async def purge_app_emails_ui(
 
 @router.post("/apps/{app_id}/delete")
 async def delete_app_ui(
+    request: Request,
     app_id: str,
     user: str = Depends(require_session),
     _csrf: None = Depends(require_csrf),
@@ -877,6 +896,7 @@ async def delete_app_ui(
 
     response = RedirectResponse(url="/apps", status_code=303)
     _set_flash(
+        request,
         response,
         {
             "deleted_app": {
@@ -1012,7 +1032,7 @@ async def settings_page(
     )
     if flash:
         response.delete_cookie(
-            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure()
+            FLASH_COOKIE_NAME, httponly=True, samesite="lax", secure=cookies_are_secure(request)
         )
     return response
 
@@ -1056,9 +1076,9 @@ async def create_mgmt_key_ui(
             created_by="admin",
         )
     except ValueError as exc:
-        _set_flash(response, {"key_error": str(exc)})
+        _set_flash(request, response, {"key_error": str(exc)})
         return response
-    _set_flash(response, {"new_mgmt_key": plaintext, "new_mgmt_key_label": label})
+    _set_flash(request, response, {"new_mgmt_key": plaintext, "new_mgmt_key_label": label})
     return response
 
 

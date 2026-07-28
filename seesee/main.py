@@ -21,9 +21,35 @@ from seesee.smtp_server import start_smtp_server, stop_smtp_server
 logger = logging.getLogger("seesee")
 
 
+def _warn_if_base_url_looks_wrong() -> None:
+    """Warn when base_url is http:// on what looks like a real deployment.
+
+    The Secure-cookie flag falls back to the live request scheme, so this is a
+    diagnostic rather than the mechanism — but if the proxy's forwarded headers
+    are ever distrusted, an http:// base_url is the difference between secure
+    and insecure cookies, and nothing else would say so. base_url is also what
+    builds the URLs in the integration ENV block, which are wrong either way.
+    """
+    if not settings.base_url.lower().startswith("http://"):
+        return
+    host = settings.base_url.split("://", 1)[-1].split("/")[0].split(":")[0].lower()
+    if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0") or host.endswith(".local"):
+        return
+    logger.warning(
+        "SEESEE_BASE_URL is %r — an http:// URL on a non-local host. If this "
+        "deployment is reachable over HTTPS, set it to the https:// URL: it is "
+        "used to build the integration ENV vars, and it is the fallback that "
+        "marks session and flash cookies Secure when the reverse proxy's "
+        "X-Forwarded-Proto is not trusted (see SEESEE_FORWARDED_ALLOW_IPS). "
+        "The flash cookie briefly carries a plaintext API key.",
+        settings.base_url,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
+    _warn_if_base_url_looks_wrong()
     await init_db()
     if settings.smtp_enabled:
         await start_smtp_server()

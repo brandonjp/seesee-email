@@ -1,9 +1,15 @@
 # Next Steps — SeeSee
 
-**Version:** 0.20.1-dev
+**Version:** 0.20.2-dev
 **Updated:** 2026-07-27
 
 ## Just Completed
+
+- **`Secure` cookies no longer depend on `SEESEE_BASE_URL` being set** (v0.20.2-dev). Closes the gap found reviewing the 0.20.0 cookie fix: the flag came from `base_url` alone, which defaults to `http://localhost:8080`, so deploying behind HTTPS without setting it produced insecure cookies with no error and no symptom. `cookies_are_secure()` now takes the `Request` and is true if *either* `base_url` is `https://` **or** the request arrived over HTTPS.
+  - **The request-scheme half needed a second fix to work at all.** `uvicorn.run()` never set `forwarded_allow_ips`, so it used uvicorn's default of `127.0.0.1` — which never matches a reverse proxy in a separate container. Behind Coolify, `X-Forwarded-Proto` was being dropped and `request.url.scheme` stayed `http`, meaning the request-scheme check would itself have been a silent no-op in exactly the deployment it was written for. New `SEESEE_FORWARDED_ALLOW_IPS` (default `*`) plus `proxy_headers=True`; the trust tradeoff is documented in `seesee/config.py` and the docs-site config reference.
+  - Verified rather than assumed: `test_forwarded_proto_is_trusted_from_a_containerized_proxy` drives uvicorn's own `ProxyHeadersMiddleware` from a non-loopback client address and asserts **both** directions — cookie insecure with `127.0.0.1`, secure with `*`. A test in `test_version_sync.py` asserts the `uvicorn.run()` kwargs stay wired, since nothing else exercises them.
+  - `base_url` is kept as the first check so the flag stays correct if that trust is ever narrowed, and a startup `WARNING` fires when `base_url` is `http://` on a non-local host — the one config mistake with no other visible symptom.
+  - Threading the request through surfaced three handlers that never had one (`logout`, rotate-key, delete-app), caught by `ruff` rather than at runtime. 429 tests passing (+6).
 
 - **`S608` + `RUF100` enabled — the `# noqa: S608` comments now actually enforce something** (v0.20.1-dev). They never had: `S608` was not in `select`, so all 20 were inert, and `RUF100` was not enabled either, so nothing would ever report that. The failure had already happened quietly — `ruff format` moved one off its diagnostic line in `seesee/mcp_server.py` while collapsing a call. Both rules are now selected as a pair: `S608` makes the suppressions real, `RUF100` fails the build if a `noqa` ever stops matching a real diagnostic, so this cannot silently rot again. Enabling `S608` flagged exactly one site (the misplaced comment, now fixed); the other 19 were already correct. Confirmed the corrected placement survives `ruff format` — a trailing comment on the f-string line pins the multi-line form. Audited all 20 while doing it: every one interpolates a module-level column constant, a generated `?` placeholder string, or literal `WHERE`/`SET` fragments; every user-supplied value is bound as a `?` parameter. No injection vector found.
 
@@ -95,7 +101,7 @@ Worth knowing before starting: `seesee/routes/export.py` already implements CSV 
 
 ### Follow-up from the 0.20.0 release review
 
-- **Decide whether `cookies_are_secure()` should warn when it silently does nothing.** See the first Known Issue below. Small, self-contained, and the natural companion to the fix that just shipped.
+Nothing outstanding — both findings are fixed (`S608`/`RUF100` in v0.20.1-dev, request-scheme cookies in v0.20.2-dev). `0.20.2-dev` is unreleased; fold it into the next tag.
 
 ### Deferred
 
@@ -114,8 +120,6 @@ Deliberately skipped at the 0.20.0 cut: the pre-upgrade smoke test against a rea
 
 ## Known Issues
 
-- **`Secure` cookies silently do nothing if `SEESEE_BASE_URL` is left unset.** (Found reviewing `769d18c`, the fix that added them.) `cookies_are_secure()` (`seesee/routes/ui.py`) derives the flag from `settings.base_url`, whose default — in `seesee/config.py` and in `.env.example` — is `http://localhost:8080`. So an operator who deploys behind HTTPS but never sets `SEESEE_BASE_URL` gets the insecure branch, with no warning and no visible symptom: the app works fine, and the session and plaintext-key-carrying flash cookies just keep travelling in the clear. The deployment guides (Coolify, Docker) do tell you to set it, but nothing enforces or checks it. The derivation itself is the right call — the alternative, hard-coding `Secure`, locks HTTP-only installs out silently. What's missing is a signal. Options: (a) log a startup `WARNING` when `base_url` is `http://` and the host is not `localhost`/`127.0.0.1`; (b) OR the check with the live request scheme (`request.url.scheme == "https"`, or `X-Forwarded-Proto` behind the reverse proxy), which needs the `Request` at cookie-set time — available in all the relevant handlers; (c) surface the effective cookie posture on the Settings page. (a) is the cheapest real improvement.
-
 - **Per-app degradation cannot be disabled when a global default is set.** (Also on ROADMAP Phase 3.0 — needs a human design decision.) `_effective_degrade_days` (`seesee/retention.py:162`) treats a per-app value of `0` (or `NULL`) as "inherit global". So if `settings.retention_degrade_to_text_days` is non-zero, there is no way to turn degradation off for a single app — `0`/blank falls back to the global. As of v0.19.4-dev the Settings UI stores `0` as NULL and shows "System default", so it at least no longer *implies* that `0` disables anything — but an explicit "disabled" state (sentinel value, separate column, or checkbox) still needs to be designed before per-app opt-out can work as a user would expect.
 - **Legacy key columns must be deleted in 0.21.0.** `_resolve_legacy_fallback` in `seesee/keys.py`, the matching fallback branch at the end of `resolve_smtp_password`, and the legacy `apps.api_key` / `apps.smtp_password` columns exist only to survive a 0.19.x↔0.20.0 deploy overlap. They are commented "delete in 0.21.0" in three places. Once 0.20.0 has been running long enough that no 0.19.x container can come back, remove all three plus the `revoke_key` tombstone write, and drop the columns in a schema v5 migration. Until then a revoked *primary* app key stays revoked only because `revoke_key` tombstones those columns — do not remove that write in isolation.
 - **App-detail key minting has no expiry control.** `create_app_key_ui` (`seesee/routes/ui.py`) always passes `expires_at=None`, so keys minted from an app's page never expire, while the Settings page defaults management keys to 90 days. Defensible (app keys are long-lived deploy credentials) but inconsistent and undocumented in the UI. Either add the same expiry `<select>` to the app-detail form or add a line of helper text saying app keys do not expire.
@@ -131,7 +135,7 @@ Deliberately skipped at the 0.20.0 cut: the pre-upgrade smoke test against a rea
 
 ## Current State
 
-- 423 tests passing (0 failures); `ruff check` and `ruff format --check` clean (ruff pinned at 0.16.0)
+- 429 tests passing (0 failures); `ruff check` and `ruff format --check` clean (ruff pinned at 0.16.0; `S608` + `RUF100` enforced)
 - All phases 0 through 2.1 complete, plus provider webhook receivers, graduated body degradation, timezone handling, search-and-delete, data export per recipient, admin UX audit, theme selector UI, expanded theme catalog, complete copy-all-as-ENV-vars on app credentials, and the 0.20.0 management-keys + MCP work
 - Full REST API, SMTP ingest, Web UI, retention, docs site, MCP server at `/mcp`
 - Scoped management API keys (`ss_mgmt_`) with expiry and revocation; multiple keys per app for zero-downtime rotation; CLI bootstrap via `python -m seesee.keys`

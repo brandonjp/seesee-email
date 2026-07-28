@@ -12,7 +12,8 @@ Copy `.env.example` from the repository as a starting template.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `SEESEE_PORT` | int | `8080` | HTTP server port |
-| `SEESEE_BASE_URL` | string | `http://localhost:8080` | Public base URL of the service |
+| `SEESEE_BASE_URL` | string | `http://localhost:8080` | Public base URL of the service. Set this to your `https://` URL on a real deployment — it builds the integration ENV vars, and it is the fallback that marks cookies `Secure` if the proxy's forwarded scheme is not trusted |
+| `SEESEE_FORWARDED_ALLOW_IPS` | string | `*` | Which client IPs may set `X-Forwarded-Proto` / `X-Forwarded-For`. The default trusts any client, because SeeSee expects a reverse proxy in front and uvicorn's own default (`127.0.0.1`) never matches a proxy in a separate container. Narrow it to the proxy's address if SeeSee is exposed directly to untrusted clients |
 
 ## Authentication
 

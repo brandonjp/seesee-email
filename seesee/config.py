@@ -15,6 +15,23 @@ class SeeSeeSettings(BaseSettings):
     port: int = 8080
     base_url: str = "http://localhost:8080"
 
+    # Which client IPs may set X-Forwarded-Proto / X-Forwarded-For. Passed
+    # straight to uvicorn's `forwarded_allow_ips`.
+    #
+    # Defaults to "*" because SeeSee is designed to run behind a reverse proxy
+    # that terminates TLS (aiosmtpd speaks no TLS, so the proxy is not
+    # optional), and uvicorn's own default of "127.0.0.1" never matches a proxy
+    # running in a separate container — Coolify, Docker Compose, and Kubernetes
+    # all connect from a private network address. With the default ignored, the
+    # forwarded scheme is dropped and cookies silently lose their Secure flag.
+    #
+    # Narrow this to the proxy's address if SeeSee is ever exposed directly to
+    # untrusted clients. The blast radius of a spoofed header is small — a
+    # forged X-Forwarded-Proto only affects the sender's own response (it can
+    # mark that one response's cookie Secure) — but the logged client IP comes
+    # from X-Forwarded-For and would become attacker-controlled.
+    forwarded_allow_ips: str = "*"
+
     # Auth
     admin_username: str = "admin"
     admin_password: str = ""

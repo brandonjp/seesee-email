@@ -13,6 +13,14 @@ def main() -> None:
         port=settings.port,
         log_level=settings.log_level.lower(),
         reload=False,
+        # Trust the reverse proxy's X-Forwarded-Proto so request.url.scheme
+        # reports "https" behind TLS termination. Without this, uvicorn's
+        # default forwarded_allow_ips="127.0.0.1" never matches a proxy in a
+        # separate container, the header is dropped, and session/flash cookies
+        # lose their Secure flag on an HTTPS deployment. See the setting's
+        # comment in seesee/config.py for the trust tradeoff.
+        proxy_headers=True,
+        forwarded_allow_ips=settings.forwarded_allow_ips,
     )
 
 

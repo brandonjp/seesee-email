@@ -25,3 +25,17 @@ def test_version_matches_pyproject():
         f"pyproject.toml declares {pyproject_version!r}. Bump both together "
         "(pyproject.toml and seesee/__init__.py)."
     )
+
+
+def test_uvicorn_is_configured_to_trust_the_proxy():
+    """`uvicorn.run()` kwargs are not exercised by any request-level test, and a
+    silent regression here would quietly un-Secure the session and flash
+    cookies on every HTTPS deployment (see test_ui.py's forwarded-proto test).
+    """
+    import inspect
+
+    from seesee import __main__
+
+    source = inspect.getsource(__main__.main)
+    assert "proxy_headers=True" in source
+    assert "forwarded_allow_ips=settings.forwarded_allow_ips" in source

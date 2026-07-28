@@ -1,5 +1,7 @@
 """Tests for the web UI — session auth, page rendering, and redirects."""
 
+import re
+
 from httpx import AsyncClient
 from itsdangerous import URLSafeTimedSerializer
 
@@ -902,19 +904,74 @@ async def test_ui_create_app_key_unknown_app_404(client):
 
 
 # ---------------------------------------------------------------------------
-# Cookie Secure flag — derived from base_url (code review 2026-07-27)
+# Cookie Secure flag — base_url OR the live request scheme
+# (code review 2026-07-27; request-scheme fallback added 2026-07-27)
 # ---------------------------------------------------------------------------
+
+
+def _session_cookie(response):
+    """The Set-Cookie header for the session cookie.
+
+    Indexing `headers["set-cookie"]` returns only the first of several, so
+    select by name rather than trusting the ordering.
+    """
+    matches = [c for c in response.headers.get_list("set-cookie") if SESSION_COOKIE_NAME in c]
+    assert matches, "expected a session cookie to be set"
+    return matches[0]
+
+
+async def https_client_for(app):
+    """An AsyncClient whose requests arrive with scheme == "https"."""
+    from httpx import ASGITransport
+    from httpx import AsyncClient as _AsyncClient
+
+    return _AsyncClient(transport=ASGITransport(app=app), base_url="https://seesee.example.com")
 
 
 async def test_cookies_not_secure_over_plain_http(client, monkeypatch):
     """A Secure cookie on an http:// deployment is dropped by the browser and
     would lock the admin out of the UI entirely."""
-    from seesee.config import settings
-
     monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
     response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
     assert response.status_code == 303
-    assert "secure" not in response.headers["set-cookie"].lower()
+    assert "secure" not in _session_cookie(response).lower()
+
+
+async def test_cookies_secure_from_request_scheme_when_base_url_unset(monkeypatch):
+    """The gap this closes: base_url left at its `http://localhost:8080`
+    default on an HTTPS deployment.
+
+    Config alone produced insecure cookies here, with no error and no visible
+    symptom — the operator had no way to notice. The live request scheme now
+    decides it instead. Behind a reverse proxy this is X-Forwarded-Proto, which
+    uvicorn translates into the ASGI scheme (see SEESEE_FORWARDED_ALLOW_IPS).
+    """
+    from seesee.main import app
+
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
+    async with await https_client_for(app) as https_client:
+        response = await https_client.post(
+            "/login", data={"username": "admin", "password": "testpassword"}
+        )
+    assert response.status_code == 303
+    assert "secure" in _session_cookie(response).lower()
+
+
+async def test_logout_clears_cookie_with_matching_secure_flag(monkeypatch):
+    """`logout` is the one handler that had no `request` to consult. If its
+    delete_cookie flags stop matching the ones used to set it, the browser can
+    refuse the deletion and leave the session cookie in place.
+    """
+    from seesee.main import app
+
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
+    async with await https_client_for(app) as https_client:
+        await https_client.post("/login", data={"username": "admin", "password": "testpassword"})
+        page = await https_client.get("/")
+        token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
+        response = await https_client.post("/logout", data={"csrf_token": token})
+    assert response.status_code == 303
+    assert "secure" in _session_cookie(response).lower()
 
 
 async def test_cookies_secure_over_https(client, monkeypatch):
@@ -924,6 +981,82 @@ async def test_cookies_secure_over_https(client, monkeypatch):
     response = await client.post("/login", data={"username": "admin", "password": "testpassword"})
     assert response.status_code == 303
     assert "secure" in response.headers["set-cookie"].lower()
+
+
+async def test_forwarded_proto_is_trusted_from_a_containerized_proxy(monkeypatch):
+    """The half of the fix that lives outside this module.
+
+    `request.url.scheme` only reports "https" behind a TLS-terminating proxy if
+    the server trusts that proxy to set X-Forwarded-Proto. uvicorn's default
+    `forwarded_allow_ips="127.0.0.1"` never matches a proxy running in its own
+    container — Coolify, Compose, and Kubernetes all connect from a private
+    network address — so the header was dropped and the request-scheme check
+    would have been a no-op in exactly the deployment it was written for.
+
+    Drives uvicorn's own ProxyHeadersMiddleware from a non-loopback client
+    address to prove both directions, since `uvicorn.run()` kwargs are not
+    otherwise exercised by any test.
+    """
+    from httpx import ASGITransport
+    from httpx import AsyncClient as _AsyncClient
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    from seesee.main import app
+
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8080")
+    proxy_addr = ("10.0.1.5", 54321)  # a proxy container, not loopback
+
+    async def login_over_forwarded_https(trusted_hosts: str) -> str:
+        transport = ASGITransport(
+            app=ProxyHeadersMiddleware(app, trusted_hosts=trusted_hosts),
+            client=proxy_addr,
+        )
+        async with _AsyncClient(transport=transport, base_url="http://test") as c:
+            response = await c.post(
+                "/login",
+                data={"username": "admin", "password": "testpassword"},
+                headers={"X-Forwarded-Proto": "https"},
+            )
+        return _session_cookie(response).lower()
+
+    # uvicorn's default: proxy is not trusted, header ignored, cookie in the clear
+    assert "secure" not in await login_over_forwarded_https("127.0.0.1")
+    # what SEESEE_FORWARDED_ALLOW_IPS now configures
+    assert "secure" in await login_over_forwarded_https("*")
+
+
+def test_startup_warns_when_base_url_is_http_on_a_real_host(monkeypatch, caplog):
+    """The diagnostic half: if the proxy's forwarded headers are ever
+    distrusted, an http:// base_url silently decides the cookie flag."""
+    import logging
+
+    from seesee.main import _warn_if_base_url_looks_wrong
+
+    monkeypatch.setattr(settings, "base_url", "http://seesee.example.com")
+    with caplog.at_level(logging.WARNING, logger="seesee"):
+        _warn_if_base_url_looks_wrong()
+    assert "SEESEE_BASE_URL" in caplog.text
+
+
+def test_startup_does_not_warn_for_local_or_https_base_urls(monkeypatch, caplog):
+    """No crying wolf: a localhost dev box and a correct https:// deployment
+    are both fine, and a warning on every boot would train the operator to
+    ignore the one that matters."""
+    import logging
+
+    from seesee.main import _warn_if_base_url_looks_wrong
+
+    for url in (
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://seesee.local",
+        "https://seesee.example.com",
+    ):
+        caplog.clear()
+        monkeypatch.setattr(settings, "base_url", url)
+        with caplog.at_level(logging.WARNING, logger="seesee"):
+            _warn_if_base_url_looks_wrong()
+        assert caplog.text == "", f"unexpected warning for {url}"
 
 
 async def test_flash_cookie_carrying_a_plaintext_key_is_secure_over_https(monkeypatch):

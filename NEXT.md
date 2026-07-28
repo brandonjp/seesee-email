@@ -107,6 +107,14 @@
 
 ## Highest Priority Next Task
 
+### Cut 0.21.0 and deploy it — do this first
+
+`main` is at `0.21.0-dev` with a merged security change that is **released nowhere and deployed nowhere**. The `SEESEE_FORWARDED_ALLOW_IPS` default narrowing (see Just Completed) only protects a deployment that is actually running it, so this outranks any feature work below.
+
+1. **Cut the release.** Drop `-dev` → `0.21.0` in `pyproject.toml` and `seesee/__init__.py` (`tests/test_version_sync.py` asserts they match). Consolidate the `CHANGELOG.md` `[Unreleased]` block into `## [0.21.0] — <date>` following the `[0.20.0]` pattern, collapsing the per-bump `-dev` labels. **Delete the dev-label-collision note at the top of `[Unreleased]`** — it is scaffolding for the unreleased state, not release content. Tag `v0.21.0` and push; the build workflow triggers on `tags: ['v*']` and publishes `ghcr.io/brandonjp/seesee-email:0.21.0`.
+2. **Deploy on Coolify** (`docs/src/content/docs/guides/coolify-deployment.md`). Confirm `SEESEE_BASE_URL` is the `https://` production URL — with the narrowed default it is the safety net that keeps cookies `Secure`. Check the resource Limits tab while in there. **Do not preemptively set `SEESEE_FORWARDED_ALLOW_IPS`** — Coolify's proxy is on a private Docker network and is already covered; setting it by hand would mask a real failure.
+3. **Verify in production, with evidence.** Log in over HTTPS and confirm the session cookie carries `Secure`; confirm the startup `SEESEE_BASE_URL` warning is absent; confirm the access log shows a real client IP, not the proxy's internal address. Production is the first real test of the decision record's claim that these ranges cover Coolify — if anything surprises you, add a postscript to `docs/decisions/2026-07-27-forwarded-allow-ips-default.md`.
+
 ### CSV/JSON Search Export
 
 Add export buttons to the email search page that download the current filtered results as CSV or JSON files.
@@ -115,7 +123,7 @@ Worth knowing before starting: `seesee/routes/export.py` already implements CSV 
 
 ### Follow-up from the 0.20.0 release review
 
-Nothing outstanding — both findings are fixed (`S608`/`RUF100` in v0.20.1-dev, request-scheme cookies in v0.20.2-dev). `0.20.2-dev` is unreleased; fold it into the next tag.
+Nothing outstanding — both findings are fixed (`S608`/`RUF100` in v0.20.1-dev, request-scheme cookies in v0.20.2-dev). Everything since 0.20.0 is still unreleased and folds into the `0.21.0` tag described above.
 
 ### Deferred
 

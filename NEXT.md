@@ -125,6 +125,25 @@ Add export buttons to the email search page that download the current filtered r
 
 Worth knowing before starting: `seesee/routes/export.py` already implements CSV and JSON serialization for the per-recipient GDPR export (`GET /api/v1/export`), including the `Content-Disposition` attachment header and the `format=csv` / `Accept: text/csv` negotiation. This task is mostly about reusing that machinery against the `/emails` search filters (`q`, `app_id`, `status`, `provider`, `date_from`, `date_to`) rather than writing new serializers. Route the search query through `seesee/search.py` like every other FTS5 call site.
 
+### Investigate: wire auto-deploy so Coolify stops serving stale images
+
+**Note added 2026-08-05 from the `peace-hero-program` session — not investigated here, just recorded so it is not lost.**
+
+The "Coolify does not auto-pull on a new registry push" line above is framed as *"a manual button, not a missing pipeline."* That framing is worth re-examining: the consequence was `seesee.bpf.fyi` serving `0.19.16-dev` for roughly two months while GHCR published every commit, and `/api/v1/health` returned a perfectly healthy 200 the entire time. A manual step that is silently skipped for two months behaves like a missing pipeline.
+
+Confirmed 2026-08-05: **no seesee workflow calls Coolify** — `.github/workflows/` contains only `build.yml` and `docs.yml`, neither of which touches `fyi.bpf.fyi` or the deploy API. So nothing triggers a pull.
+
+The candidate fix (same one `peace-hero-program` is adopting) is one step appended to the build workflow, after the image is pushed:
+
+```
+curl -sS -X GET -H "Authorization: Bearer $COOLIFY_TOKEN" \
+  "https://fyi.bpf.fyi/api/v1/deploy?uuid=kkss44kko80w48gs4c8kgc4o&force=false"
+```
+
+with `COOLIFY_TOKEN` as a repo secret (mint one scoped as narrowly as the instance allows rather than reusing the root token in `~/.claude.json`). Worth pairing with a post-deploy assertion that `/api/v1/health` reports the version just published — a stale image returns 200, so status code alone is not evidence the deploy took.
+
+Sequence it **after** the 0.21.0 cut above; changing the release pipeline mid-release adds a variable to a deploy that already jumps a pre-v4 database two minor versions.
+
 ### Follow-up from the 0.20.0 release review
 
 Nothing outstanding — both findings are fixed (`S608`/`RUF100` in v0.20.1-dev, request-scheme cookies in v0.20.2-dev). Everything since 0.20.0 is still unreleased and folds into the `0.21.0` tag described above.

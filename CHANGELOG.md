@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Infrastructure
+- **Pushes to `main` now deploy automatically.** The build workflow's final step
+  triggers the Coolify instance to pull the image it just pushed, via Coolify's
+  manual GitHub webhook — a synthetic, HMAC-signed push event authenticated by a
+  per-app secret (`COOLIFY_MANUAL_WEBHOOK_SECRET` / `COOLIFY_MANUAL_WEBHOOK_URL`
+  Actions secrets). The Coolify API is deliberately not used: it sits behind an
+  IP allowlist that GitHub runners can never satisfy, which is why images had
+  been piling up unpulled since June. Design, probes, and the fleet-wide
+  rationale: freebird-fm repo →
+  `docs/decisions/2026-08-17-deploy-trigger-signed-manual-webhook.md` (2026-08-17)
+
 > The `-dev` labels below are the **post-0.20.0** series and are unrelated to the
 > identically-numbered pre-release labels superseded by 0.20.0. `0.20.1-dev` and
 > `0.20.2-dev` were reused by accident; the series moved to `0.21.0-dev` to stop
